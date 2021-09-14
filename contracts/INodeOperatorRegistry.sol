@@ -19,4 +19,12 @@ interface INodeOperatorRegistry {
     /// @dev Remove a node operator from the system using the _id.
     /// @param _id node operator id.
     function removeOperator(uint256 _id) external;
+
+    /// @notice The version of the actual contract.
+    /// @return return the contract version.
+    function version() external returns (string memory);
+
+    /// @notice Get the all operator ids availablein the system.
+    /// @return Return a list of operator Ids.
+    function getOperators() external returns (uint256[] memory);
 }

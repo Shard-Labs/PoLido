@@ -31,6 +31,7 @@ contract NodeOperatorStorage {
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) internal operators;
+    uint256[] internal operatorIds;
 
     /// @dev Mapping of all owners with node operator id. Mapping is used to be able to extend the struct.
     mapping(address => uint256) internal operatorOwners;

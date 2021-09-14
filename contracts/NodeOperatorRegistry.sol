@@ -64,7 +64,7 @@ contract NodeOperatorRegistry is
             validatorId: 0,
             signerPubkey: _signerPubkey
         });
-
+        operatorIds.push(id);
         nodeOperatorRegistryStats.totalNodeOpearator++;
         nodeOperatorRegistryStats.totalActiveNodeOpearator++;
 
@@ -88,15 +88,35 @@ contract NodeOperatorRegistry is
         nodeOperatorRegistryStats.totalNodeOpearator--;
         nodeOperatorRegistryStats.totalActiveNodeOpearator--;
 
+        // update the operatorIds array by removing the actual deleted operator
+        for (uint256 i = 0; i < operatorIds.length - 1; i++) {
+            if (_id == operatorIds[i]) {
+                operatorIds[i] = operatorIds[operatorIds.length - 1];
+                break;
+            }
+        }
+        delete operatorIds[operatorIds.length - 1];
+        operatorIds.pop();
+
+        // delete operator and owner mappings from operators and operatorOwners;
         delete operatorOwners[op.rewardAddress];
         delete operators[_id];
 
         emit RemoveOperator(_id);
     }
 
+    /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
+    /// @param newImplementation new contract implementation address.
     function _authorizeUpgrade(address newImplementation) internal override {}
 
-    function version() public pure returns (string memory) {
+    /// @notice Return the actual contract version.
+    function version() external view virtual override returns (string memory) {
         return "1.0.0";
+    }
+
+    /// @notice Get the all operator ids availablein the system.
+    /// @return Return a list of operator Ids.
+    function getOperators() external view override returns (uint256[] memory) {
+        return operatorIds;
     }
 }
