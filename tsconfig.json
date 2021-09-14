@@ -1,14 +1,16 @@
 {
     "compilerOptions": {
-        "declaration": true,
-        "lib": ["ES2018"],
-        "module": "CommonJS",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "lib": ["es6"],
+        "module": "commonjs",
         "moduleResolution": "node",
-        "strict": true,
-        "target": "ES2018",
+        "noImplicitAny": true,
+        "outDir": "dist",
+        "resolveJsonModule": true,
         "sourceMap": true,
-        "composite": true,
-        "incremental": true
+        "strict": true,
+        "target": "es6"
     },
     "exclude": ["node_modules"],
     "include": ["./scripts", "./test"],
