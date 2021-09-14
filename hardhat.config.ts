@@ -15,11 +15,21 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
     }
 });
 
+const INFURA_API_KEY = process.env.INFURA_API_KEY;
+const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY;
+
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
 const config: HardhatUserConfig = {
+    defaultNetwork: "hardhat",
     solidity: '0.8.7',
+    networks: {
+        goerli: {
+          url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
+          accounts: [`0x${GOERLI_PRIVATE_KEY}`],
+        },
+    },
     typechain: {
         outDir: "typechain",
         target: "ethers-v5",
