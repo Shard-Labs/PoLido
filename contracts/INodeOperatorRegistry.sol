@@ -13,4 +13,10 @@ interface INodeOperatorRegistry {
         address _rewardAddress,
         bytes memory _signerPubkey
     ) external;
+
+
+    /// @notice Remove a node operator from the system.
+    /// @dev Remove a node operator from the system using the _id.
+    /// @param _id node operator id.
+    function removeOperator(uint256 _id) external;
 }

@@ -53,4 +53,8 @@ contract NodeOperatorStorage {
         bytes signerPubkey,
         NodeOperatorStatus state
     );
+
+    /// @dev A node operator was removed.
+    /// @param id node operator id.
+    event RemoveOperator(uint256 id);
 }

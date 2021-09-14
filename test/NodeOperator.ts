@@ -52,7 +52,7 @@ describe('NodeOperator', function () {
         );
         expect(res).to.emit(NodeOperatorRegistryContract, "NewOperator").withArgs(
             1, name, signerPubkey, 0
-        )      
+        )
 
         // check node operator stats
         const stats = await NodeOperatorRegistryContract.nodeOperatorRegistryStats();
@@ -61,4 +61,28 @@ describe('NodeOperator', function () {
         // totalActiveNodeOpearator =1
         expect(stats[1].toNumber(), "totalActiveNodeOpearator not match").equal(1);
     });
+
+    it('remove node operator success', async function () {
+        let name: string = "node 1";
+        let rewardAddress: string = await user1.getAddress()
+        let signerPubkey: string = ethers.utils.hexZeroPad("0x01", 64);
+
+        // add new node operator
+        await NodeOperatorRegistryContract.addOperator(
+            name,
+            rewardAddress,
+            signerPubkey
+        );
+
+        // remove node operator.
+        const res = await NodeOperatorRegistryContract.removeOperator(1)
+        expect(res).to.emit(NodeOperatorRegistryContract, "RemoveOperator").withArgs(1)
+        
+        // check node operator stats
+        const stats = await NodeOperatorRegistryContract.nodeOperatorRegistryStats();
+        // totalNodeOpearator = 0
+        expect(stats[0].toNumber(), "totalNodeOpearator not match").equal(0);
+        // totalActiveNodeOpearator = 0
+        expect(stats[1].toNumber(), "totalActiveNodeOpearator not match").equal(0);
+    })
 });

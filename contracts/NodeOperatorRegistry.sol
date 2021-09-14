@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./NodeOperatorStorage.sol";
 import "./INodeOperatorRegistry.sol";
@@ -12,12 +13,11 @@ contract NodeOperatorRegistry is
     INodeOperatorRegistry,
     NodeOperatorStorage,
     Initializable,
-    AccessControl
+    AccessControl,
+    UUPSUpgradeable
 {
-    /// @notice The NodeOperatorRegistry contract allows managing a set of validators
-    /// staked on polygon stake manager. Also, handle fees for reward distribution.
-
     bytes32 public constant ADD_OPERATOR_ROLE = keccak256("ADD_OPERATOR");
+    bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
 
     /// @notice Check if the PublicKey is valid.
     /// @param _pubkey publick key used in the heimdall node.
@@ -26,10 +26,18 @@ contract NodeOperatorRegistry is
         _;
     }
 
+    /// @notice Check if the msg.sender has permission.
+    /// @param _role role needed to call function.
+    modifier userHasRole(bytes32 _role) {
+        require(hasRole(_role, msg.sender), "Permission not found");
+        _;
+    }
+
     /// @notice Initialize the NodeOperator contract.
     function initialize() public initializer {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
+        _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
     }
 
     /// @notice Add a new node operator to the system.
@@ -41,9 +49,12 @@ contract NodeOperatorRegistry is
         string memory _name,
         address _rewardAddress,
         bytes memory _signerPubkey
-    ) public override isValidPublickey(_signerPubkey) {
-        require(hasRole(ADD_OPERATOR_ROLE, msg.sender), "Permission not found");
-
+    )
+        public
+        override
+        isValidPublickey(_signerPubkey)
+        userHasRole(ADD_OPERATOR_ROLE)
+    {
         uint256 id = nodeOperatorRegistryStats.totalNodeOpearator + 1;
 
         operators[id] = NodeOperator({
@@ -54,11 +65,38 @@ contract NodeOperatorRegistry is
             signerPubkey: _signerPubkey
         });
 
-        nodeOperatorRegistryStats.totalNodeOpearator = id;
+        nodeOperatorRegistryStats.totalNodeOpearator++;
         nodeOperatorRegistryStats.totalActiveNodeOpearator++;
 
         operatorOwners[_rewardAddress] = id;
 
         emit NewOperator(id, _name, _signerPubkey, NodeOperatorStatus.ACTIVE);
+    }
+
+    function removeOperator(uint256 _id)
+        public
+        override
+        userHasRole(REMOVE_OPERATOR_ROLE)
+    {
+        NodeOperator storage op = operators[_id];
+        // Todo: un comment this when the operator switch state to unactive
+        // require(
+        //     op.state == NodeOperatorStatus.UNACTIVE,
+        //     "Node Operator state not unactive"
+        // );
+
+        nodeOperatorRegistryStats.totalNodeOpearator--;
+        nodeOperatorRegistryStats.totalActiveNodeOpearator--;
+
+        delete operatorOwners[op.rewardAddress];
+        delete operators[_id];
+
+        emit RemoveOperator(_id);
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override {}
+
+    function version() public pure returns (string memory) {
+        return "1.0.0";
     }
 }
