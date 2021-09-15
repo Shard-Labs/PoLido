@@ -33,4 +33,20 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC") {
         return _amount;
     }
 
+    /**
+     * @dev Send funds from the validator share contract to msg.sender with optional _referral parameter
+     * @notice Requires that msg.sender has approved _amount of StMATIC to this contract
+     * @return Amount of MATIC returned
+     * TODO: Add referral param
+     * TODO: Implement formula for retrieving MATIC, now it returns 1:1 MATIC for StMATIC
+     */
+    function sellVoucher(uint256 _amount) external returns (uint256) {
+        require(_amount > 0, "Invalid amount");
+
+        _burn(msg.sender, _amount);
+
+        IERC20(GOERLI_TEST_TOKEN).transfer(msg.sender, _amount);
+
+        return _amount;
+    }
 }
