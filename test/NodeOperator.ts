@@ -14,7 +14,7 @@ describe('NodeOperator', function () {
     let nodeOperatorRegistryContract: Contract;
     let validatorFactoryContract: Contract;
     let validatorContract: Contract;
-    let stakeManagerContract: Contract;
+    let stakeManagerMockContract: Contract;
 
     beforeEach(async function () {
         const accounts = await ethers.getSigners();
@@ -22,19 +22,25 @@ describe('NodeOperator', function () {
         user1 = accounts[1]
 
         // deploy contracts
-        const stakeManagerArtifact: Artifact = await hardhat.artifacts.readArtifact("StakeManagerMock");
-        stakeManagerContract = await deployContract(signer, stakeManagerArtifact)
+        const stakeManagerMockArtifact: Artifact = await hardhat.artifacts.readArtifact("StakeManagerMock");
+        // TODO: replace user address vy ERC20 token address
+        stakeManagerMockContract = await deployContract(signer, stakeManagerMockArtifact, [await user1.getAddress()])
 
         const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact("Validator");
         validatorContract = await deployContract(signer, validatorArtifact)
 
         const validatorFactoryArtifact = await ethers.getContractFactory('ValidatorFactory')
-        validatorFactoryContract = await upgrades.deployProxy(validatorFactoryArtifact, [validatorContract.address], { kind: 'uups' })
+        validatorFactoryContract = await upgrades.deployProxy(
+            validatorFactoryArtifact,
+            [validatorContract.address, stakeManagerMockContract.address],
+            { kind: 'uups' }
+        )
+        console.log('----------------------')
 
         const nodeOperatorRegistryArtifact = await ethers.getContractFactory('NodeOperatorRegistry')
         nodeOperatorRegistryContract = await upgrades.deployProxy(
             nodeOperatorRegistryArtifact,
-            [validatorFactoryContract.address, stakeManagerContract.address],
+            [validatorFactoryContract.address, stakeManagerMockContract.address],
             { kind: 'uups' }
         )
     });
@@ -148,9 +154,9 @@ describe('NodeOperator', function () {
     })
 
     it('deploy validator contracts', async function () {
-        await validatorFactoryContract.create(stakeManagerContract.address);
-        await validatorFactoryContract.create(stakeManagerContract.address);
-        await validatorFactoryContract.create(stakeManagerContract.address);
+        await validatorFactoryContract.create();
+        await validatorFactoryContract.create();
+        await validatorFactoryContract.create();
 
         const validators = await validatorFactoryContract.getValidatorAddress()
         expect(validators.length === 3, 'Validators count should be 3')

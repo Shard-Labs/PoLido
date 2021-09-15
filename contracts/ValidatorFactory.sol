@@ -10,8 +10,14 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./Validator.sol";
 
 contract ValidatorFactory is Initializable, AccessControl, UUPSUpgradeable {
-    /// @notice Default validator contract implementation.
-    address internal validatorImplementation;
+    /// @notice State struct
+    struct State {
+        address stakeManager;
+        address validatorImplementation;
+    }
+
+    /// @notice Global state
+    State internal state;
 
     /// @notice validators contracts.
     Validator[] internal validators;
@@ -24,16 +30,20 @@ contract ValidatorFactory is Initializable, AccessControl, UUPSUpgradeable {
     }
 
     /// @notice Initialize the NodeOperator contract.
-    function initialize(address _validatorImplementation) public initializer {
-        validatorImplementation = _validatorImplementation;
+    function initialize(address _validatorImplementation, address _stakeManager)
+        public
+        initializer
+    {
+        state.validatorImplementation = _validatorImplementation;
+        state.stakeManager = _stakeManager;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /// @notice Deploy a new validator contract
     /// @return return the address of the new validator contract deployed
-    function create(address _polygonStakeManager) public returns (address) {
-        address clone = ClonesUpgradeable.clone(validatorImplementation);
-        Validator(clone).initialize(_polygonStakeManager);
+    function create() public returns (address) {
+        address clone = ClonesUpgradeable.clone(state.validatorImplementation);
+        Validator(clone).initialize(state.stakeManager);
         validators.push(Validator(clone));
         return clone;
     }
@@ -52,9 +62,17 @@ contract ValidatorFactory is Initializable, AccessControl, UUPSUpgradeable {
         userHasRole(DEFAULT_ADMIN_ROLE)
     {}
 
-    function updateValidatorImplementation(address _validatorImplementation)
+    /// @notice set the validator contract implementation
+    /// @param _validatorImplementation new validator contract implementtation address.
+    function setValidatorImplementation(address _validatorImplementation)
         external
     {
-        validatorImplementation = _validatorImplementation;
+        state.validatorImplementation = _validatorImplementation;
+    }
+
+    /// @notice Return the Polygon stake manager contract address.
+    /// @return return stake manager address
+    function getStakeManager() external view returns (address) {
+        return state.stakeManager;
     }
 }

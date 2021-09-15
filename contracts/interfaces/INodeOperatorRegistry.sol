@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.7;
 
+/// @title Node operator registry interface
+/// @author 2021 Shardlabs
+/// @notice Node operator registry interface
 interface INodeOperatorRegistry {
     /// @notice Add a new node operator to the system.
     /// @dev Add a new operator

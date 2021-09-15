@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./NodeOperatorStorage.sol";
-import "./INodeOperatorRegistry.sol";
-import "./IValidatorFactory.sol";
+import "./interfaces/INodeOperatorRegistry.sol";
+import "./interfaces/IValidatorFactory.sol";
 
 contract NodeOperatorRegistry is
     INodeOperatorRegistry,
@@ -66,7 +66,7 @@ contract NodeOperatorRegistry is
         // deploy validator contract.
         address validatorContract = IValidatorFactory(
             nodeOperatorRegistryStats.validatorFactory
-        ).create(nodeOperatorRegistryStats.polygonStakeManager);
+        ).create();
 
         // add the validator.
         operators[id] = NodeOperator({
