@@ -1,9 +1,12 @@
+import * as dotenv from 'dotenv';
 import { task } from 'hardhat/config';
 import '@typechain/hardhat';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-ethers';
 
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig } from 'hardhat/config';
+
+dotenv.config({ path: __dirname + '/.env' });
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
