@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./NodeOperatorStorage.sol";
 import "./INodeOperatorRegistry.sol";
+import "./IValidatorFactory.sol";
 
 contract NodeOperatorRegistry is
     INodeOperatorRegistry,
@@ -34,10 +35,15 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Initialize the NodeOperator contract.
-    function initialize() public initializer {
+    function initialize(address _validatorFactory, address _polygonStakeManager)
+        public
+        initializer
+    {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
+        nodeOperatorRegistryStats.validatorFactory = _validatorFactory;
+        nodeOperatorRegistryStats.polygonStakeManager = _polygonStakeManager;
     }
 
     /// @notice Add a new node operator to the system.
@@ -57,20 +63,36 @@ contract NodeOperatorRegistry is
     {
         uint256 id = nodeOperatorRegistryStats.totalNodeOpearator + 1;
 
+        // deploy validator contract.
+        address validatorContract = IValidatorFactory(
+            nodeOperatorRegistryStats.validatorFactory
+        ).create(nodeOperatorRegistryStats.polygonStakeManager);
+
+        // add the validator.
         operators[id] = NodeOperator({
             state: NodeOperatorStatus.ACTIVE,
             name: _name,
             rewardAddress: _rewardAddress,
             validatorId: 0,
-            signerPubkey: _signerPubkey
+            signerPubkey: _signerPubkey,
+            validatorContract: validatorContract
         });
+
+        // update global state.
         operatorIds.push(id);
         nodeOperatorRegistryStats.totalNodeOpearator++;
         nodeOperatorRegistryStats.totalActiveNodeOpearator++;
 
+        // map user _rewardAddress with the validator id.
         operatorOwners[_rewardAddress] = id;
 
-        emit NewOperator(id, _name, _signerPubkey, NodeOperatorStatus.ACTIVE);
+        // emit NewOperator event.
+        emit NewOperator(
+            id,
+            _name,
+            _signerPubkey,
+            NodeOperatorStatus.ACTIVE
+        );
     }
 
     function removeOperator(uint256 _id)

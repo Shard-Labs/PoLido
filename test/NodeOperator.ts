@@ -1,30 +1,49 @@
-import { ethers, upgrades } from 'hardhat';
+import hardhat, { ethers, upgrades } from 'hardhat';
 import { Signer, Contract } from 'ethers';
 import chai, { expect } from 'chai';
 import { solidity } from 'ethereum-waffle';
+import { Artifact } from "hardhat/types";
+
+const { deployContract } = hardhat.waffle;
 
 chai.use(solidity);
 
 describe('NodeOperator', function () {
     let signer: Signer;
     let user1: Signer;
-    let NodeOperatorRegistryContract: Contract;
+    let nodeOperatorRegistryContract: Contract;
+    let validatorFactoryContract: Contract;
+    let validatorContract: Contract;
+    let stakeManagerContract: Contract;
 
     beforeEach(async function () {
         const accounts = await ethers.getSigners();
         signer = accounts[0]
         user1 = accounts[1]
 
-        // deploy contract
-        const NodeOperatorRegistryArtifact = await ethers.getContractFactory('NodeOperatorRegistry')
-        NodeOperatorRegistryContract = await upgrades.deployProxy(NodeOperatorRegistryArtifact, [], { kind: 'uups' })
+        // deploy contracts
+        const stakeManagerArtifact: Artifact = await hardhat.artifacts.readArtifact("StakeManagerMock");
+        stakeManagerContract = await deployContract(signer, stakeManagerArtifact)
+
+        const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact("Validator");
+        validatorContract = await deployContract(signer, validatorArtifact)
+
+        const validatorFactoryArtifact = await ethers.getContractFactory('ValidatorFactory')
+        validatorFactoryContract = await upgrades.deployProxy(validatorFactoryArtifact, [validatorContract.address], { kind: 'uups' })
+
+        const nodeOperatorRegistryArtifact = await ethers.getContractFactory('NodeOperatorRegistry')
+        nodeOperatorRegistryContract = await upgrades.deployProxy(
+            nodeOperatorRegistryArtifact,
+            [validatorFactoryContract.address, stakeManagerContract.address],
+            { kind: 'uups' }
+        )
     });
 
     it('add new operator fails permission missing', async function () {
         const { name, rewardAddress, signerPubkey } = getValidatorFakeData(await user1.getAddress())
 
         // change the caller with a user that has no permission.
-        await expect(NodeOperatorRegistryContract.connect(user1).addOperator(
+        await expect(nodeOperatorRegistryContract.connect(user1).addOperator(
             name,
             rewardAddress,
             signerPubkey
@@ -35,17 +54,17 @@ describe('NodeOperator', function () {
         const { name, rewardAddress, signerPubkey } = getValidatorFakeData(await user1.getAddress())
 
         // add new node operator
-        const res = await NodeOperatorRegistryContract.addOperator(
+        const res = await nodeOperatorRegistryContract.addOperator(
             name,
             rewardAddress,
             signerPubkey
         );
-        expect(res).to.emit(NodeOperatorRegistryContract, 'NewOperator').withArgs(
+        expect(res).to.emit(nodeOperatorRegistryContract, 'NewOperator').withArgs(
             1, name, signerPubkey, 0
         )
 
         // check node operator stats
-        const stats = await NodeOperatorRegistryContract.nodeOperatorRegistryStats();
+        const stats = await nodeOperatorRegistryContract.nodeOperatorRegistryStats();
         expect(stats[0].toNumber(), 'totalNodeOpearator not match').equal(1);
         expect(stats[1].toNumber(), 'totalActiveNodeOpearator not match').equal(1);
     });
@@ -54,7 +73,7 @@ describe('NodeOperator', function () {
         const { name, rewardAddress, signerPubkey } = getValidatorFakeData(await user1.getAddress())
 
         // change the caller with a user that has no permission.
-        await expect(NodeOperatorRegistryContract.connect(user1).addOperator(
+        await expect(nodeOperatorRegistryContract.connect(user1).addOperator(
             name,
             rewardAddress,
             signerPubkey
@@ -65,18 +84,18 @@ describe('NodeOperator', function () {
         const { name, rewardAddress, signerPubkey } = getValidatorFakeData(await user1.getAddress())
 
         // add new node operator
-        await NodeOperatorRegistryContract.addOperator(
+        await nodeOperatorRegistryContract.addOperator(
             name,
             rewardAddress,
             signerPubkey
         );
 
         // remove node operator.
-        const res = await NodeOperatorRegistryContract.removeOperator(1)
-        expect(res).to.emit(NodeOperatorRegistryContract, 'RemoveOperator').withArgs(1)
+        const res = await nodeOperatorRegistryContract.removeOperator(1)
+        expect(res).to.emit(nodeOperatorRegistryContract, 'RemoveOperator').withArgs(1)
 
         // check node operator stats
-        const stats = await NodeOperatorRegistryContract.nodeOperatorRegistryStats();
+        const stats = await nodeOperatorRegistryContract.nodeOperatorRegistryStats();
         // totalNodeOpearator = 0
         expect(stats[0].toNumber(), 'totalNodeOpearator not match').equal(0);
         // totalActiveNodeOpearator = 0
@@ -87,24 +106,24 @@ describe('NodeOperator', function () {
         const { name, rewardAddress, signerPubkey } = getValidatorFakeData(await user1.getAddress())
 
         // add new node operator
-        await NodeOperatorRegistryContract.addOperator(
+        await nodeOperatorRegistryContract.addOperator(
             name,
             rewardAddress,
             signerPubkey
         );
 
         // check the actual contract version should be 1.0.0
-        expect(await NodeOperatorRegistryContract.version() !== '2.0.0')
+        expect(await nodeOperatorRegistryContract.version() !== '2.0.0')
 
         // upgrade the contract to v2
         const NodeOperatorRegistryV2Artifact = await ethers.getContractFactory('NodeOperatorRegistryV2')
-        await upgrades.upgradeProxy(NodeOperatorRegistryContract.address, NodeOperatorRegistryV2Artifact)
+        await upgrades.upgradeProxy(nodeOperatorRegistryContract.address, NodeOperatorRegistryV2Artifact)
 
         // check the actual contract version should be 2.0.0
-        expect(await NodeOperatorRegistryContract.version() === '2.0.0')
+        expect(await nodeOperatorRegistryContract.version() === '2.0.0')
 
         // check node operator stats
-        const stats = await NodeOperatorRegistryContract.nodeOperatorRegistryStats();
+        const stats = await nodeOperatorRegistryContract.nodeOperatorRegistryStats();
         expect(stats[0].toNumber(), 'totalNodeOpearator not match').equal(1);
         expect(stats[1].toNumber(), 'totalActiveNodeOpearator not match').equal(1);
     })
@@ -113,19 +132,28 @@ describe('NodeOperator', function () {
         const { name, rewardAddress, signerPubkey } = getValidatorFakeData(await user1.getAddress())
 
         // add new node operator
-        await NodeOperatorRegistryContract.addOperator(
+        await nodeOperatorRegistryContract.addOperator(
             name,
             rewardAddress,
             signerPubkey
         );
 
         // add new node operator
-        await NodeOperatorRegistryContract.addOperator(
+        await nodeOperatorRegistryContract.addOperator(
             name,
             rewardAddress,
             signerPubkey
         );
-        expect((await NodeOperatorRegistryContract.getOperators()).length == 2, 'Total validators in the system not match')
+        expect((await nodeOperatorRegistryContract.getOperators()).length == 2, 'Total validators in the system not match')
+    })
+
+    it('deploy validator contracts', async function () {
+        await validatorFactoryContract.create(stakeManagerContract.address);
+        await validatorFactoryContract.create(stakeManagerContract.address);
+        await validatorFactoryContract.create(stakeManagerContract.address);
+
+        const validators = await validatorFactoryContract.getValidatorAddress()
+        expect(validators.length === 3, 'Validators count should be 3')
     })
 });
 

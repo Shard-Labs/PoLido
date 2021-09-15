@@ -22,11 +22,14 @@ contract NodeOperatorStorage {
         address rewardAddress;
         uint256 validatorId;
         bytes signerPubkey;
+        address validatorContract;
     }
 
-    struct NodeOperatorRegistryStats {
+    struct NodeOperatorRegistryState {
         uint256 totalNodeOpearator;
         uint256 totalActiveNodeOpearator;
+        address validatorFactory;
+        address polygonStakeManager;
     }
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
@@ -37,7 +40,7 @@ contract NodeOperatorStorage {
     mapping(address => uint256) internal operatorOwners;
 
     /// @dev Global stats for node operator registry.
-    NodeOperatorRegistryStats public nodeOperatorRegistryStats;
+    NodeOperatorRegistryState public nodeOperatorRegistryStats;
 
     /// @dev Total number of operators.
     bytes32 internal constant TOTAL_OPERATORS_COUNT_POSITION =
