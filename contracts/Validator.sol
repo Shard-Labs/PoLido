@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "hardhat/console.sol";
 import "./interfaces/IStakeManager.sol";
-import "./interfaces/IValidatorFactory.sol";
+import "./interfaces/INodeOperatorRegistry.sol";
 import "./storages/ValidatorStorage.sol";
 
 /// @title Validator
@@ -24,7 +24,7 @@ contract Validator is ValidatorStorage, Initializable {
     /// @notice Check if the operator contract is the msg.sender.
     modifier isOperator() {
         require(
-            msg.sender == getOperator(),
+            msg.sender == state.operator,
             "Caller should be the operator contract"
         );
         _;
@@ -35,8 +35,8 @@ contract Validator is ValidatorStorage, Initializable {
     // ====================================================================
 
     /// @notice Initialize the NodeOperator contract.
-    function initialize(address _validatorFactory) public initializer {
-        state.validatorFactory = _validatorFactory;
+    function initialize(address _operator) public initializer {
+        state.operator = _operator;
     }
 
     /// @notice Stake allows to stake on the Polygon stakeManager contract
@@ -125,35 +125,29 @@ contract Validator is ValidatorStorage, Initializable {
     /// owner can request withdraw in this the owner is this contract.
     /// @param _validatorId validator id.
     function withdrawRewards(uint256 _validatorId) external isOperator {
-        IValidatorFactory factory = getValidatorFactory();
+        INodeOperatorRegistry operator = getOperator();
 
         // call polygon stake manager
         // withdraw rewards
-        IStakeManager(factory.getStakeManager()).withdrawRewards(_validatorId);
+        IStakeManager(operator.getStakeManager()).withdrawRewards(_validatorId);
 
         // transfer rewards to lido contract.
-        address polygonERC20 = factory.getPolygonAddress();
+        address polygonERC20 = operator.getPolygonERC20();
         uint256 balance = IERC20(polygonERC20).balanceOf(address(this));
-        IERC20(polygonERC20).safeTransfer(factory.getLidoAddress(), balance);
+        IERC20(polygonERC20).safeTransfer(operator.getLido(), balance);
 
         emit WithdrawRewards(_validatorId);
     }
 
-    /// @notice Allows to get the validatorFactory contract.
-    /// @return Returns validatorFactory contract address.
-    function getValidatorFactory() public view returns (IValidatorFactory) {
-        return IValidatorFactory(state.validatorFactory);
+    /// @notice Allows to get the operator contract.
+    /// @return Returns operator contract address.
+    function getOperator() public view returns (INodeOperatorRegistry) {
+        return INodeOperatorRegistry(state.operator);
     }
 
     /// @notice Allows to get the stakeManager contract.
     /// @return Returns stakeManager contract address.
     function getStakeManager() public view returns (address) {
-        return IValidatorFactory(state.validatorFactory).getStakeManager();
-    }
-
-    /// @notice Allows to get the NodeOperatorRegistry contract.
-    /// @return Returns NodeOperatorRegistry contract address.
-    function getOperator() public view returns (address) {
-        return IValidatorFactory(state.validatorFactory).getOperatorAddress();
+        return INodeOperatorRegistry(state.operator).getStakeManager();
     }
 }

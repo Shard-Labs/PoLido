@@ -48,16 +48,11 @@ contract ValidatorFactory is
     // ====================================================================
 
     /// @notice Initialize the NodeOperator contract.
-    function initialize(
-        address _lido,
-        address _validatorImplementation,
-        address _stakeManager,
-        address _polygonERC20
-    ) public initializer {
-        state.lido = _lido;
+    function initialize(address _validatorImplementation)
+        public
+        initializer
+    {   
         state.validatorImplementation = _validatorImplementation;
-        state.stakeManager = _stakeManager;
-        state.polygonERC20 = _polygonERC20;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -65,7 +60,7 @@ contract ValidatorFactory is
     /// @return return the address of the new validator contract deployed
     function create() public isOperator returns (address) {
         address clone = ClonesUpgradeable.clone(state.validatorImplementation);
-        Validator(clone).initialize(state.stakeManager);
+        Validator(clone).initialize(state.operator);
         validators.push(Validator(clone));
         emit CreateValidator(clone);
         return clone;
@@ -83,20 +78,8 @@ contract ValidatorFactory is
 
     /// @notice Get validators contracts.
     /// @return return a list of deployed validator contracts.
-    function getValidatorsAddress() public view returns (Validator[] memory) {
+    function getValidators() public view returns (Validator[] memory) {
         return validators;
-    }
-
-    /// @notice Return the Polygon stake manager contract address.
-    /// @return return stake manager address
-    function getStakeManager() external view returns (address) {
-        return state.stakeManager;
-    }
-
-    /// @notice Return the Polygon ERC20 token address.
-    /// @return return Polygon ERC20 token address
-    function getPolygonAddress() external view returns (address) {
-        return state.polygonERC20;
     }
 
     /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
@@ -112,13 +95,21 @@ contract ValidatorFactory is
     function setOperatorAddress(address _operator) public {
         if (state.operator == address(0)) {
             require(
-                INodeOperatorRegistry(_operator).getValidatorFactoryAddress() ==
+                INodeOperatorRegistry(_operator).getValidatorFactory() ==
                     address(this),
                 "Operator contract not valide"
             );
             state.operator = _operator;
             emit SetOperatorContract(_operator);
+            return;
         }
+        revert("Operator already set");
+    }
+
+    /// @notice Alows to get the operator contract.
+    /// @dev Returns operator address.
+    function getOperator() external view returns (address) {
+        return state.operator;
     }
 
     /// @notice Contract version.

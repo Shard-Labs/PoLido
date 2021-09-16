@@ -40,31 +40,28 @@ describe('NodeOperator', function () {
             [polygonERC20Contract.address]
         )
 
-        // deploy validator factory
+        // deploy validator
         const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact("Validator");
         validatorContract = await deployContract(signer, validatorArtifact)
 
+        // deploy validator factory
         const validatorFactoryArtifact = await ethers.getContractFactory('ValidatorFactory')
         validatorFactoryContract = await upgrades.deployProxy(
-            validatorFactoryArtifact,
-            [
-                lidoMockContract.address,
-                validatorContract.address,
-                stakeManagerMockContract.address,
-                polygonERC20Contract.address
-            ],
-            { kind: 'uups' }
-        )   
+            validatorFactoryArtifact, [validatorContract.address], { kind: 'uups' })
 
         // deploy node operator contract
         const nodeOperatorRegistryArtifact = await ethers.getContractFactory('NodeOperatorRegistry')
         nodeOperatorRegistryContract = await upgrades.deployProxy(
             nodeOperatorRegistryArtifact,
-            [validatorFactoryContract.address],
+            [
+                validatorFactoryContract.address,
+                lidoMockContract.address,
+                stakeManagerMockContract.address,
+                polygonERC20Contract.address
+            ],
             { kind: 'uups' }
         )
 
-        // set the operator address in the validator factory
         await validatorFactoryContract.setOperatorAddress(nodeOperatorRegistryContract.address)
     });
 
@@ -93,9 +90,11 @@ describe('NodeOperator', function () {
         )
 
         // check node operator stats
-        const stats = await nodeOperatorRegistryContract.nodeOperatorRegistryStats();
+        const stats = await nodeOperatorRegistryContract.getState();
         expect(stats[0].toNumber(), 'totalNodeOpearator not match').equal(1);
         expect(stats[1].toNumber(), 'totalActiveNodeOpearator not match').equal(1);
+
+        expect((await validatorFactoryContract.getValidators()).length).to.equal(1)
     });
 
     it('remove operator fails permission missing', async function () {
@@ -124,7 +123,7 @@ describe('NodeOperator', function () {
         expect(res).to.emit(nodeOperatorRegistryContract, 'RemoveOperator').withArgs(1)
 
         // check node operator stats
-        const stats = await nodeOperatorRegistryContract.nodeOperatorRegistryStats();
+        const stats = await nodeOperatorRegistryContract.getState();
         // totalNodeOpearator = 0
         expect(stats[0].toNumber(), 'totalNodeOpearator not match').equal(0);
         // totalActiveNodeOpearator = 0
@@ -152,7 +151,7 @@ describe('NodeOperator', function () {
         expect(await nodeOperatorRegistryContract.version() === '2.0.0')
 
         // check node operator stats
-        const stats = await nodeOperatorRegistryContract.nodeOperatorRegistryStats();
+        const stats = await nodeOperatorRegistryContract.getState();
         expect(stats[0].toNumber(), 'totalNodeOpearator not match').equal(1);
         expect(stats[1].toNumber(), 'totalActiveNodeOpearator not match').equal(1);
     })
@@ -182,12 +181,13 @@ describe('NodeOperator', function () {
         // upgrade contract
         const validatorFactoryV2Artifact = await ethers.getContractFactory('ValidatorFactoryV2')
         await upgrades.upgradeProxy(validatorFactoryContract, validatorFactoryV2Artifact)
-        
+
         const version2 = await validatorFactoryContract.version()
-        
+
         expect(version1 === "1.0.0");
         expect(version2 === "2.0.0");
     })
+
 });
 
 function getValidatorFakeData(rewardAddress: string): { name: string; rewardAddress: string; signerPubkey: string } {

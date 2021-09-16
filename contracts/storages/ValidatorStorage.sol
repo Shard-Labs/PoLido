@@ -2,26 +2,18 @@
 pragma solidity ^0.8.7;
 
 import "../Validator.sol";
+import "../lib/Operator.sol";
 
 /// @title ValidatorStorage.
 /// @author 2021 Shardlabs.
 /// @notice Validator storage.
 contract ValidatorStorage {
     // ====================================================================
-    // ========================== Struct & enum ===========================
-    // ====================================================================
-
-    //// @notice State struct
-    struct State {
-        address validatorFactory;
-    }
-
-    // ====================================================================
     // =========================== Global Vars ============================
     // ====================================================================
 
     /// @notice Validator global state
-    State internal state;
+    Operator.ValidatorState internal state;
 
     // ====================================================================
     // ============================== EVENTS ==============================

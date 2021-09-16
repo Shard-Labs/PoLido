@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./storages/NodeOperatorStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
+import "./lib/Operator.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 Shardlabs.
@@ -21,7 +22,6 @@ contract NodeOperatorRegistry is
     AccessControl,
     UUPSUpgradeable
 {
-
     // ====================================================================
     // =========================== MODIFIERS ==============================
     // ====================================================================
@@ -45,11 +45,21 @@ contract NodeOperatorRegistry is
     // ====================================================================
 
     /// @notice Initialize the NodeOperator contract.
-    function initialize(address _validatorFactory) public initializer {
+    function initialize(
+        address _validatorFactory,
+        address _lido,
+        address _stakeManager,
+        address _polygonERC20
+    ) public initializer {
+        state.validatorFactory = _validatorFactory;
+        state.lido = _lido;
+        state.stakeManager = _stakeManager;
+        state.polygonERC20 = _polygonERC20;
+
+        // Set ACL roles
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
-        nodeOperatorRegistryStats.validatorFactory = _validatorFactory;
     }
 
     /// @notice Add a new node operator to the system.
@@ -67,16 +77,15 @@ contract NodeOperatorRegistry is
         isValidPublickey(_signerPubkey)
         userHasRole(ADD_OPERATOR_ROLE)
     {
-        uint256 id = nodeOperatorRegistryStats.totalNodeOpearator + 1;
+        uint256 id = state.totalNodeOpearator + 1;
 
         // deploy validator contract.
-        address validatorContract = IValidatorFactory(
-            nodeOperatorRegistryStats.validatorFactory
-        ).create();
+        address validatorContract = IValidatorFactory(state.validatorFactory)
+            .create();
 
         // add the validator.
-        operators[id] = NodeOperator({
-            state: NodeOperatorStatus.ACTIVE,
+        operators[id] = Operator.NodeOperator({
+            state: Operator.NodeOperatorStatus.ACTIVE,
             name: _name,
             rewardAddress: _rewardAddress,
             validatorId: 0,
@@ -86,14 +95,19 @@ contract NodeOperatorRegistry is
 
         // update global state.
         operatorIds.push(id);
-        nodeOperatorRegistryStats.totalNodeOpearator++;
-        nodeOperatorRegistryStats.totalActiveNodeOpearator++;
+        state.totalNodeOpearator++;
+        state.totalActiveNodeOpearator++;
 
         // map user _rewardAddress with the validator id.
         operatorOwners[_rewardAddress] = id;
 
         // emit NewOperator event.
-        emit NewOperator(id, _name, _signerPubkey, NodeOperatorStatus.ACTIVE);
+        emit NewOperator(
+            id,
+            _name,
+            _signerPubkey,
+            Operator.NodeOperatorStatus.ACTIVE
+        );
     }
 
     function removeOperator(uint256 _id)
@@ -101,15 +115,15 @@ contract NodeOperatorRegistry is
         override
         userHasRole(REMOVE_OPERATOR_ROLE)
     {
-        NodeOperator storage op = operators[_id];
+        Operator.NodeOperator storage op = operators[_id];
         // Todo: un comment this when the operator switch state to unactive
         // require(
         //     op.state == NodeOperatorStatus.UNACTIVE,
         //     "Node Operator state not unactive"
         // );
 
-        nodeOperatorRegistryStats.totalNodeOpearator--;
-        nodeOperatorRegistryStats.totalActiveNodeOpearator--;
+        state.totalNodeOpearator--;
+        state.totalActiveNodeOpearator--;
 
         // update the operatorIds array by removing the actual deleted operator
         for (uint256 i = 0; i < operatorIds.length - 1; i++) {
@@ -134,19 +148,60 @@ contract NodeOperatorRegistry is
 
     /// @notice Get the validator factory address
     /// @return Returns the validator factory address.
-    function getValidatorFactoryAddress()
-        external
-        view
-        override
-        returns (address)
-    {
-        return nodeOperatorRegistryStats.validatorFactory;
+    function getValidatorFactory() external view override returns (address) {
+        return state.validatorFactory;
     }
 
     /// @notice Get the all operator ids availablein the system.
     /// @return Return a list of operator Ids.
     function getOperators() external view override returns (uint256[] memory) {
         return operatorIds;
+    }
+
+    /// @notice Get the stake manager contract address.
+    /// @return Returns the stake manager contract address.
+    function getStakeManager() external view override returns (address) {
+        return state.stakeManager;
+    }
+
+    /// @notice Get the polygon erc20 token (matic) contract address.
+    /// @return Returns polygon erc20 token (matic) contract address.
+    function getPolygonERC20() external view override returns (address) {
+        return state.polygonERC20;
+    }
+
+    /// @notice Get the lido contract address.
+    /// @return Returns lido contract address.
+    function getLido() external view override returns (address) {
+        return state.lido;
+    }
+
+    /// @notice Get the contract state.
+    /// @return Returns the contract state.
+    function getState()
+        public
+        view
+        returns (Operator.NodeOperatorState memory)
+    {
+        return state;
+    }
+
+    /// @notice Allows to get a node operator by _id.
+    /// @param _id the id of the operator.
+    /// @param _full if true return the name of the operator else set to empty string.
+    /// @return Returns node operator.
+    function getNodeOperator(uint256 _id, bool _full)
+        external
+        view
+        override
+        returns (Operator.NodeOperator memory)
+    {
+        Operator.NodeOperator memory opts = operators[_id];
+        if (!_full) {
+            opts.name = "";
+            return opts;
+        }
+        return opts;
     }
 
     /// @notice Get the contract version.

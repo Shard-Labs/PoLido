@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.7;
 
+import "../storages/NodeOperatorStorage.sol";
+import "../lib/Operator.sol";
+
 /// @title Node operator registry interface
 /// @author 2021 Shardlabs
 /// @notice Node operator registry interface
@@ -30,5 +33,16 @@ interface INodeOperatorRegistry {
     /// @return Return a list of operator Ids.
     function getOperators() external returns (uint256[] memory);
 
-    function getValidatorFactoryAddress() external view returns (address);
+    function getValidatorFactory() external view returns (address);
+
+    function getStakeManager() external view returns (address);
+
+    function getPolygonERC20() external view returns (address);
+
+    function getLido() external view returns (address);
+
+    function getNodeOperator(uint256 _id, bool _full)
+        external
+        view
+        returns (Operator.NodeOperator memory);
 }
