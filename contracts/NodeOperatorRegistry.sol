@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./storages/NodeOperatorStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
+import "./interfaces/IValidator.sol";
 import "./lib/Operator.sol";
 
 /// @title NodeOperatorRegistry
@@ -85,7 +86,7 @@ contract NodeOperatorRegistry is
 
         // add the validator.
         operators[id] = Operator.NodeOperator({
-            state: Operator.NodeOperatorStatus.ACTIVE,
+            status: Operator.NodeOperatorStatus.ACTIVE,
             name: _name,
             rewardAddress: _rewardAddress,
             validatorId: 0,

@@ -17,7 +17,7 @@ library Operator {
     /// @param validatorId validator id of this node operator on the polygon stake manager.
     /// @param signerPubkey public key used on heimdall.
     struct NodeOperator{
-        Operator.NodeOperatorStatus state;
+        Operator.NodeOperatorStatus status;
         string name;
         address rewardAddress;
         uint256 validatorId;
