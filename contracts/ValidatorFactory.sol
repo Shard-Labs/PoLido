@@ -59,11 +59,19 @@ contract ValidatorFactory is
     /// @notice Deploy a new validator contract
     /// @return return the address of the new validator contract deployed
     function create() public isOperator returns (address) {
-        address clone = ClonesUpgradeable.clone(state.validatorImplementation);
-        Validator(clone).initialize(state.operator);
-        validators.push(Validator(clone));
-        emit CreateValidator(clone);
-        return clone;
+        require(state.operator != address(0), "Operator contract not set");
+        Validator validator = new Validator();
+        validator.initialize(state.operator);
+        validators.push(Validator(validator));
+        emit CreateValidator(address(validator));
+        return address(validator);
+
+        // TODO: check if the clones are upgradable
+        // address clone = ClonesUpgradeable.clone(state.validatorImplementation);
+        // Validator(clone).initialize(state.operator);
+        // validators.push(Validator(clone));
+        // emit CreateValidator(clone);
+        // return clone;
     }
 
     /// @notice set the validator contract implementation
