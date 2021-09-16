@@ -17,7 +17,6 @@ interface INodeOperatorRegistry {
         bytes memory _signerPubkey
     ) external;
 
-
     /// @notice Remove a node operator from the system.
     /// @dev Remove a node operator from the system using the _id.
     /// @param _id node operator id.
@@ -30,4 +29,6 @@ interface INodeOperatorRegistry {
     /// @notice Get the all operator ids availablein the system.
     /// @return Return a list of operator Ids.
     function getOperators() external returns (uint256[] memory);
+
+    function getValidatorFactoryAddress() external view returns (address);
 }

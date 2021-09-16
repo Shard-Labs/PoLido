@@ -3,30 +3,56 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "hardhat/console.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IValidatorFactory.sol";
+import "./storages/ValidatorStorage.sol";
 
-contract Validator is Initializable {
-    /// @notice State struct
-    struct State {
-        address validatorFactory;
+/// @title Validator
+/// @author 2021 Shardlabs.
+/// @notice Validator is the contract used to manage a staked validator on Polygon stake manager
+/// @dev Validator is the contract used to manage a staked validator on Polygon stake manager
+contract Validator is ValidatorStorage, Initializable {
+    using SafeERC20 for IERC20;
+
+    // ====================================================================
+    // =========================== MODIFIERS ==============================
+    // ====================================================================
+
+    /// @notice Check if the operator contract is the msg.sender.
+    modifier isOperator() {
+        require(
+            msg.sender == getOperator(),
+            "Caller should be the operator contract"
+        );
+        _;
     }
 
-    /// @notice Global state
-    State internal state;
+    // ====================================================================
+    // =========================== FUNCTIONS ==============================
+    // ====================================================================
 
     /// @notice Initialize the NodeOperator contract.
     function initialize(address _validatorFactory) public initializer {
         state.validatorFactory = _validatorFactory;
     }
 
+    /// @notice Stake allows to stake on the Polygon stakeManager contract
+    /// @dev  Stake allows to stake on the Polygon stakeManager contract by
+    /// calling stakeFor function and set the user address equal to this contract address
+    /// @param _amount amount to stake with.
+    /// @param _heimdallFee heimdall fees.
+    /// @param _acceptDelegation accept delegation.
+    /// @param _signerPubkey signer public key used on the heimdall node.
+    /// @return Returns the validatorId of this contract set by the Polygon stakeManager.
     function stake(
         uint256 _amount,
         uint256 _heimdallFee,
         bool _acceptDelegation,
         bytes memory _signerPubkey
-    ) external returns (uint256) {
+    ) external isOperator returns (uint256) {
         address stakeManager = getStakeManager();
 
         // call polygon stake manager
@@ -38,23 +64,40 @@ contract Validator is Initializable {
             _signerPubkey
         );
 
+        emit Stake(
+            address(this),
+            _amount,
+            _heimdallFee,
+            _acceptDelegation,
+            _signerPubkey
+        );
         return getValidatorId(address(this));
     }
 
-    function unstake(uint256 _validatorId) external {
+    /// @notice Unstake a validator from the Polygon stakeManager contract.
+    /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
+    /// @param _validatorId validatorId.
+    function unstake(uint256 _validatorId) external isOperator {
         address stakeManager = getStakeManager();
 
         // call polygon stake manager
         IStakeManager(stakeManager).unstake(_validatorId);
+        emit Unstake(_validatorId);
     }
 
-    function topUpForFee(address _user, uint256 _heimdallFee) external {
+    /// @notice Allows to top up heimdall fees.
+    /// @param _heimdallFee amount
+    function topUpForFee(uint256 _heimdallFee) external isOperator {
         address stakeManager = getStakeManager();
 
         // call polygon stake manager
-        IStakeManager(stakeManager).topUpForFee(_user, _heimdallFee);
+        IStakeManager(stakeManager).topUpForFee(address(this), _heimdallFee);
+        emit TopUpForFee(address(this), _heimdallFee);
     }
 
+    /// @notice Get validator id by user address.
+    /// @param _user user address.
+    /// @return Returns the validatorId of an address.
     function getValidatorId(address _user) public view returns (uint256) {
         address stakeManager = getStakeManager();
 
@@ -62,6 +105,10 @@ contract Validator is Initializable {
         return IStakeManager(stakeManager).getValidatorId(_user);
     }
 
+    /// @notice Get validatorShare contract address.
+    /// @dev Get validatorShare contract address.
+    /// @param _validatorId Validator Id
+    /// @return Returns the address of the validatorShare contract.
     function getValidatorContract(uint256 _validatorId)
         external
         view
@@ -73,16 +120,40 @@ contract Validator is Initializable {
         return IStakeManager(stakeManager).getValidatorContract(_validatorId);
     }
 
-    function withdrawRewards(uint256 _validatorId) external {
-        address stakeManager = getStakeManager();
+    /// @notice Allows to withdraw rewards from the validator.
+    /// @dev Allows to withdraw rewards from the validator using the _validatorId. Only the
+    /// owner can request withdraw in this the owner is this contract.
+    /// @param _validatorId validator id.
+    function withdrawRewards(uint256 _validatorId) external isOperator {
+        IValidatorFactory factory = getValidatorFactory();
 
         // call polygon stake manager
-        IStakeManager(stakeManager).withdrawRewards(_validatorId);
+        // withdraw rewards
+        IStakeManager(factory.getStakeManager()).withdrawRewards(_validatorId);
 
-        // TODO: transfer rewards to Lido contract
+        // transfer rewards to lido contract.
+        address polygonERC20 = factory.getPolygonAddress();
+        uint256 balance = IERC20(polygonERC20).balanceOf(address(this));
+        IERC20(polygonERC20).safeTransfer(factory.getLidoAddress(), balance);
+
+        emit WithdrawRewards(_validatorId);
     }
 
+    /// @notice Allows to get the validatorFactory contract.
+    /// @return Returns validatorFactory contract address.
+    function getValidatorFactory() public view returns (IValidatorFactory) {
+        return IValidatorFactory(state.validatorFactory);
+    }
+
+    /// @notice Allows to get the stakeManager contract.
+    /// @return Returns stakeManager contract address.
     function getStakeManager() public view returns (address) {
         return IValidatorFactory(state.validatorFactory).getStakeManager();
+    }
+
+    /// @notice Allows to get the NodeOperatorRegistry contract.
+    /// @return Returns NodeOperatorRegistry contract address.
+    function getOperator() public view returns (address) {
+        return IValidatorFactory(state.validatorFactory).getOperatorAddress();
     }
 }

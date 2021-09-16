@@ -15,34 +15,57 @@ describe('NodeOperator', function () {
     let validatorFactoryContract: Contract;
     let validatorContract: Contract;
     let stakeManagerMockContract: Contract;
+    let lidoMockContract: Contract;
+    let polygonERC20Contract: Contract;
 
     beforeEach(async function () {
         const accounts = await ethers.getSigners();
         signer = accounts[0]
         user1 = accounts[1]
 
-        // deploy contracts
-        const stakeManagerMockArtifact: Artifact = await hardhat.artifacts.readArtifact("StakeManagerMock");
-        // TODO: replace user address vy ERC20 token address
-        stakeManagerMockContract = await deployContract(signer, stakeManagerMockArtifact, [await user1.getAddress()])
+        // deploy ERC20 token
+        const polygonERC20Artifact: Artifact = await hardhat.artifacts.readArtifact("Polygon");
+        polygonERC20Contract = await deployContract(signer, polygonERC20Artifact)
 
+        // deploy lido mock contract
+        // TODO: change later with the real lido contract.
+        const lidoMockArtifact: Artifact = await hardhat.artifacts.readArtifact("ILidoMock");
+        lidoMockContract = await deployContract(signer, lidoMockArtifact)
+
+        // deploy stake manager mock
+        const stakeManagerMockArtifact: Artifact = await hardhat.artifacts.readArtifact("StakeManagerMock");
+        stakeManagerMockContract = await deployContract(
+            signer,
+            stakeManagerMockArtifact,
+            [polygonERC20Contract.address]
+        )
+
+        // deploy validator factory
         const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact("Validator");
         validatorContract = await deployContract(signer, validatorArtifact)
 
         const validatorFactoryArtifact = await ethers.getContractFactory('ValidatorFactory')
         validatorFactoryContract = await upgrades.deployProxy(
             validatorFactoryArtifact,
-            [validatorContract.address, stakeManagerMockContract.address],
+            [
+                lidoMockContract.address,
+                validatorContract.address,
+                stakeManagerMockContract.address,
+                polygonERC20Contract.address
+            ],
             { kind: 'uups' }
-        )
-        console.log('----------------------')
+        )   
 
+        // deploy node operator contract
         const nodeOperatorRegistryArtifact = await ethers.getContractFactory('NodeOperatorRegistry')
         nodeOperatorRegistryContract = await upgrades.deployProxy(
             nodeOperatorRegistryArtifact,
-            [validatorFactoryContract.address, stakeManagerMockContract.address],
+            [validatorFactoryContract.address],
             { kind: 'uups' }
         )
+
+        // set the operator address in the validator factory
+        await validatorFactoryContract.setOperatorAddress(nodeOperatorRegistryContract.address)
     });
 
     it('add new operator fails permission missing', async function () {
@@ -153,13 +176,17 @@ describe('NodeOperator', function () {
         expect((await nodeOperatorRegistryContract.getOperators()).length == 2, 'Total validators in the system not match')
     })
 
-    it('deploy validator contracts', async function () {
-        await validatorFactoryContract.create();
-        await validatorFactoryContract.create();
-        await validatorFactoryContract.create();
+    it('upgrade validator factory', async function () {
+        const version1 = await validatorFactoryContract.version()
 
-        const validators = await validatorFactoryContract.getValidatorAddress()
-        expect(validators.length === 3, 'Validators count should be 3')
+        // upgrade contract
+        const validatorFactoryV2Artifact = await ethers.getContractFactory('ValidatorFactoryV2')
+        await upgrades.upgradeProxy(validatorFactoryContract, validatorFactoryV2Artifact)
+        
+        const version2 = await validatorFactoryContract.version()
+        
+        expect(version1 === "1.0.0");
+        expect(version2 === "2.0.0");
     })
 });
 

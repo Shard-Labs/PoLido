@@ -1,7 +1,21 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.7;
 
+/// @title NodeOperatorStatus.
+/// @author 2021 Shardlabs.
+/// @notice Node operator registry storage.
 contract NodeOperatorStorage {
+    // ====================================================================
+    // =========================== ACL ROLES ==============================
+    // ====================================================================
+
+    bytes32 public constant ADD_OPERATOR_ROLE = keccak256("ADD_OPERATOR");
+    bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
+
+    // ====================================================================
+    // ========================== Struct & enum ===========================
+    // ====================================================================
+
     /// @notice The node operator states.
     enum NodeOperatorStatus {
         ACTIVE,
@@ -25,6 +39,7 @@ contract NodeOperatorStorage {
         address validatorContract;
     }
 
+    /// @notice Node operator registry state.
     struct NodeOperatorRegistryState {
         uint256 totalNodeOpearator;
         uint256 totalActiveNodeOpearator;
@@ -32,8 +47,14 @@ contract NodeOperatorStorage {
         address polygonStakeManager;
     }
 
+    // ====================================================================
+    // =========================== Global Vars ============================
+    // ====================================================================
+
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) internal operators;
+
+    /// @dev This stores the operators ids.
     uint256[] internal operatorIds;
 
     /// @dev Mapping of all owners with node operator id. Mapping is used to be able to extend the struct.
@@ -42,9 +63,9 @@ contract NodeOperatorStorage {
     /// @dev Global stats for node operator registry.
     NodeOperatorRegistryState public nodeOperatorRegistryStats;
 
-    /// @dev Total number of operators.
-    bytes32 internal constant TOTAL_OPERATORS_COUNT_POSITION =
-        keccak256("shardlabs.polido.totalOperatorsCount");
+    // ====================================================================
+    // ============================== EVENTS ==============================
+    // ====================================================================
 
     /// @dev A new node operator was added.
     /// @param id node operator id.

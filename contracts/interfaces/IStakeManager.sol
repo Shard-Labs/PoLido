@@ -2,9 +2,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
-
 /// @title polygon stake manager interface.
 /// @author 2021 Shardlabs
 /// @notice User to interact with the polygon stake manager.

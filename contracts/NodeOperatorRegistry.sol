@@ -6,10 +6,14 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./NodeOperatorStorage.sol";
+import "./storages/NodeOperatorStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 
+/// @title NodeOperatorRegistry
+/// @author 2021 Shardlabs.
+/// @notice NodeOperatorRegistry is the main contract that manage validators
+/// @dev NodeOperatorRegistry is the main contract that manage validators
 contract NodeOperatorRegistry is
     INodeOperatorRegistry,
     NodeOperatorStorage,
@@ -17,8 +21,10 @@ contract NodeOperatorRegistry is
     AccessControl,
     UUPSUpgradeable
 {
-    bytes32 public constant ADD_OPERATOR_ROLE = keccak256("ADD_OPERATOR");
-    bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
+
+    // ====================================================================
+    // =========================== MODIFIERS ==============================
+    // ====================================================================
 
     /// @notice Check if the PublicKey is valid.
     /// @param _pubkey publick key used in the heimdall node.
@@ -34,16 +40,16 @@ contract NodeOperatorRegistry is
         _;
     }
 
+    // ====================================================================
+    // =========================== FUNCTIONS ==============================
+    // ====================================================================
+
     /// @notice Initialize the NodeOperator contract.
-    function initialize(address _validatorFactory, address _polygonStakeManager)
-        public
-        initializer
-    {
+    function initialize(address _validatorFactory) public initializer {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
         nodeOperatorRegistryStats.validatorFactory = _validatorFactory;
-        nodeOperatorRegistryStats.polygonStakeManager = _polygonStakeManager;
     }
 
     /// @notice Add a new node operator to the system.
@@ -87,12 +93,7 @@ contract NodeOperatorRegistry is
         operatorOwners[_rewardAddress] = id;
 
         // emit NewOperator event.
-        emit NewOperator(
-            id,
-            _name,
-            _signerPubkey,
-            NodeOperatorStatus.ACTIVE
-        );
+        emit NewOperator(id, _name, _signerPubkey, NodeOperatorStatus.ACTIVE);
     }
 
     function removeOperator(uint256 _id)
@@ -131,14 +132,26 @@ contract NodeOperatorRegistry is
     /// @param newImplementation new contract implementation address.
     function _authorizeUpgrade(address newImplementation) internal override {}
 
-    /// @notice Return the actual contract version.
-    function version() external view virtual override returns (string memory) {
-        return "1.0.0";
+    /// @notice Get the validator factory address
+    /// @return Returns the validator factory address.
+    function getValidatorFactoryAddress()
+        external
+        view
+        override
+        returns (address)
+    {
+        return nodeOperatorRegistryStats.validatorFactory;
     }
 
     /// @notice Get the all operator ids availablein the system.
     /// @return Return a list of operator Ids.
     function getOperators() external view override returns (uint256[] memory) {
         return operatorIds;
+    }
+
+    /// @notice Get the contract version.
+    /// @return Returns the contract version.
+    function version() external view virtual override returns (string memory) {
+        return "1.0.0";
     }
 }
