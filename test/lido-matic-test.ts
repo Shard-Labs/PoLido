@@ -1,31 +1,41 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-import * as IERC20JSON from '../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json';
-import { LidoMatic__factory, LidoMatic, IERC20 } from '../typechain';
+import {
+    LidoMatic__factory,
+    LidoMatic,
+    IERC20,
+    MockToken__factory,
+    MockValidatorShare__factory,
+    MockValidatorShare,
+} from '../typechain';
 import { expect } from 'chai';
-import { GoerliOverrides } from '../scripts/constants';
-import { BigNumber } from 'ethers';
+import { BigNumber } from '@ethersproject/bignumber';
 
 describe('LidoMatic', () => {
     let deployer: SignerWithAddress;
     let lidoMatic: LidoMatic;
-    let TSTToken: IERC20;
-
-    const TST = '0x7af963cF6D228E564e2A0aA0DdBF06210B38615D';
+    let mockToken: IERC20;
+    let mockValidatorShare: MockValidatorShare;
 
     before(async () => {
+        [deployer] = await ethers.getSigners();
+
+        const MockToken = (await ethers.getContractFactory(
+            'MockToken'
+        )) as MockToken__factory;
+
         const LidoMatic = (await ethers.getContractFactory(
             'LidoMatic'
         )) as LidoMatic__factory;
 
-        [deployer] = await ethers.getSigners();
-        TSTToken = new ethers.Contract(TST, IERC20JSON.abi, deployer) as IERC20;
+        const MockValidatorShare = (await ethers.getContractFactory(
+            'MockValidatorShare'
+        )) as MockValidatorShare__factory;
 
-        lidoMatic = await LidoMatic.deploy(GoerliOverrides);
-        await lidoMatic.deployed();
-
-        console.log(`LidoMatic deployed at: ${lidoMatic.address}`);
+        mockToken = await MockToken.deploy();
+        lidoMatic = await LidoMatic.deploy(mockToken.address);
+        mockValidatorShare = await MockValidatorShare.deploy();
     });
 
     it('should mint equal amount of tokens submitted', async () => {
@@ -33,26 +43,65 @@ describe('LidoMatic', () => {
 
         const balanceOld = await lidoMatic.balanceOf(deployer.address);
 
-        await TSTToken.approve(lidoMatic.address, tokenAmount, GoerliOverrides);
+        await mockToken.approve(lidoMatic.address, tokenAmount);
 
-        await (await lidoMatic.buyVoucher(tokenAmount, GoerliOverrides)).wait();
+        await lidoMatic.submit(tokenAmount);
 
-        const balancenew = await lidoMatic.balanceOf(deployer.address);
-
-        expect(balancenew.sub(balanceOld).eq(tokenAmount)).to.be.true;
-    });
-
-    it('should return equal amount of tokens that were withdrawn', async () => {
-        const tokenAmount = ethers.utils.parseEther('0.1');
-
-        const balanceOld = await TSTToken.balanceOf(deployer.address);
-
-        await (
-            await lidoMatic.sellVoucher(tokenAmount, GoerliOverrides)
-        ).wait();
-
-        const balanceNew = await TSTToken.balanceOf(deployer.address);
+        const balanceNew = await lidoMatic.balanceOf(deployer.address);
 
         expect(balanceNew.sub(balanceOld).eq(tokenAmount)).to.be.true;
+    });
+
+    it('should sucessfully execute buyVoucher delegatecall', async () => {
+        const tx = await (
+            await lidoMatic.buyVoucher(mockValidatorShare.address, 100, 0)
+        ).wait();
+
+        expect(tx.status).to.equal(1);
+    });
+
+    it('should sucessfully execute restake delegatecall', async () => {
+        const tx = await (
+            await lidoMatic.restake(mockValidatorShare.address)
+        ).wait();
+
+        expect(tx.status).to.equal(1);
+    });
+
+    it('should sucessfully execute unstakeClaimTokens_new delegatecall', async () => {
+        const tx = await (
+            await lidoMatic.unstakeClaimTokens_new(
+                mockValidatorShare.address,
+                0
+            )
+        ).wait();
+
+        expect(tx.status).to.equal(1);
+    });
+
+    it('should sucessfully execute sellVoucher_new delegatecall', async () => {
+        const tx = await (
+            await lidoMatic.sellVoucher_new(mockValidatorShare.address, 100, 0)
+        ).wait();
+
+        expect(tx.status).to.equal(1);
+    });
+
+    it('should sucessfully execute getTotalStake delegatecall', async () => {
+        const totalStake = await lidoMatic.getTotalStake(
+            mockValidatorShare.address,
+            deployer.address
+        );
+
+        expect(totalStake).to.eql([BigNumber.from(1), BigNumber.from(1)]);
+    });
+
+    it('should sucessfully execute getLiquidRewards delegatecall', async () => {
+        const liquidRewards = await lidoMatic.getLiquidRewards(
+            mockValidatorShare.address,
+            deployer.address
+        );
+
+        expect(liquidRewards).to.equal(1);
     });
 });
