@@ -91,7 +91,8 @@ contract NodeOperatorRegistry is
             rewardAddress: _rewardAddress,
             validatorId: 0,
             signerPubkey: _signerPubkey,
-            validatorContract: validatorContract
+            validatorContract: validatorContract,
+            validatorShare: address(0)
         });
 
         // update global state.
@@ -209,5 +210,158 @@ contract NodeOperatorRegistry is
     /// @return Returns the contract version.
     function version() external view virtual override returns (string memory) {
         return "1.0.0";
+    }
+
+    // ====================================================================
+    // ========================= VALIDATOR API ============================
+    // ====================================================================
+
+    /// @notice Allows to stake a validator on the Polygon stakeManager contract.
+    /// @dev Stake a validator on the Polygon stakeManager contract.
+    /// @param _amount amount to stake.
+    /// @param _heimdallFee herimdall fees.
+    function stake(uint256 _amount, uint256 _heimdallFee) external {
+        require(
+            _amount > 0 || _heimdallFee > 0,
+            "Amount or HeimdallFees should not be ZERO"
+        );
+
+        uint256 id = operatorOwners[msg.sender];
+        require(id != 0, "Operator not exists");
+
+        Operator.NodeOperator storage op = operators[id];
+        require(
+            op.status == Operator.NodeOperatorStatus.ACTIVE,
+            "The Operator status is not active"
+        );
+
+        IValidator(op.validatorContract).stake(
+            _amount,
+            _heimdallFee,
+            true,
+            op.signerPubkey
+        );
+
+        IStakeManager stakeManager = IStakeManager(state.stakeManager);
+
+        op.validatorId = stakeManager.getValidatorId(op.rewardAddress);
+        op.validatorShare = stakeManager.getValidatorContract(op.validatorId);
+        op.status = Operator.NodeOperatorStatus.STAKED;
+
+        state.totalActiveNodeOpearator--;
+        state.totalStakedNodeOpearator++;
+
+        emit StakeOperator(id);
+    }
+
+    /// @notice Unstake a validator from the Polygon stakeManager contract.
+    /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
+    function unstake() external {
+        uint256 id = operatorOwners[msg.sender];
+        require(id != 0, "Operator not exists");
+
+        Operator.NodeOperator storage op = operators[id];
+        require(
+            op.status == Operator.NodeOperatorStatus.STAKED,
+            "The operator status is not staked"
+        );
+        IValidator(op.validatorContract).unstake(op.validatorId);
+
+        op.status = Operator.NodeOperatorStatus.UNSTAKED;
+        state.totalStakedNodeOpearator--;
+        state.totalUnstakedNodeOpearator++;
+
+        emit UnstakeOperator(id);
+    }
+
+    /// @notice Allows to top up heimdall fees.
+    /// @param _heimdallFee amount
+    function topUpForFee(uint256 _heimdallFee) external {
+        require(_heimdallFee > 0, "HeimdallFee is ZERO");
+
+        uint256 id = operatorOwners[msg.sender];
+        require(id != 0, "Operator not exists");
+
+        Operator.NodeOperator storage op = operators[id];
+        require(
+            op.status == Operator.NodeOperatorStatus.STAKED,
+            "The operator status is not staked"
+        );
+        IValidator(op.validatorContract).topUpForFee(_heimdallFee);
+
+        emit TopUpHeimdallFees(id, _heimdallFee);
+    }
+
+    /// @notice Get validator id by user address.
+    /// @param _validatorId validatorId.
+    /// @return Returns the validator total staked.
+    function validatorStake(uint256 _validatorId)
+        external
+        view
+        returns (uint256)
+    {
+        return IStakeManager(state.stakeManager).validatorStake(_validatorId);
+    }
+
+    /// @notice Get validator total stake.
+    /// @param _user user address.
+    /// @return Returns the validatorId of an address.
+    function getValidatorId(address _user) external view returns (uint256) {
+        return IStakeManager(state.stakeManager).getValidatorId(_user);
+    }
+
+    /// @notice Get validatorShare contract address.
+    /// @dev Get validatorShare contract address.
+    /// @param _validatorId Validator Id
+    /// @return Returns the address of the validatorShare contract.
+    function getValidatorContract(uint256 _validatorId)
+        external
+        view
+        returns (address)
+    {
+        return
+            IStakeManager(state.stakeManager).getValidatorContract(
+                _validatorId
+            );
+    }
+
+    /// @notice Allows to withdraw rewards from the validator.
+    /// @dev Allows to withdraw rewards from the validator using the _validatorId. Only the
+    /// owner can request withdraw in this the owner is this contract. This  functions is called
+    /// by a lido contract.
+    function withdrawRewards()
+        external
+        override
+        returns (uint256[] memory, address[] memory)
+    {
+        require(msg.sender == state.lido, "Caller is not the lido contract");
+        uint256[] memory shares = new uint256[](state.totalStakedNodeOpearator);
+        address[] memory recipient = new address[](state.totalStakedNodeOpearator);
+        uint256 index = 0;
+        uint256 totalRewards = 0;
+
+        // withdraw validator rewards
+        for (uint256 idx = 0; idx < operatorIds.length; idx++) {
+            Operator.NodeOperator memory op = operators[operatorIds[idx]];
+            if (op.status == Operator.NodeOperatorStatus.STAKED) {
+                uint256 rewards = IValidator(op.validatorContract)
+                    .withdrawRewards(op.validatorId);
+                
+                recipient[index] = op.rewardAddress;
+                shares[index] = rewards;
+                totalRewards += rewards; 
+                index++;
+            }
+        }
+
+        // calculate validators share
+        for (uint256 idx = 0; idx < shares.length; idx++) {
+            uint256 share = shares[idx] * 100 / totalRewards;
+            shares[idx] = share;
+        }
+
+        emit WithdrawRewards();
+        
+        return (shares, recipient);
     }
 }

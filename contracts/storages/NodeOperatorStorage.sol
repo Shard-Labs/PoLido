@@ -49,4 +49,20 @@ contract NodeOperatorStorage {
     /// @dev A node operator was removed.
     /// @param id node operator id.
     event RemoveOperator(uint256 id);
+
+    /// @dev A node operator was staked.
+    /// @param id node operator id.
+    event StakeOperator(uint256 id);
+
+    /// @dev A node operator was unstaked.
+    /// @param id node operator id.
+    event UnstakeOperator(uint256 id);
+
+    /// @dev TopUp heimadall fees.
+    /// @param id node operator id.
+    /// @param amount amount.
+    event TopUpHeimdallFees(uint256 id, uint256 amount);
+
+    /// @dev Withdraw rewards.
+    event WithdrawRewards();
 }

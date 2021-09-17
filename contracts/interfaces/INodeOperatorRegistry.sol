@@ -45,4 +45,8 @@ interface INodeOperatorRegistry {
         external
         view
         returns (Operator.NodeOperator memory);
+
+    function withdrawRewards()
+        external
+        returns (uint256[] memory, address[] memory);
 }

@@ -23,12 +23,16 @@ library Operator {
         uint256 validatorId;
         bytes signerPubkey;
         address validatorContract;
+        address validatorShare;
     }
 
     /// @notice Node operator registry state.
     struct NodeOperatorState {
         uint256 totalNodeOpearator;
         uint256 totalActiveNodeOpearator;
+        uint256 totalStakedNodeOpearator;
+        uint256 totalUnstakedNodeOpearator;
+        uint256 totalUnActiveNodeOpearator;
         address validatorFactory;
         address stakeManager;
         address polygonERC20;

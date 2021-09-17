@@ -81,7 +81,13 @@ contract StakeManagerMock is IStakeManager {
         return state.Owners[_validatorId];
     }
 
-    function withdrawRewards(uint256 _validatorId) external override {
+    function withdrawRewards(uint256 _validatorId) external override returns (uint256){
         emit WithdrawRewards(msg.sender, _validatorId);
+        IERC20(state.token).transfer(msg.sender, 1000);
+        return 1000;
+    }
+
+    function validatorStake(uint256) external pure override returns (uint256) {
+        return 1000;
     }
 }

@@ -3,9 +3,9 @@
 pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./Validator.sol";
 import "./storages/ValidatorFactoryStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";

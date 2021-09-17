@@ -8,12 +8,18 @@ import "../Validator.sol";
 /// @author 2021 Shardlabs
 /// @notice Validator interface.
 interface IValidator {
+    /// @notice Allows to stake a validator on the Polygon stakeManager contract.
+    /// @dev Stake a validator on the Polygon stakeManager contract.
+    /// @param _amount amount to stake.
+    /// @param _heimdallFee herimdall fees.
+    /// @param _acceptDelegation accept delegation.
+    /// @param _signerPubkey signer public key used on the heimdall.
     function stake(
         uint256 _amount,
         uint256 _heimdallFee,
         bool _acceptDelegation,
         bytes memory _signerPubkey
-    ) external returns (uint256);
+    ) external;
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
@@ -24,25 +30,11 @@ interface IValidator {
     /// @param _heimdallFee amount
     function topUpForFee(uint256 _heimdallFee) external;
 
-    /// @notice Get validator id by user address.
-    /// @param _user user address.
-    /// @return Returns the validatorId of an address.
-    function getValidatorId(address _user) external view returns (uint256);
-
-    /// @notice Get validatorShare contract address.
-    /// @dev Get validatorShare contract address.
-    /// @param _validatorId Validator Id
-    /// @return Returns the address of the validatorShare contract.
-    function getValidatorContract(uint256 _validatorId)
-        external
-        view
-        returns (address);
-
     /// @notice Allows to withdraw rewards from the validator.
     /// @dev Allows to withdraw rewards from the validator using the _validatorId. Only the
     /// owner can request withdraw in this the owner is this contract.
     /// @param _validatorId validator id.
-    function withdrawRewards(uint256 _validatorId) external;
+    function withdrawRewards(uint256 _validatorId) external returns (uint256);
 
     /// @notice Allows to get the operator contract.
     /// @return Returns operator contract address.
