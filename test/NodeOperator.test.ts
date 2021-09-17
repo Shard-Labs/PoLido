@@ -13,7 +13,6 @@ describe('NodeOperator', function () {
     let user1: Signer;
     let nodeOperatorRegistryContract: Contract;
     let validatorFactoryContract: Contract;
-    let validatorContract: Contract;
     let stakeManagerMockContract: Contract;
     let lidoMockContract: Contract;
     let polygonERC20Contract: Contract;
@@ -40,14 +39,10 @@ describe('NodeOperator', function () {
             [polygonERC20Contract.address]
         )
 
-        // deploy validator
-        const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact("Validator");
-        validatorContract = await deployContract(signer, validatorArtifact)
-
         // deploy validator factory
         const validatorFactoryArtifact = await ethers.getContractFactory('ValidatorFactory')
         validatorFactoryContract = await upgrades.deployProxy(
-            validatorFactoryArtifact, [validatorContract.address], { kind: 'uups' })
+            validatorFactoryArtifact, [], { kind: 'uups' })
 
         // deploy node operator contract
         const nodeOperatorRegistryArtifact = await ethers.getContractFactory('NodeOperatorRegistry')
@@ -187,7 +182,6 @@ describe('NodeOperator', function () {
         expect(version1 === "1.0.0");
         expect(version2 === "2.0.0");
     })
-
 });
 
 function getValidatorFakeData(rewardAddress: string): { name: string; rewardAddress: string; signerPubkey: string } {

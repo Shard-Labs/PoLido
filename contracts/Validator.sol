@@ -5,6 +5,7 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "hardhat/console.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
@@ -14,7 +15,7 @@ import "./storages/ValidatorStorage.sol";
 /// @author 2021 Shardlabs.
 /// @notice Validator is the contract used to manage a staked validator on Polygon stake manager
 /// @dev Validator is the contract used to manage a staked validator on Polygon stake manager
-contract Validator is ValidatorStorage, Initializable {
+contract Validator is ValidatorStorage, Initializable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     // ====================================================================
@@ -149,5 +150,19 @@ contract Validator is ValidatorStorage, Initializable {
     /// @return Returns stakeManager contract address.
     function getStakeManager() public view returns (address) {
         return INodeOperatorRegistry(state.operator).getStakeManager();
+    }
+
+    /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
+    /// @param newImplementation new contract implementation address.
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        isOperator
+    {}
+
+    /// @notice Contract version.
+    /// @dev Returns contract version.
+    function version() public view virtual returns (string memory) {
+        return "1.0.0";
     }
 }

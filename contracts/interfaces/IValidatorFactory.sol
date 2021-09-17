@@ -23,7 +23,4 @@ interface IValidatorFactory {
 
     /// @notice Set the node operator contract address.
     function setOperatorAddress(address _operator) external;
-
-    /// @notice Set the validator contract address.
-    function setValidatorImplementation(address _validator) external;
 }

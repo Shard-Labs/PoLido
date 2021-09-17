@@ -37,7 +37,6 @@ library Operator {
 
     /// @notice State struct
     struct ValidatorFactoryState {
-        address validatorImplementation;
         address operator;
     }
 

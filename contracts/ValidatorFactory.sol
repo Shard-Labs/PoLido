@@ -5,7 +5,6 @@ pragma solidity ^0.8.7;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./Validator.sol";
 import "./storages/ValidatorFactoryStorage.sol";
@@ -48,11 +47,10 @@ contract ValidatorFactory is
     // ====================================================================
 
     /// @notice Initialize the NodeOperator contract.
-    function initialize(address _validatorImplementation)
+    function initialize()
         public
         initializer
     {   
-        state.validatorImplementation = _validatorImplementation;
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
@@ -65,23 +63,6 @@ contract ValidatorFactory is
         validators.push(Validator(validator));
         emit CreateValidator(address(validator));
         return address(validator);
-
-        // TODO: check if the clones are upgradable
-        // address clone = ClonesUpgradeable.clone(state.validatorImplementation);
-        // Validator(clone).initialize(state.operator);
-        // validators.push(Validator(clone));
-        // emit CreateValidator(clone);
-        // return clone;
-    }
-
-    /// @notice set the validator contract implementation
-    /// @param _validatorImplementation new validator contract implementtation address.
-    function setValidatorImplementation(address _validatorImplementation)
-        external
-        isOperator
-    {
-        state.validatorImplementation = _validatorImplementation;
-        emit SetValidatorImplementation(_validatorImplementation);
     }
 
     /// @notice Get validators contracts.
