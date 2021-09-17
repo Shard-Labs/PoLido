@@ -1,12 +1,26 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-// note this contract interface is only for stakeManager use
 interface IValidatorShare {
     function withdrawRewards() external;
 
     function unstakeClaimTokens() external;
 
     function getLiquidRewards(address user) external view returns (uint256);
+
+    function buyVoucher(uint256 _amount, uint256 _minSharesToMint)
+        external
+        returns (uint256);
+
+    function sellVoucher_new(uint256 claimAmount, uint256 maximumSharesToBurn)
+        external;
+
+    function unstakeClaimTokens_new(uint256 unbondNonce) external;
+
+    function getTotalStake(address user)
+        external
+        view
+        returns (uint256, uint256);
 
     function owner() external view returns (address);
 
