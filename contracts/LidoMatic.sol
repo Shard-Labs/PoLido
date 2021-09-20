@@ -13,14 +13,23 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     /////                                                    ////
     ////////////////////////////////////////////////////////////
 
-    mapping(address => uint256) public userToShares;
+    mapping(address => RequestWithdraw) public userToWithdrawRequest;
     // Value of totalDelegated needs to be updated periodically off chain because of slashing and rewarding
     // It is calculated as the sum of delegated MATIC across all validatorShares
-    uint256 public totalDelegated;
+    mapping(address => uint256) public userToShares;
     // Value of totalBuffered needs to be set to 0 after the periodic update has been done
+    uint256 public totalDelegated;
     uint256 public totalBuffered;
     // Address of Matic token
     address public token;
+
+    // Withdrawal structure
+    struct RequestWithdraw {
+        uint256 amount;
+        uint256 validatorNonce;
+        address validatorShareAddress;
+        bool done;
+    }
 
     /** Roles */
     bytes32 public constant GOVERNANCE = keccak256("GOVERNANCE");
@@ -28,7 +37,6 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     bytes32 public constant MANAGE_FEE = keccak256("MANAGE_FEE");
     bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
     bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
-    
 
     /** Modifiers */
     modifier auth(bytes32 _role) {
@@ -65,6 +73,19 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
         totalBuffered += _amount;
 
         return amountToMint;
+    }
+
+    /**
+     * @dev Stores users request to withdraw into a RequestWithdraw struct
+     * @param _amount - Amount of MATIC that is requested to withdraw
+     */
+    function requestWithdraw(uint256 _amount) external {
+        userToWithdrawRequest[msg.sender] = RequestWithdraw(
+            _amount,
+            0, // TODO
+            address(0), // TODO
+            false
+        );
     }
 
     ////////////////////////////////////////////////////////////////
