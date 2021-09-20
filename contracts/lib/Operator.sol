@@ -7,7 +7,8 @@ library Operator {
         ACTIVE,
         UNACTIVE,
         STAKED,
-        UNSTAKED
+        UNSTAKED,
+        EXIT
     }
 
     /// @notice The node operator struct
@@ -33,6 +34,7 @@ library Operator {
         uint256 totalStakedNodeOpearator;
         uint256 totalUnstakedNodeOpearator;
         uint256 totalUnActiveNodeOpearator;
+        uint256 totalEcitNodeOpearator;
         address validatorFactory;
         address stakeManager;
         address polygonERC20;

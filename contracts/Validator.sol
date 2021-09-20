@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "hardhat/console.sol";
 import "./interfaces/IStakeManager.sol";
+import "./interfaces/IValidator.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./storages/ValidatorStorage.sol";
 
@@ -14,7 +15,7 @@ import "./storages/ValidatorStorage.sol";
 /// @author 2021 Shardlabs.
 /// @notice Validator is the contract used to manage a staked validator on Polygon stake manager
 /// @dev Validator is the contract used to manage a staked validator on Polygon stake manager
-contract Validator is ValidatorStorage, Initializable {
+contract Validator is IValidator, ValidatorStorage, Initializable {
     using SafeERC20 for IERC20;
 
     // ====================================================================
@@ -52,7 +53,7 @@ contract Validator is ValidatorStorage, Initializable {
         uint256 _heimdallFee,
         bool _acceptDelegation,
         bytes memory _signerPubkey
-    ) external isOperator {
+    ) external override isOperator {
         // get operator
         INodeOperatorRegistry operator = getOperator();
 
@@ -94,7 +95,7 @@ contract Validator is ValidatorStorage, Initializable {
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
     /// @param _validatorId validatorId.
-    function unstake(uint256 _validatorId) external isOperator {
+    function unstake(uint256 _validatorId) external override isOperator {
         address stakeManager = getStakeManager();
 
         // call polygon stake manager
@@ -106,8 +107,9 @@ contract Validator is ValidatorStorage, Initializable {
     /// @param _heimdallFee amount
     function topUpForFee(address _sender, uint256 _heimdallFee)
         external
+        override
         isOperator
-    {   
+    {
         INodeOperatorRegistry operator = getOperator();
 
         // get stakeManager
@@ -136,6 +138,7 @@ contract Validator is ValidatorStorage, Initializable {
     /// @param _validatorId validator id.
     function withdrawRewards(uint256 _validatorId)
         external
+        override
         isOperator
         returns (uint256)
     {
@@ -154,7 +157,27 @@ contract Validator is ValidatorStorage, Initializable {
         return balance;
     }
 
-    function claimUnstake() public view returns (INodeOperatorRegistry) {}
+    /// @notice Allows to unstake the staked tokens by this validator contract
+    /// @dev Allows to unstake the staked tokens by this validator contract and transfer staked
+    /// tokens to the owner. but the rewards are buffred untile the rewards distribution happens.
+    /// @param _ownerRecipient operator owner address.
+    /// @param _validatorId validator id
+    function unstakeClaim(address _ownerRecipient, uint256 _validatorId)
+        external
+        override
+        isOperator
+        returns (uint256, uint256)
+    {
+        INodeOperatorRegistry operator = getOperator();
+        IStakeManager stakeManager = IStakeManager(operator.getStakeManager());
+        
+        uint256 amount = stakeManager.validatorStake(_validatorId);
+        stakeManager.unstakeClaim(_validatorId);
+        uint256 balance = IERC20(operator.getPolygonERC20()).balanceOf(address(this));
+        IERC20(operator.getPolygonERC20()).safeTransfer(_ownerRecipient, amount);
+
+        return (amount, balance - amount);
+    }
 
     /// @notice Allows to get the operator contract.
     /// @return Returns operator contract address.
@@ -178,7 +201,7 @@ contract Validator is ValidatorStorage, Initializable {
 
     /// @notice Contract version.
     /// @dev Returns contract version.
-    function version() public view virtual returns (string memory) {
+    function version() public view virtual override returns (string memory) {
         return "1.0.0";
     }
 }

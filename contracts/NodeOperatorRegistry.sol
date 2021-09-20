@@ -294,6 +294,28 @@ contract NodeOperatorRegistry is
         emit TopUpHeimdallFees(id, _heimdallFee);
     }
 
+    function unstakeClaim() external override {
+        uint256 validatorId = operatorOwners[msg.sender];
+        require(validatorId != 0, "Operator not exists");
+
+        Operator.NodeOperator storage no = operators[validatorId];
+
+        require(
+            no.status == Operator.NodeOperatorStatus.UNSTAKED,
+            "Opeartor status not UNSTAKED"
+        );
+
+        (uint256 amount, uint256 rewards) = IValidator(no.validatorContract)
+            .unstakeClaim(msg.sender, validatorId);
+
+        // check if the validator contract has still rewards buffred if not set status to EXIT.
+        if (rewards == 0) {
+            no.status = Operator.NodeOperatorStatus.EXIT;
+        }
+
+        emit ClaimUnstake(validatorId, msg.sender, amount);
+    }
+
     /// @notice Get validator id by user address.
     /// @param _validatorId validatorId.
     /// @return Returns the validator total staked.

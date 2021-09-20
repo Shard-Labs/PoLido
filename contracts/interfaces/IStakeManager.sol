@@ -53,13 +53,7 @@ interface IStakeManager {
         view
         returns (uint256);
 
-    // /// @notice Get validator total staked.
-    // /// @param validatorId validator id.
-    // function claimFee(
-    //     uint256 accumFeeAmount,
-    //     uint256 index,
-    //     bytes memory proof
-    // ) external;
-
-    // function unstakeClaim(uint256 validatorId) external;
+    /// @notice Allows to unstake the staked tokens on the stakeManager.
+    /// @param validatorId validator id.
+    function unstakeClaim(uint256 validatorId) external;
 }

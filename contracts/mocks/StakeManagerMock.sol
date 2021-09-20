@@ -25,6 +25,7 @@ contract StakeManagerMock is IStakeManager {
     event Unstake(address user, uint256 validatorId);
     event TopUpForFee(address user, uint256 heimdallFee);
     event WithdrawRewards(address user, uint256 validatorId);
+    event UnstakeClaim(address user, uint256 validatorId);
 
     constructor(address _token) {
         state.token = _token;
@@ -42,7 +43,11 @@ contract StakeManagerMock is IStakeManager {
         uint256 id = state.id + 1;
         state.validators[_user] = id;
         state.Owners[id] = _user;
-        IERC20(state.token).transferFrom(msg.sender, address(this), _amount + _heimdallFee);
+        IERC20(state.token).transferFrom(
+            msg.sender,
+            address(this),
+            _amount + _heimdallFee
+        );
 
         emit StakeFor(
             _user,
@@ -83,10 +88,20 @@ contract StakeManagerMock is IStakeManager {
         return state.Owners[_validatorId];
     }
 
-    function withdrawRewards(uint256 _validatorId) external override returns (uint256){
+    function withdrawRewards(uint256 _validatorId)
+        external
+        override
+        returns (uint256)
+    {
         emit WithdrawRewards(msg.sender, _validatorId);
         IERC20(state.token).transfer(msg.sender, 1000);
         return 1000;
+    }
+
+    function unstakeClaim(uint256 _validatorId) external override {
+        emit WithdrawRewards(msg.sender, _validatorId);
+        IERC20(state.token).transfer(msg.sender, 1100);
+        emit UnstakeClaim(msg.sender, _validatorId);
     }
 
     function validatorStake(uint256) external pure override returns (uint256) {

@@ -42,6 +42,10 @@ interface INodeOperatorRegistry {
     /// @param _heimdallFee amount to topup.
     function topUpForFee(uint256 _heimdallFee) external;
 
+    /// @notice Allows to claim staked tokens on the stake Manager after the end of the
+    /// withdraw delay
+    function unstakeClaim() external;
+
     /// @notice Allows to get the total staked by a validator.
     /// @param _validatorId validator id.
     /// @return Returns the total staked.

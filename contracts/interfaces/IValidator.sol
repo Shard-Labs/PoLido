@@ -39,11 +39,15 @@ interface IValidator {
     /// @param _validatorId validator id.
     function withdrawRewards(uint256 _validatorId) external returns (uint256);
 
-    /// @notice Allows to get the operator contract.
-    /// @return Returns operator contract address.
-    function getOperator() external view returns (INodeOperatorRegistry);
+    /// @notice Allows to claim staked tokens on the stake Manager after the end of the
+    /// withdraw delay
+    /// @param _validatorId validator id.
+    /// @param _ownerRecipient user address used to transfer the staked tokens.
+    /// @return Returns the amount transfered to the user and rewards buffred on the 
+    /// validator contract. 
+    function unstakeClaim(address _ownerRecipient, uint256 _validatorId)
+        external
+        returns (uint256, uint256);
 
-    /// @notice Allows to get the stakeManager contract.
-    /// @return Returns stakeManager contract address.
-    function getStakeManager() external view returns (address);
+    function version() external returns (string memory);
 }
