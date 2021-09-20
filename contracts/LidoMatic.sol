@@ -22,6 +22,7 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     uint256 public totalBuffered;
     // Address of Matic token
     address public token;
+    bool paused;
 
     // Withdrawal structure
     struct RequestWithdraw {
@@ -41,6 +42,11 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     /** Modifiers */
     modifier auth(bytes32 _role) {
         require(hasRole(_role, msg.sender));
+        _;
+    }
+
+    modifier notPaused() {
+        require(!paused, "System is paused");
         _;
     }
 
@@ -79,13 +85,21 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
      * @dev Stores users request to withdraw into a RequestWithdraw struct
      * @param _amount - Amount of MATIC that is requested to withdraw
      */
-    function requestWithdraw(uint256 _amount) external {
+    function requestWithdraw(uint256 _amount) external notPaused {
         userToWithdrawRequest[msg.sender] = RequestWithdraw(
             _amount,
             0, // TODO
             address(0), // TODO
             false
         );
+    }
+
+    /**
+     * @notice Only PAUSE_ROLE can call this function. This function puts certain functionalities on pause.
+     * @param _pause - Determines if the contract will be paused (true) or unpaused (false)
+     */
+    function pause(bool _pause) external auth(PAUSE_ROLE) {
+        paused = _pause;
     }
 
     ////////////////////////////////////////////////////////////////
