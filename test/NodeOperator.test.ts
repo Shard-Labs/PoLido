@@ -11,6 +11,7 @@ chai.use(solidity);
 describe('NodeOperator', function () {
     let signer: Signer;
     let user1: Signer;
+    let user2: Signer;
     let nodeOperatorRegistryContract: Contract;
     let validatorFactoryContract: Contract;
     let stakeManagerMockContract: Contract;
@@ -21,6 +22,7 @@ describe('NodeOperator', function () {
         const accounts = await ethers.getSigners();
         signer = accounts[0]
         user1 = accounts[1]
+        user2 = accounts[2]
 
         // deploy ERC20 token
         const polygonERC20Artifact: Artifact = await hardhat.artifacts.readArtifact("Polygon");
@@ -362,7 +364,7 @@ describe('NodeOperator', function () {
     it('Success withdraw validator rewards', async function () {
         const { name, rewardAddress, signerPubkey } = getValidatorFakeData(await user1.getAddress())
 
-        // add new node operator
+        // add first node operator
         expect(await nodeOperatorRegistryContract.addOperator(
             name,
             rewardAddress,
@@ -371,11 +373,24 @@ describe('NodeOperator', function () {
             1, name, signerPubkey, 0
         )
 
-        // stake a node operator
+        // add second node operator
+        expect(await nodeOperatorRegistryContract.addOperator(
+            name,
+            await user2.getAddress(),
+            signerPubkey
+        )).to.emit(nodeOperatorRegistryContract, 'NewOperator').withArgs(
+            2, name, signerPubkey, 0
+        )
+
+        // stake the first node operator
         await nodeOperatorRegistryContract.connect(user1).stake(100, 10)
 
-        // withdraw rewards
-        await lidoMockContract.withdrawRewards()
+        // stake the second node operator
+        await nodeOperatorRegistryContract.connect(user2).stake(100, 10)
+
+        expect(await lidoMockContract.withdrawRewards())
+            .to.emit(lidoMockContract, "LogRewards").withArgs(50, await user1.getAddress())
+            .to.emit(lidoMockContract, "LogRewards").withArgs(50, await user2.getAddress());
     })
 
     it('Fail withdraw validator rewards', async function () {

@@ -336,7 +336,9 @@ contract NodeOperatorRegistry is
     {
         require(msg.sender == state.lido, "Caller is not the lido contract");
         uint256[] memory shares = new uint256[](state.totalStakedNodeOpearator);
-        address[] memory recipient = new address[](state.totalStakedNodeOpearator);
+        address[] memory recipient = new address[](
+            state.totalStakedNodeOpearator
+        );
         uint256 index = 0;
         uint256 totalRewards = 0;
 
@@ -346,22 +348,22 @@ contract NodeOperatorRegistry is
             if (op.status == Operator.NodeOperatorStatus.STAKED) {
                 uint256 rewards = IValidator(op.validatorContract)
                     .withdrawRewards(op.validatorId);
-                
+
                 recipient[index] = op.rewardAddress;
                 shares[index] = rewards;
-                totalRewards += rewards; 
+                totalRewards += rewards;
                 index++;
             }
         }
 
         // calculate validators share
         for (uint256 idx = 0; idx < shares.length; idx++) {
-            uint256 share = shares[idx] * 100 / totalRewards;
+            uint256 share = (shares[idx] * 100) / totalRewards;
             shares[idx] = share;
         }
 
         emit WithdrawRewards();
-        
+
         return (shares, recipient);
     }
 }
