@@ -10,11 +10,13 @@ import "../Validator.sol";
 interface IValidator {
     /// @notice Allows to stake a validator on the Polygon stakeManager contract.
     /// @dev Stake a validator on the Polygon stakeManager contract.
+    /// @param _sender msg.sender.
     /// @param _amount amount to stake.
     /// @param _heimdallFee herimdall fees.
     /// @param _acceptDelegation accept delegation.
     /// @param _signerPubkey signer public key used on the heimdall.
     function stake(
+        address _sender,
         uint256 _amount,
         uint256 _heimdallFee,
         bool _acceptDelegation,
@@ -28,7 +30,8 @@ interface IValidator {
 
     /// @notice Allows to top up heimdall fees.
     /// @param _heimdallFee amount
-    function topUpForFee(uint256 _heimdallFee) external;
+    /// @param _sender msg.sender
+    function topUpForFee(address _sender, uint256 _heimdallFee) external;
 
     /// @notice Allows to withdraw rewards from the validator.
     /// @dev Allows to withdraw rewards from the validator using the _validatorId. Only the

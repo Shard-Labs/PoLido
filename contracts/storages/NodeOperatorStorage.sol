@@ -65,4 +65,7 @@ contract NodeOperatorStorage {
 
     /// @dev Withdraw rewards.
     event WithdrawRewards();
+
+    /// @dev approve erc20 to a validator contract.
+    event ApproveToValidator(uint256 id, uint256 amount);
 }

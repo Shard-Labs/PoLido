@@ -25,6 +25,51 @@ interface INodeOperatorRegistry {
     /// @param _id node operator id.
     function removeOperator(uint256 _id) external;
 
+    /// @notice Allows to stake an opearator on the Polygon stakeManager
+    /// @dev Allows to stake an operator on the Polygon stakeManager.
+    /// This function calls Polygon transferFrom so the totalAmount(_amount + _heimdallFee)
+    /// has to be approved first.
+    /// @param _amount amount to stake.
+    /// @param _heimdallFee heimdallFee to stake.
+    function stake(uint256 _amount, uint256 _heimdallFee) external;
+
+    /// @notice Allows to unstake an operator from the stakeManager.
+    /// @dev Unstake an operator from the stakeManager. After the withdraw_delay
+    /// the operator owner can call claimStake func to withdraw the staked tokens.
+    function unstake() external;
+
+    /// @notice Allows to topup heimdall fees on polygon stakeManager.
+    /// @param _heimdallFee amount to topup.
+    function topUpForFee(uint256 _heimdallFee) external;
+
+    /// @notice Allows to get the total staked by a validator.
+    /// @param _validatorId validator id.
+    /// @return Returns the total staked.
+    function validatorStake(uint256 _validatorId)
+        external
+        view
+        returns (uint256);
+
+    /// @notice Allows to get the validator id of an owner.
+    /// @param _user owner address of the validator.
+    /// @return Returns the validator id
+    function getValidatorId(address _user) external view returns (uint256);
+
+    /// @notice Allows to get the validatorContract address using the _validatorId.
+    /// @param _validatorId validator id.
+    /// @return Returns the validatorContract address
+    function getValidatorContract(uint256 _validatorId)
+        external
+        view
+        returns (address);
+
+    /// @notice Allows to withdraw rewards accumulated in the stakeManager by all
+    /// the operators, then calculate the shares per operator.
+    /// @return Returns the shares of the operators and the receipient addresses
+    function withdrawRewards()
+        external
+        returns (uint256[] memory, address[] memory);
+
     /// @notice The version of the actual contract.
     /// @return return the contract version.
     function version() external returns (string memory);
@@ -33,20 +78,26 @@ interface INodeOperatorRegistry {
     /// @return Return a list of operator Ids.
     function getOperators() external returns (uint256[] memory);
 
+    /// @notice Allows to get the validator factory address.
+    /// @return Returns the validator factory address.
     function getValidatorFactory() external view returns (address);
 
+    /// @notice Allows to get the stake manager address.
+    /// @return Returns the stake manager address.
     function getStakeManager() external view returns (address);
 
+    /// @notice Allows to get the polygon erc20 token address.
+    /// @return Returns the polygon erc20 token address.
     function getPolygonERC20() external view returns (address);
 
+    /// @notice Allows to get the lido contract address.
+    /// @return Returns the lido contract address.
     function getLido() external view returns (address);
 
+    /// @notice Allows to get node operator details.
+    /// @return Returns node operator details.
     function getNodeOperator(uint256 _id, bool _full)
         external
         view
         returns (Operator.NodeOperator memory);
-
-    function withdrawRewards()
-        external
-        returns (uint256[] memory, address[] memory);
 }

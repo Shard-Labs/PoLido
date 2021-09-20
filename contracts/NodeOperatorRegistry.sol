@@ -220,10 +220,10 @@ contract NodeOperatorRegistry is
     /// @dev Stake a validator on the Polygon stakeManager contract.
     /// @param _amount amount to stake.
     /// @param _heimdallFee herimdall fees.
-    function stake(uint256 _amount, uint256 _heimdallFee) external {
+    function stake(uint256 _amount, uint256 _heimdallFee) external override {
         require(
-            _amount > 0 || _heimdallFee > 0,
-            "Amount or HeimdallFees should not be ZERO"
+            _amount >= (10**18) || _heimdallFee >= (10**18),
+            "Amount or HeimdallFees not enough"
         );
 
         uint256 id = operatorOwners[msg.sender];
@@ -235,7 +235,9 @@ contract NodeOperatorRegistry is
             "The Operator status is not active"
         );
 
+        // stake a validator
         IValidator(op.validatorContract).stake(
+            msg.sender,
             _amount,
             _heimdallFee,
             true,
@@ -256,7 +258,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
-    function unstake() external {
+    function unstake() external override {
         uint256 id = operatorOwners[msg.sender];
         require(id != 0, "Operator not exists");
 
@@ -276,7 +278,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows to top up heimdall fees.
     /// @param _heimdallFee amount
-    function topUpForFee(uint256 _heimdallFee) external {
+    function topUpForFee(uint256 _heimdallFee) external override {
         require(_heimdallFee > 0, "HeimdallFee is ZERO");
 
         uint256 id = operatorOwners[msg.sender];
@@ -287,7 +289,7 @@ contract NodeOperatorRegistry is
             op.status == Operator.NodeOperatorStatus.STAKED,
             "The operator status is not staked"
         );
-        IValidator(op.validatorContract).topUpForFee(_heimdallFee);
+        IValidator(op.validatorContract).topUpForFee(msg.sender, _heimdallFee);
 
         emit TopUpHeimdallFees(id, _heimdallFee);
     }
@@ -298,6 +300,7 @@ contract NodeOperatorRegistry is
     function validatorStake(uint256 _validatorId)
         external
         view
+        override
         returns (uint256)
     {
         return IStakeManager(state.stakeManager).validatorStake(_validatorId);
@@ -306,7 +309,12 @@ contract NodeOperatorRegistry is
     /// @notice Get validator total stake.
     /// @param _user user address.
     /// @return Returns the validatorId of an address.
-    function getValidatorId(address _user) external view returns (uint256) {
+    function getValidatorId(address _user)
+        external
+        view
+        override
+        returns (uint256)
+    {
         return IStakeManager(state.stakeManager).getValidatorId(_user);
     }
 
@@ -317,6 +325,7 @@ contract NodeOperatorRegistry is
     function getValidatorContract(uint256 _validatorId)
         external
         view
+        override
         returns (address)
     {
         return

@@ -42,6 +42,8 @@ contract StakeManagerMock is IStakeManager {
         uint256 id = state.id + 1;
         state.validators[_user] = id;
         state.Owners[id] = _user;
+        IERC20(state.token).transferFrom(msg.sender, address(this), _amount + _heimdallFee);
+
         emit StakeFor(
             _user,
             _amount,

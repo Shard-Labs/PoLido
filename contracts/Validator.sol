@@ -47,12 +47,31 @@ contract Validator is ValidatorStorage, Initializable {
     /// @param _acceptDelegation accept delegation.
     /// @param _signerPubkey signer public key used on the heimdall node.
     function stake(
+        address _sender,
         uint256 _amount,
         uint256 _heimdallFee,
         bool _acceptDelegation,
         bytes memory _signerPubkey
     ) external isOperator {
-        address stakeManager = getStakeManager();
+        // get operator
+        INodeOperatorRegistry operator = getOperator();
+
+        // get stakeManager
+        address stakeManager = operator.getStakeManager();
+
+        uint256 totalAmount = _amount + _heimdallFee;
+        // approve Polygon token to stake manager totalAmount
+        address polygonERC20 = operator.getPolygonERC20();
+
+        // transfer tokens from user to this contract
+        IERC20(polygonERC20).safeTransferFrom(
+            _sender,
+            address(this),
+            (_amount + _heimdallFee)
+        );
+
+        // approve to stakeManager
+        IERC20(polygonERC20).safeApprove(stakeManager, totalAmount);
 
         // call polygon stake manager
         IStakeManager(stakeManager).stakeFor(
@@ -85,8 +104,26 @@ contract Validator is ValidatorStorage, Initializable {
 
     /// @notice Allows to top up heimdall fees.
     /// @param _heimdallFee amount
-    function topUpForFee(uint256 _heimdallFee) external isOperator {
-        address stakeManager = getStakeManager();
+    function topUpForFee(address _sender, uint256 _heimdallFee)
+        external
+        isOperator
+    {   
+        INodeOperatorRegistry operator = getOperator();
+
+        // get stakeManager
+        address stakeManager = operator.getStakeManager();
+
+        address polygonERC20 = operator.getPolygonERC20();
+
+        // transfer tokens from user to this contract
+        IERC20(polygonERC20).safeTransferFrom(
+            _sender,
+            address(this),
+            _heimdallFee
+        );
+
+        // approve to stakeManager
+        IERC20(polygonERC20).safeApprove(stakeManager, _heimdallFee);
 
         // call polygon stake manager
         IStakeManager(stakeManager).topUpForFee(address(this), _heimdallFee);
@@ -116,6 +153,8 @@ contract Validator is ValidatorStorage, Initializable {
         emit WithdrawRewards(_validatorId);
         return balance;
     }
+
+    function claimUnstake() public view returns (INodeOperatorRegistry) {}
 
     /// @notice Allows to get the operator contract.
     /// @return Returns operator contract address.
