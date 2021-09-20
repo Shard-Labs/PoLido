@@ -2,10 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import "./interfaces/IValidatorShare.sol";
 
-contract LidoMatic is ERC20("Staked Matic", "StMATIC") {
+contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     ////////////////////////////////////////////////////////////////
     /////                                                    //////
     /////             ***State Variables***                  /////
@@ -20,6 +21,20 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC") {
     uint256 public totalBuffered;
     // Address of Matic token
     address public token;
+
+    /** Roles */
+    bytes32 public constant GOVERNANCE = keccak256("GOVERNANCE");
+    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
+    bytes32 public constant MANAGE_FEE = keccak256("MANAGE_FEE");
+    bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
+    bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
+    
+
+    /** Modifiers */
+    modifier auth(bytes32 _role) {
+        require(hasRole(_role, msg.sender));
+        _;
+    }
 
     /**
      * @param _token - Address of MATIC token on Ethereum Mainnet
@@ -57,7 +72,7 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC") {
     /////             ***ValidatorShare API***               /////
     /////                                                    ////
     ////////////////////////////////////////////////////////////
-    
+
     /**
      * @dev API for delegatet buying vouchers from validatorShare
      * @param _validatorShare - Address of validatorShare contract
