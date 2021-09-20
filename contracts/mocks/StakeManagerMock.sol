@@ -100,7 +100,13 @@ contract StakeManagerMock is IStakeManager {
 
     function unstakeClaim(uint256 _validatorId) external override {
         emit WithdrawRewards(msg.sender, _validatorId);
-        IERC20(state.token).transfer(msg.sender, 1100);
+        uint256 id = state.validators[msg.sender];
+        
+        if (id % 2 == 0) {
+            IERC20(state.token).transfer(msg.sender, 1000);
+        } else {
+            IERC20(state.token).transfer(msg.sender, 1100);
+        }
         emit UnstakeClaim(msg.sender, _validatorId);
     }
 

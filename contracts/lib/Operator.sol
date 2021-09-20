@@ -5,7 +5,6 @@ library Operator {
     /// @notice The node operator states.
     enum NodeOperatorStatus {
         ACTIVE,
-        UNACTIVE,
         STAKED,
         UNSTAKED,
         EXIT
@@ -33,8 +32,7 @@ library Operator {
         uint256 totalActiveNodeOpearator;
         uint256 totalStakedNodeOpearator;
         uint256 totalUnstakedNodeOpearator;
-        uint256 totalUnActiveNodeOpearator;
-        uint256 totalEcitNodeOpearator;
+        uint256 totalExitNodeOpearator;
         address validatorFactory;
         address stakeManager;
         address polygonERC20;

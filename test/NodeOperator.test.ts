@@ -122,10 +122,13 @@ describe('NodeOperator', function () {
             rewardAddress,
             signerPubkey
         );
+        
+        // exit node operator
+        await nodeOperatorRegistryContract.exitNodeOperator(1)
 
         // remove node operator.
         const res = await nodeOperatorRegistryContract.removeOperator(1)
-        expect(res).to.emit(nodeOperatorRegistryContract, 'RemoveOperator').withArgs(1)
+        expect(res).to.emit(nodeOperatorRegistryContract, 'RemoveOperator').withArgs(1)       
 
         // check node operator stats
         const stats = await nodeOperatorRegistryContract.getState();
@@ -384,7 +387,7 @@ describe('NodeOperator', function () {
         );
         // add a new node operator
         await nodeOperatorRegistryContract.getNodeOperator(1, false)
-        
+
         // add a new node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false)
 
@@ -479,6 +482,80 @@ describe('NodeOperator', function () {
         // withdraw rewards
         await expect(nodeOperatorRegistryContract.withdrawRewards())
             .to.revertedWith("Caller is not the lido contract")
+    })
+
+    it('Success unstake claim', async function () {
+        const { name, rewardAddress, signerPubkey } = getValidatorFakeData(await user1.getAddress())
+        // add new node operator
+        await nodeOperatorRegistryContract.addOperator(
+            name,
+            rewardAddress,
+            signerPubkey
+        );
+
+        // add new node operator
+        await nodeOperatorRegistryContract.addOperator(
+            name,
+            user2.getAddress(),
+            signerPubkey
+        );
+
+        // unstakeClaim for validator 1
+
+        // add a new node operator
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false)
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no1[5], toEth("110"))
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("100"), toEth("10")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1)
+
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .unstake())
+            .to.emit(nodeOperatorRegistryContract, "UnstakeOperator").withArgs(1)
+
+        let beforeBalance = await polygonERC20Contract.balanceOf(await user1.getAddress())
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .unstakeClaim())
+            .to.emit(nodeOperatorRegistryContract, "ClaimUnstake")
+        let afterBalance = await polygonERC20Contract.balanceOf(await user1.getAddress())
+        expect(beforeBalance.toString() !== afterBalance.toString())
+
+        // add a new node operator
+        const no2 = await nodeOperatorRegistryContract.getNodeOperator(2, false)
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user2).approve(no2[5], toEth("110"))
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user2)
+            .stake(toEth("100"), toEth("10")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(2)
+
+        expect(await nodeOperatorRegistryContract.connect(user2)
+            .unstake())
+            .to.emit(nodeOperatorRegistryContract, "UnstakeOperator").withArgs(2)
+
+        beforeBalance = await polygonERC20Contract.balanceOf(await user2.getAddress())
+        expect(await nodeOperatorRegistryContract.connect(user2)
+            .unstakeClaim())
+            .to.emit(nodeOperatorRegistryContract, "ClaimUnstake")
+
+        afterBalance = await polygonERC20Contract.balanceOf(await user2.getAddress())
+        expect(beforeBalance.toString() !== afterBalance.toString())
+
+        expect((await nodeOperatorRegistryContract.getNodeOperator(1, false))[0] == "UNSTAKED", "operator 1 status")
+        expect((await nodeOperatorRegistryContract.getNodeOperator(1, false))[0] == "EXIT", "operator 2 status")
+
+        const stats = await nodeOperatorRegistryContract.getState()
+        expect(stats[0].toString() == "1", "totalNodeOpearator")
+        expect(stats[1].toString() == "0", "totalActiveNodeOpearator")
+        expect(stats[2].toString() == "0", "totalStakedNodeOpearator")
+        expect(stats[3].toString() == "1", "totalUnstakedNodeOpearator")
+        expect(stats[3].toString() == "1", "totalExitNodeOpearator")
     })
 });
 

@@ -61,6 +61,7 @@ contract NodeOperatorRegistry is
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
+        _setupRole(EXIT_OPERATOR_ROLE, msg.sender);
     }
 
     /// @notice Add a new node operator to the system.
@@ -78,14 +79,14 @@ contract NodeOperatorRegistry is
         isValidPublickey(_signerPubkey)
         userHasRole(ADD_OPERATOR_ROLE)
     {
-        uint256 id = state.totalNodeOpearator + 1;
+        uint256 operatorId = state.totalNodeOpearator + 1;
 
         // deploy validator contract.
         address validatorContract = IValidatorFactory(state.validatorFactory)
             .create();
 
         // add the validator.
-        operators[id] = Operator.NodeOperator({
+        operators[operatorId] = Operator.NodeOperator({
             status: Operator.NodeOperatorStatus.ACTIVE,
             name: _name,
             rewardAddress: _rewardAddress,
@@ -96,40 +97,39 @@ contract NodeOperatorRegistry is
         });
 
         // update global state.
-        operatorIds.push(id);
+        operatorIds.push(operatorId);
         state.totalNodeOpearator++;
         state.totalActiveNodeOpearator++;
 
-        // map user _rewardAddress with the validator id.
-        operatorOwners[_rewardAddress] = id;
+        // map user _rewardAddress with the operatorId.
+        operatorOwners[_rewardAddress] = operatorId;
 
         // emit NewOperator event.
         emit NewOperator(
-            id,
+            operatorId,
             _name,
             _signerPubkey,
             Operator.NodeOperatorStatus.ACTIVE
         );
     }
 
-    function removeOperator(uint256 _id)
+    function removeOperator(uint256 _operatorId)
         public
         override
         userHasRole(REMOVE_OPERATOR_ROLE)
     {
-        Operator.NodeOperator storage op = operators[_id];
-        // Todo: un comment this when the operator switch state to unactive
-        // require(
-        //     op.state == NodeOperatorStatus.UNACTIVE,
-        //     "Node Operator state not unactive"
-        // );
+        Operator.NodeOperator storage op = operators[_operatorId];
+        require(
+            op.status == Operator.NodeOperatorStatus.EXIT,
+            "Node Operator state not exit"
+        );
 
         state.totalNodeOpearator--;
         state.totalActiveNodeOpearator--;
 
         // update the operatorIds array by removing the actual deleted operator
         for (uint256 i = 0; i < operatorIds.length - 1; i++) {
-            if (_id == operatorIds[i]) {
+            if (_operatorId == operatorIds[i]) {
                 operatorIds[i] = operatorIds[operatorIds.length - 1];
                 break;
             }
@@ -139,9 +139,9 @@ contract NodeOperatorRegistry is
 
         // delete operator and owner mappings from operators and operatorOwners;
         delete operatorOwners[op.rewardAddress];
-        delete operators[_id];
+        delete operators[_operatorId];
 
-        emit RemoveOperator(_id);
+        emit RemoveOperator(_operatorId);
     }
 
     /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
@@ -188,17 +188,17 @@ contract NodeOperatorRegistry is
         return state;
     }
 
-    /// @notice Allows to get a node operator by _id.
-    /// @param _id the id of the operator.
+    /// @notice Allows to get a node operator by _operatorId.
+    /// @param _operatorId the id of the operator.
     /// @param _full if true return the name of the operator else set to empty string.
     /// @return Returns node operator.
-    function getNodeOperator(uint256 _id, bool _full)
+    function getNodeOperator(uint256 _operatorId, bool _full)
         external
         view
         override
         returns (Operator.NodeOperator memory)
     {
-        Operator.NodeOperator memory opts = operators[_id];
+        Operator.NodeOperator memory opts = operators[_operatorId];
         if (!_full) {
             opts.name = "";
             return opts;
@@ -302,7 +302,7 @@ contract NodeOperatorRegistry is
 
         require(
             no.status == Operator.NodeOperatorStatus.UNSTAKED,
-            "Opeartor status not UNSTAKED"
+            "Operator status not UNSTAKED"
         );
 
         (uint256 amount, uint256 rewards) = IValidator(no.validatorContract)
@@ -311,6 +311,8 @@ contract NodeOperatorRegistry is
         // check if the validator contract has still rewards buffred if not set status to EXIT.
         if (rewards == 0) {
             no.status = Operator.NodeOperatorStatus.EXIT;
+            state.totalUnstakedNodeOpearator--;
+            state.totalExitNodeOpearator++;
         }
 
         emit ClaimUnstake(validatorId, msg.sender, amount);
@@ -396,5 +398,15 @@ contract NodeOperatorRegistry is
         emit WithdrawRewards();
 
         return (shares, recipient);
+    }
+
+    function exitNodeOperator(uint256 _operatorId)
+        external
+        override
+        userHasRole(EXIT_OPERATOR_ROLE)
+    {
+        Operator.NodeOperator storage no = operators[_operatorId];
+        require(no.status == Operator.NodeOperatorStatus.ACTIVE, "Operator status not active");
+        no.status = Operator.NodeOperatorStatus.EXIT;
     }
 }

@@ -13,6 +13,7 @@ contract NodeOperatorStorage {
 
     bytes32 public constant ADD_OPERATOR_ROLE = keccak256("ADD_OPERATOR");
     bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
+    bytes32 public constant EXIT_OPERATOR_ROLE = keccak256("EXIT_OPERATOR");
 
     // ====================================================================
     // =========================== Global Vars ============================

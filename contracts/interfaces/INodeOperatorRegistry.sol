@@ -22,8 +22,8 @@ interface INodeOperatorRegistry {
 
     /// @notice Remove a node operator from the system.
     /// @dev Remove a node operator from the system using the _id.
-    /// @param _id node operator id.
-    function removeOperator(uint256 _id) external;
+    /// @param _operatorId node operator id.
+    function removeOperator(uint256 _operatorId) external;
 
     /// @notice Allows to stake an opearator on the Polygon stakeManager
     /// @dev Allows to stake an operator on the Polygon stakeManager.
@@ -74,6 +74,11 @@ interface INodeOperatorRegistry {
         external
         returns (uint256[] memory, address[] memory);
 
+
+    /// @notice Allows to exit a node operator.
+    /// @param _operatorId operator id.
+    function exitNodeOperator(uint256 _operatorId) external;
+
     /// @notice The version of the actual contract.
     /// @return return the contract version.
     function version() external returns (string memory);
@@ -100,7 +105,7 @@ interface INodeOperatorRegistry {
 
     /// @notice Allows to get node operator details.
     /// @return Returns node operator details.
-    function getNodeOperator(uint256 _id, bool _full)
+    function getNodeOperator(uint256 _operatorId, bool _full)
         external
         view
         returns (Operator.NodeOperator memory);
