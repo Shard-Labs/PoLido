@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.7;
 
-import "../Validator.sol";
 import "../lib/Operator.sol";
 
 /// @title ValidatorFactoryStorage
@@ -17,7 +16,7 @@ contract ValidatorFactoryStorage {
     Operator.ValidatorFactoryState internal state;
 
     /// @notice validators contracts.
-    Validator[] internal validators;
+    address[] internal validators;
 
     // ====================================================================
     // ============================== EVENTS ==============================

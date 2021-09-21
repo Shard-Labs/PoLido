@@ -3,12 +3,11 @@
 pragma solidity ^0.8.7;
 
 import "hardhat/console.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "./Validator.sol";
+import "./ValidatorProxy.sol";
 import "./storages/ValidatorFactoryStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title ValidatorFactory
 /// @author 2021 Shardlabs.
@@ -17,19 +16,18 @@ import "./interfaces/INodeOperatorRegistry.sol";
 /// @dev ValidatorFactory is a Factory that allows to clone new validators from
 /// a validator contract implementation
 contract ValidatorFactory is
-    ValidatorFactoryStorage,
     Initializable,
-    AccessControl,
-    UUPSUpgradeable
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    ValidatorFactoryStorage
 {
     // ====================================================================
     // =========================== MODIFIERS ==============================
     // ====================================================================
 
-    /// @notice Check if the msg.sender has permission.
-    /// @param _role role needed to call function.
-    modifier userHasRole(bytes32 _role) {
-        require(hasRole(_role, msg.sender), "Permission not found");
+    /// @notice Check if the msg.sender is the owner.
+    modifier isOwner() {
+        require(owner() == msg.sender, "Permission not found");
         _;
     }
 
@@ -47,27 +45,36 @@ contract ValidatorFactory is
     // ====================================================================
 
     /// @notice Initialize the NodeOperator contract.
-    function initialize()
-        public
-        initializer
-    {   
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    function initialize(address _validatorImplementation) public initializer {
+        __Ownable_init();
+        state.validatorImplementation = _validatorImplementation;
     }
 
     /// @notice Deploy a new validator contract
     /// @return return the address of the new validator contract deployed
     function create() public isOperator returns (address) {
         require(state.operator != address(0), "Operator contract not set");
-        Validator validator = new Validator();
-        validator.initialize(state.operator);
-        validators.push(Validator(validator));
-        emit CreateValidator(address(validator));
-        return address(validator);
+
+        // create a new validator proxy
+        address proxy = address(
+            new ValidatorProxy(owner(), state.validatorImplementation)
+        );
+
+        // set the operator address.
+        (bool success, ) = proxy.call(
+            abi.encodeWithSignature("setOperator(address)", state.operator)
+        );
+        require(success, "Set operator fails");
+
+        validators.push(proxy);
+
+        emit CreateValidator(proxy);
+        return proxy;
     }
 
     /// @notice Get validators contracts.
     /// @return return a list of deployed validator contracts.
-    function getValidators() public view returns (Validator[] memory) {
+    function getValidators() public view returns (address[] memory) {
         return validators;
     }
 
@@ -76,7 +83,7 @@ contract ValidatorFactory is
     function _authorizeUpgrade(address newImplementation)
         internal
         override
-        userHasRole(DEFAULT_ADMIN_ROLE)
+        isOwner
     {}
 
     /// @notice Allows to set the NodeOperatorRegistry contract.

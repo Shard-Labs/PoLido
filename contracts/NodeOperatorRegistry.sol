@@ -409,4 +409,8 @@ contract NodeOperatorRegistry is
         require(no.status == Operator.NodeOperatorStatus.ACTIVE, "Operator status not active");
         no.status = Operator.NodeOperatorStatus.EXIT;
     }
+
+    function getValidatorImplementation() external returns (address) {
+        return address(0);
+    }
 }

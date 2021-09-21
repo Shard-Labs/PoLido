@@ -2,20 +2,22 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "hardhat/console.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./storages/ValidatorStorage.sol";
 
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "hardhat/console.sol";
+
 /// @title Validator
 /// @author 2021 Shardlabs.
 /// @notice Validator is the contract used to manage a staked validator on Polygon stake manager
 /// @dev Validator is the contract used to manage a staked validator on Polygon stake manager
-contract Validator is IValidator, ValidatorStorage, Initializable {
+contract Validator is IValidator, ValidatorStorage {
     using SafeERC20 for IERC20;
 
     // ====================================================================
@@ -35,10 +37,14 @@ contract Validator is IValidator, ValidatorStorage, Initializable {
     // =========================== FUNCTIONS ==============================
     // ====================================================================
 
-    /// @notice Initialize the NodeOperator contract.
-    function initialize(address _operator) public initializer {
-        state.operator = _operator;
+    constructor() {
+        state.operator = address(22);
     }
+
+    /// @notice Initialize the NodeOperator contract.
+    // function initialize(address _operator) public initializer {
+    //     state.operator = _operator;
+    // }
 
     /// @notice Stake allows to stake on the Polygon stakeManager contract
     /// @dev  Stake allows to stake on the Polygon stakeManager contract by
@@ -170,11 +176,16 @@ contract Validator is IValidator, ValidatorStorage, Initializable {
     {
         INodeOperatorRegistry operator = getOperator();
         IStakeManager stakeManager = IStakeManager(operator.getStakeManager());
-        
+
         uint256 amount = stakeManager.validatorStake(_validatorId);
         stakeManager.unstakeClaim(_validatorId);
-        uint256 balance = IERC20(operator.getPolygonERC20()).balanceOf(address(this));
-        IERC20(operator.getPolygonERC20()).safeTransfer(_ownerRecipient, amount);
+        uint256 balance = IERC20(operator.getPolygonERC20()).balanceOf(
+            address(this)
+        );
+        IERC20(operator.getPolygonERC20()).safeTransfer(
+            _ownerRecipient,
+            amount
+        );
 
         return (amount, balance - amount);
     }
@@ -185,19 +196,16 @@ contract Validator is IValidator, ValidatorStorage, Initializable {
         return INodeOperatorRegistry(state.operator);
     }
 
+    /// @notice Allows to set the operator contract.
+    function setOperator(address _operator) external {
+        state.operator = _operator;
+    }
+
     /// @notice Allows to get the stakeManager contract.
     /// @return Returns stakeManager contract address.
     function getStakeManager() public view returns (address) {
         return INodeOperatorRegistry(state.operator).getStakeManager();
     }
-
-    // /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
-    // /// @param newImplementation new contract implementation address.
-    // function _authorizeUpgrade(address newImplementation)
-    //     internal
-    //     override
-    //     isOperator
-    // {}
 
     /// @notice Contract version.
     /// @dev Returns contract version.
