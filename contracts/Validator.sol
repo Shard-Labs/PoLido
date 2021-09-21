@@ -37,15 +37,6 @@ contract Validator is IValidator, ValidatorStorage {
     // =========================== FUNCTIONS ==============================
     // ====================================================================
 
-    constructor() {
-        state.operator = address(22);
-    }
-
-    /// @notice Initialize the NodeOperator contract.
-    // function initialize(address _operator) public initializer {
-    //     state.operator = _operator;
-    // }
-
     /// @notice Stake allows to stake on the Polygon stakeManager contract
     /// @dev  Stake allows to stake on the Polygon stakeManager contract by
     /// calling stakeFor function and set the user address equal to this contract address
