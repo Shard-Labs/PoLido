@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "./interfaces/IValidatorShare.sol";
 
 contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
-    ////////////////////////////////////////////////////////////////
-    /////                                                    //////
-    /////             ***State Variables***                  /////
-    /////                                                    ////
+    ////////////////////////////////////////////////////////////
+    ///                                                      ///
+    ///               ***State Variables***                  ///
+    ///                                                      ///
     ////////////////////////////////////////////////////////////
 
     mapping(address => RequestWithdraw) public userToWithdrawRequest;
@@ -82,10 +82,19 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     }
 
     /**
+     * How to select a validator that we are going to withdraw from?
+     *
      * @dev Stores users request to withdraw into a RequestWithdraw struct
      * @param _amount - Amount of MATIC that is requested to withdraw
      */
     function requestWithdraw(uint256 _amount) external notPaused {
+        // Add a function that converts MATIC to StMATIC and reverse
+        // Check how many StMATIC does a caller have
+        // Add a mapping between a validator address and a nonce (starts at 1)
+        // Increment nonce by 1 everytime a user calls a withdrawal function
+        // Burn StMATIC after checking if _amount satisfies user's balance
+        // A nonce is dependent on a validator
+        // Add a nonce per user
         userToWithdrawRequest[msg.sender] = RequestWithdraw(
             _amount,
             0, // TODO
@@ -102,10 +111,10 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
         paused = _pause;
     }
 
-    ////////////////////////////////////////////////////////////////
-    /////                                                    //////
-    /////             ***ValidatorShare API***               /////
-    /////                                                    ////
+    ////////////////////////////////////////////////////////////
+    /////                                                    ///
+    /////             ***ValidatorShare API***               ///
+    /////                                                    ///
     ////////////////////////////////////////////////////////////
 
     /**
@@ -119,18 +128,13 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
         address _validatorShare,
         uint256 _amount,
         uint256 _minSharesToMint
-    ) public returns (bytes memory) {
-        (bool success, bytes memory data) = _validatorShare.delegatecall(
-            abi.encodeWithSignature(
-                "buyVoucher(uint256,uint256)",
-                _amount,
-                _minSharesToMint
-            )
+    ) public returns (uint256) {
+        uint256 amountSpent = IValidatorShare(_validatorShare).buyVoucher(
+            _amount,
+            _minSharesToMint
         );
 
-        require(success, "buyVoucher delegatecall failed");
-
-        return data;
+        return amountSpent;
     }
 
     /**
@@ -138,11 +142,7 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
      * @param _validatorShare - Address of validatorShare contract
      */
     function restake(address _validatorShare) public {
-        (bool success, ) = _validatorShare.delegatecall(
-            abi.encodeWithSignature("restake()")
-        );
-
-        require(success, "restake delegatecall failed");
+        IValidatorShare(_validatorShare).restake();
     }
 
     /**
@@ -154,14 +154,7 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
         address _validatorShare,
         uint256 _unbondNonce
     ) public {
-        (bool success, ) = _validatorShare.delegatecall(
-            abi.encodeWithSignature(
-                "unstakeClaimTokens_new(uint256)",
-                _unbondNonce
-            )
-        );
-
-        require(success, "unstakeClaimTokens_new delegatecall failed");
+        IValidatorShare(_validatorShare).unstakeClaimTokens_new(_unbondNonce);
     }
 
     /**
@@ -175,15 +168,10 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
         uint256 _claimAmount,
         uint256 _maximumSharesToBurn
     ) public {
-        (bool success, ) = _validatorShare.delegatecall(
-            abi.encodeWithSignature(
-                "sellVoucher_new(uint256,uint256)",
-                _claimAmount,
-                _maximumSharesToBurn
-            )
+        IValidatorShare(_validatorShare).sellVoucher_new(
+            _claimAmount,
+            _maximumSharesToBurn
         );
-
-        require(success, "sellVoucher_new delegatecall failed");
     }
 
     /**
