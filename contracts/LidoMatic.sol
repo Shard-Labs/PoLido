@@ -175,30 +175,28 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     }
 
     /**
-     * @dev API for getting total stake of an user from validatorShare
+     * @dev API for getting total stake of this contract from validatorShare
      * @param _validatorShare - Address of validatorShare contract
-     * @param _user - Address of user
-     * @return Total stake of _user and MATIC -> share exchange rate
+     * @return Total stake of this contract and MATIC -> share exchange rate
      */
-    function getTotalStake(IValidatorShare _validatorShare, address _user)
+    function getTotalStake(IValidatorShare _validatorShare)
         public
         view
         returns (uint256, uint256)
     {
-        return _validatorShare.getTotalStake(_user);
+        return _validatorShare.getTotalStake(address(this));
     }
 
     /**
-     * @dev API for liquid rewards of an user from validatorShare
+     * @dev API for liquid rewards of this contract from validatorShare
      * @param _validatorShare - Address of validatorShare contract
-     * @param _user - Address of user
-     * @return Liquid rewards of _user
+     * @return Liquid rewards of this contract
      */
-    function getLiquidRewards(IValidatorShare _validatorShare, address _user)
+    function getLiquidRewards(IValidatorShare _validatorShare)
         public
         view
         returns (uint256)
     {
-        return _validatorShare.getLiquidRewards(_user);
+        return _validatorShare.getLiquidRewards(address(this));
     }
 }
