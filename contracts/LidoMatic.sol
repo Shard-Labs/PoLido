@@ -222,4 +222,19 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
 
         return totalStake;
     }
+
+    /**
+     * @dev Function that converts users StMATIC to MATIC
+     * @return Users balance in MATIC
+     */
+    function getUserBalanceInMATIC() public view returns (uint256) {
+        uint256 userShares = balanceOf(msg.sender);
+        uint256 totalShares = totalSupply();
+        uint256 totalPooledMATIC = getTotalStakeAcrossAllValidators();
+
+        uint256 userBalanceInMATIC = (userShares * totalPooledMATIC) /
+            totalShares;
+
+        return userBalanceInMATIC;
+    }
 }
