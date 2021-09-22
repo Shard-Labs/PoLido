@@ -43,11 +43,27 @@ interface IValidator {
     /// withdraw delay
     /// @param _validatorId validator id.
     /// @param _ownerRecipient user address used to transfer the staked tokens.
-    /// @return Returns the amount transfered to the user and rewards buffred on the 
-    /// validator contract. 
+    /// @return Returns the amount transfered to the user and rewards buffred on the
+    /// validator contract.
     function unstakeClaim(address _ownerRecipient, uint256 _validatorId)
         external
         returns (uint256, uint256);
+
+    function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
+        external;
+
+    function claimFee(
+        uint256 _accumFeeAmount,
+        uint256 _index,
+        bytes memory _proof
+    ) external;
+
+    function updateCommissionRate(
+        uint256 _validatorId,
+        uint256 _newCommissionRate
+    ) external;
+
+    function unjail(uint256 _validatorId) external;
 
     function version() external returns (string memory);
 }

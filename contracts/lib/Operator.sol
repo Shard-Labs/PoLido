@@ -22,8 +22,8 @@ library Operator {
         address rewardAddress;
         uint256 validatorId;
         bytes signerPubkey;
-        address validatorContract;
         address validatorShare;
+        address validatorContract;
     }
 
     /// @notice Node operator registry state.

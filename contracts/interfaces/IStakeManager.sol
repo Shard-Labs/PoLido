@@ -56,4 +56,20 @@ interface IStakeManager {
     /// @notice Allows to unstake the staked tokens on the stakeManager.
     /// @param validatorId validator id.
     function unstakeClaim(uint256 validatorId) external;
+
+    function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
+        external;
+
+    function claimFee(
+        uint256 _accumFeeAmount,
+        uint256 _index,
+        bytes memory _proof
+    ) external;
+
+    function updateCommissionRate(
+        uint256 _validatorId,
+        uint256 _newCommissionRate
+    ) external;
+
+    function unjail(uint256 _validatorId) external;
 }

@@ -14,6 +14,7 @@ contract NodeOperatorStorage {
     bytes32 public constant ADD_OPERATOR_ROLE = keccak256("ADD_OPERATOR");
     bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
     bytes32 public constant EXIT_OPERATOR_ROLE = keccak256("EXIT_OPERATOR");
+    bytes32 public constant UPDATE_COMMISION_RATE_OPERATOR_ROLE = keccak256("UPDATE_COMMISION_RATE_OPERATOR");
 
     // ====================================================================
     // =========================== Global Vars ============================
@@ -53,7 +54,9 @@ contract NodeOperatorStorage {
 
     /// @dev A node operator was staked.
     /// @param id node operator id.
-    event StakeOperator(uint256 id);
+    event StakeOperator(uint256 id, uint256 validatorId);
+
+    event ActivateOperator(uint256 id, uint256 validatorId);
 
     /// @dev A node operator was unstaked.
     /// @param id node operator id.
@@ -72,4 +75,15 @@ contract NodeOperatorStorage {
 
     /// @dev approve erc20 to a validator contract.
     event ClaimUnstake(uint256 id, address user, uint256 amount);
+
+    /// @dev update signer publickey.
+    event UpdateSignerPubkey(
+        uint256 id,
+        uint256 validatorId,
+        bytes signerPubkey
+    );
+
+    event ClaimFee(uint256 id, uint256 validatorId, uint256 accumFeeAmount, uint256 index, bytes proof);
+    event UpdateCommissionRate(uint256 newCommissionRate);
+    event Unjail(uint256 id, uint256 validatorId);
 }

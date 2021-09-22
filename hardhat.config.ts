@@ -26,12 +26,20 @@ const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY;
 
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
-    solidity: "0.8.7",
+    solidity: {
+        version: '0.8.7',
+        settings: {
+            optimizer: {
+                enabled: true,
+                runs: 200
+            }
+        },
+    },
     networks: {
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${GOERLI_PRIVATE_KEY}`]
-        }
+            accounts: [`0x${GOERLI_PRIVATE_KEY}`],
+        },
     },
     typechain: {
         outDir: "typechain",

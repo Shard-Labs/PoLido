@@ -26,6 +26,10 @@ contract StakeManagerMock is IStakeManager {
     event TopUpForFee(address user, uint256 heimdallFee);
     event WithdrawRewards(address user, uint256 validatorId);
     event UnstakeClaim(address user, uint256 validatorId);
+    event UpdateSigner(address user, uint256 validatorId, bytes signerPubKey);
+    event ClaimFee(uint256 accumFeeAmount, uint256 index, bytes proof);
+    event UpdateCommissionRate(uint256 validatorId, uint256 newCommissionRate);
+    event Unjail(uint256 validatorId);
 
     constructor(address _token) {
         state.token = _token;
@@ -48,7 +52,8 @@ contract StakeManagerMock is IStakeManager {
             address(this),
             _amount + _heimdallFee
         );
-
+        state.id++;
+        
         emit StakeFor(
             _user,
             _amount,
@@ -101,7 +106,7 @@ contract StakeManagerMock is IStakeManager {
     function unstakeClaim(uint256 _validatorId) external override {
         emit WithdrawRewards(msg.sender, _validatorId);
         uint256 id = state.validators[msg.sender];
-        
+
         if (id % 2 == 0) {
             IERC20(state.token).transfer(msg.sender, 1000);
         } else {
@@ -112,5 +117,31 @@ contract StakeManagerMock is IStakeManager {
 
     function validatorStake(uint256) external pure override returns (uint256) {
         return 1000;
+    }
+
+    function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
+        external
+        override
+    {
+        emit UpdateSigner(msg.sender, _validatorId, _signerPubkey);
+    }
+
+    function claimFee(
+        uint256 _accumFeeAmount,
+        uint256 _index,
+        bytes memory _proof
+    ) external override {
+        emit ClaimFee(_accumFeeAmount, _index, _proof);
+    }
+
+    function updateCommissionRate(
+        uint256 _validatorId,
+        uint256 _newCommissionRate
+    ) external override {
+        emit UpdateCommissionRate(_validatorId, _newCommissionRate);
+    }
+
+    function unjail(uint256 _validatorId) external override {
+        emit Unjail(_validatorId);
     }
 }

@@ -74,10 +74,26 @@ interface INodeOperatorRegistry {
         external
         returns (uint256[] memory, address[] memory);
 
-
     /// @notice Allows to exit a node operator.
     /// @param _operatorId operator id.
     function exitNodeOperator(uint256 _operatorId) external;
+
+    function updateSigner(bytes memory _signerPubkey) external;
+
+    function claimFee(
+        uint256 _accumFeeAmount,
+        uint256 _index,
+        bytes memory _proof
+    ) external;
+
+    function updateCommissionRate(uint256 _newCommissionRate) external;
+
+    function updateOperatorCommissionRate(
+        uint256 _operatorId,
+        uint256 _newCommissionRate
+    ) external;
+
+    function unjail() external;
 
     /// @notice The version of the actual contract.
     /// @return return the contract version.

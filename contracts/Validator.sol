@@ -181,6 +181,50 @@ contract Validator is IValidator, ValidatorStorage {
         return (amount, balance - amount);
     }
 
+    /// @notice Allows to update signer publickey
+    /// @param _validatorId validator id
+    /// @param _signerPubkey new signer publickey
+    function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
+        external
+        override
+        isOperator
+    {
+        IStakeManager stakeManager = IStakeManager(getStakeManager());
+        stakeManager.updateSigner(_validatorId, _signerPubkey);
+    }
+
+    /// @notice Allows withdraw heimdall fees
+    /// @param _accumFeeAmount accumulated heimdall fees
+    /// @param _index index
+    /// @param _proof proof
+    function claimFee(
+        uint256 _accumFeeAmount,
+        uint256 _index,
+        bytes memory _proof
+    ) external override isOperator {
+        INodeOperatorRegistry operator = getOperator();
+        IStakeManager stakeManager = IStakeManager(operator.getStakeManager());
+        stakeManager.claimFee(_accumFeeAmount, _index, _proof);
+    }
+
+    /// @notice Allows to update commission rate
+    /// @param _validatorId validator id
+    /// @param _newCommissionRate new commission rate
+    function updateCommissionRate(
+        uint256 _validatorId,
+        uint256 _newCommissionRate
+    ) external override isOperator {
+        IStakeManager stakeManager = IStakeManager(getStakeManager());
+        stakeManager.updateCommissionRate(_validatorId, _newCommissionRate);
+    }
+
+    /// @notice Allows to unjail the validator.
+    /// @param _validatorId validator id
+    function unjail(uint256 _validatorId) external override isOperator {
+        IStakeManager stakeManager = IStakeManager(getStakeManager());
+        stakeManager.unjail(_validatorId);
+    }
+
     /// @notice Allows to get the operator contract.
     /// @return Returns operator contract address.
     function getOperator() public view returns (INodeOperatorRegistry) {
