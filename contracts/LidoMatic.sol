@@ -23,6 +23,7 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     // Address of Matic token
     address public token;
     bool paused;
+    IValidatorShare[] validatorShares;
 
     // Withdrawal structure
     struct RequestWithdraw {
@@ -198,5 +199,27 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
         returns (uint256)
     {
         return _validatorShare.getLiquidRewards(address(this));
+    }
+
+    ////////////////////////////////////////////////////////////
+    /////                                                    ///
+    /////            ***Helpers & Utilities***               ///
+    /////                                                    ///
+    ////////////////////////////////////////////////////////////
+
+    /**
+     * @dev Helper function for that returns total pooled MATIC
+     * @return Total pooled MATIC
+     */
+    function getTotalStakeAcrossAllValidators() public view returns (uint256) {
+        uint256 totalStake;
+
+        for (uint256 i = 0; i < validatorShares.length; i++) {
+            (uint256 currValidatorShare, ) = getTotalStake(validatorShares[i]);
+
+            totalStake += currValidatorShare;
+        }
+
+        return totalStake;
     }
 }
