@@ -5,10 +5,7 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol";
 
-contract ValidatorProxy is
-    Proxy,
-    ERC1967UpgradeUpgradeable
-{
+contract ValidatorProxy is Proxy, ERC1967UpgradeUpgradeable {
     // ====================================================================
     // =========================== MODIFIERS ==============================
     // ====================================================================
@@ -26,10 +23,7 @@ contract ValidatorProxy is
         initialize(_admin, _newImplementation);
     }
 
-    function initialize(address _admin, address _newImplementation)
-        internal
-        initializer
-    {
+    function initialize(address _admin, address _newImplementation) internal {
         _changeAdmin(_admin);
         _upgradeTo(_newImplementation);
         __ERC1967Upgrade_init();

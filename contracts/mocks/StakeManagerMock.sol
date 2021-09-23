@@ -53,7 +53,7 @@ contract StakeManagerMock is IStakeManager {
             _amount + _heimdallFee
         );
         state.id++;
-        
+
         emit StakeFor(
             _user,
             _amount,
@@ -61,6 +61,14 @@ contract StakeManagerMock is IStakeManager {
             _acceptDelegation,
             _signerPubkey
         );
+    }
+
+    function restake(
+        uint256,
+        uint256 _amount,
+        bool
+    ) external override {
+        IERC20(state.token).transferFrom(msg.sender, address(this), _amount);
     }
 
     function unstake(uint256 _validatorId) external override {

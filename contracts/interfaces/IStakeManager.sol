@@ -20,6 +20,16 @@ interface IStakeManager {
         bytes memory signerPubkey
     ) external;
 
+    /// @notice Restake Matics for a validator on polygon stake manager.
+    /// @param validatorId validator id.
+    /// @param amount amount to stake.
+    /// @param stakeRewards restake rewards.
+    function restake(
+        uint256 validatorId,
+        uint256 amount,
+        bool stakeRewards
+    ) external;
+
     /// @notice Request unstake a validator.
     /// @param validatorId validator id.
     function unstake(uint256 validatorId) external;

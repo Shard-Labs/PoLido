@@ -23,6 +23,18 @@ interface IValidator {
         bytes memory _signerPubkey
     ) external;
 
+    /// @notice Restake Matics for a validator on polygon stake manager.
+    /// @param _sender operator owner which approved tokens to the validato contract.
+    /// @param validatorId validator id.
+    /// @param amount amount to stake.
+    /// @param stakeRewards restake rewards.
+    function restake(
+        address _sender,
+        uint256 validatorId,
+        uint256 amount,
+        bool stakeRewards
+    ) external;
+
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
     /// @param _validatorId validatorId.
@@ -47,7 +59,7 @@ interface IValidator {
     /// validator contract.
     function unstakeClaim(address _ownerRecipient, uint256 _validatorId)
         external
-        returns (uint256, uint256);
+        returns (uint256);
 
     function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
         external;

@@ -15,6 +15,7 @@ contract NodeOperatorStorage {
     bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
     bytes32 public constant EXIT_OPERATOR_ROLE = keccak256("EXIT_OPERATOR");
     bytes32 public constant UPDATE_COMMISION_RATE_OPERATOR_ROLE = keccak256("UPDATE_COMMISION_RATE_OPERATOR");
+    bytes32 public constant UPDATE_STAKE_HEIMDALL_FEES_ROLE = keccak256("UPDATE_STAKE_HEIMDALL_FEES_OPERATOR");
 
     // ====================================================================
     // =========================== Global Vars ============================
@@ -56,7 +57,7 @@ contract NodeOperatorStorage {
     /// @param id node operator id.
     event StakeOperator(uint256 id, uint256 validatorId);
 
-    event ActivateOperator(uint256 id, uint256 validatorId);
+    event RestakeOperator(uint256 id, uint256 validatorId);
 
     /// @dev A node operator was unstaked.
     /// @param id node operator id.

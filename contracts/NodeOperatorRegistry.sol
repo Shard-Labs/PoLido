@@ -27,13 +27,6 @@ contract NodeOperatorRegistry is
     // =========================== MODIFIERS ==============================
     // ====================================================================
 
-    /// @notice Check if the PublicKey is valid.
-    /// @param _pubkey publick key used in the heimdall node.
-    modifier isValidPublickey(bytes memory _pubkey) {
-        require(_pubkey.length == 64, "Invalid Public Key");
-        _;
-    }
-
     /// @notice Check if the msg.sender has permission.
     /// @param _role role needed to call function.
     modifier userHasRole(bytes32 _role) {
@@ -58,11 +51,20 @@ contract NodeOperatorRegistry is
         state.polygonERC20 = _polygonERC20;
 
         // Set ACL roles
+        // TODO: remove and set only the admin role
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
         _setupRole(EXIT_OPERATOR_ROLE, msg.sender);
         _setupRole(UPDATE_COMMISION_RATE_OPERATOR_ROLE, msg.sender);
+        _setupRole(UPDATE_STAKE_HEIMDALL_FEES_ROLE, msg.sender);
+        
+        setStakeAmountAndFees(
+            10 * 10**18,
+            10 * 10**18,
+            20 * 10**18,
+            20 * 10**18
+        );
     }
 
     /// @notice Add a new node operator to the system.
@@ -74,12 +76,11 @@ contract NodeOperatorRegistry is
         string memory _name,
         address _rewardAddress,
         bytes memory _signerPubkey
-    )
-        public
-        override
-        isValidPublickey(_signerPubkey)
-        userHasRole(ADD_OPERATOR_ROLE)
-    {
+    ) public override userHasRole(ADD_OPERATOR_ROLE) {
+        require(_signerPubkey.length == 64, "Invalid Public Key");
+        require(_rewardAddress != address(0), "Invalid reward address");
+        require(operatorOwners[_rewardAddress] == 0, "Address already used");
+
         uint256 operatorId = state.totalNodeOpearator + 1;
 
         // deploy validator contract.
@@ -93,8 +94,8 @@ contract NodeOperatorRegistry is
             rewardAddress: _rewardAddress,
             validatorId: 0,
             signerPubkey: _signerPubkey,
-            validatorContract: validatorContract,
-            validatorShare: address(0)
+            validatorShare: address(0),
+            validatorContract: validatorContract
         });
 
         // update global state.
@@ -114,6 +115,8 @@ contract NodeOperatorRegistry is
         );
     }
 
+    /// @notice Allows to remove an operator from the system.
+    /// @param _operatorId the node operator id.
     function removeOperator(uint256 _operatorId)
         public
         override
@@ -126,7 +129,7 @@ contract NodeOperatorRegistry is
         );
 
         state.totalNodeOpearator--;
-        state.totalActiveNodeOpearator--;
+        state.totalExitNodeOpearator--;
 
         // update the operatorIds array by removing the actual deleted operator
         for (uint256 idx = 0; idx < operatorIds.length - 1; idx++) {
@@ -145,10 +148,13 @@ contract NodeOperatorRegistry is
         emit RemoveOperator(_operatorId);
     }
 
-    // TODO: add role
     /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
     /// @param newImplementation new contract implementation address.
-    function _authorizeUpgrade(address newImplementation) internal override {}
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        override
+        userHasRole(DEFAULT_ADMIN_ROLE)
+    {}
 
     /// @notice Get the validator factory address
     /// @return Returns the validator factory address.
@@ -224,14 +230,19 @@ contract NodeOperatorRegistry is
     /// @param _heimdallFee herimdall fees.
     function stake(uint256 _amount, uint256 _heimdallFee) external override {
         require(
-            _amount >= (10**18) || _heimdallFee >= (20**18),
-            "Amount or HeimdallFees not enough"
+            _amount >= state.minAmountStake && _amount <= state.maxAmountStake,
+            "Invalid amount"
+        );
+        require(
+            _heimdallFee >= state.minHeimdallFees &&
+                _heimdallFee <= state.maxHeimdallFees,
+            "Invalid heimdallFee"
         );
 
-        uint256 id = operatorOwners[msg.sender];
-        require(id != 0, "Operator not exists");
+        uint256 operatorId = operatorOwners[msg.sender];
+        require(operatorId != 0, "Operator not exists");
 
-        Operator.NodeOperator storage no = operators[id];
+        Operator.NodeOperator storage no = operators[operatorId];
         require(
             no.status == Operator.NodeOperatorStatus.ACTIVE,
             "The Operator status is not active"
@@ -261,11 +272,32 @@ contract NodeOperatorRegistry is
         state.totalActiveNodeOpearator--;
         state.totalStakedNodeOpearator++;
 
-        emit StakeOperator(id, no.validatorId);
+        emit StakeOperator(operatorId, no.validatorId);
+    }
+
+    function restake(uint256 _amount) external override {
+        uint256 operatorId = operatorOwners[msg.sender];
+        require(operatorId != 0, "Operator not exists");
+
+        Operator.NodeOperator storage no = operators[operatorId];
+        require(
+            no.status == Operator.NodeOperatorStatus.STAKED,
+            "The operator status is not staked"
+        );
+
+        require(_amount > 0, "Amount is ZERO");
+
+        IValidator(no.validatorContract).restake(
+            msg.sender,
+            no.validatorId,
+            _amount,
+            false
+        );
+
+        emit RestakeOperator(operatorId, no.validatorId);
     }
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
-    /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
     function unstake() external override {
         uint256 id = operatorOwners[msg.sender];
         require(id != 0, "Operator not exists");
@@ -273,7 +305,7 @@ contract NodeOperatorRegistry is
         Operator.NodeOperator storage no = operators[id];
         require(
             no.status == Operator.NodeOperatorStatus.STAKED,
-            "The operator status is not staked"
+            "The operator status is not STAKED"
         );
         IValidator(no.validatorContract).unstake(no.validatorId);
 
@@ -295,7 +327,7 @@ contract NodeOperatorRegistry is
         Operator.NodeOperator storage no = operators[id];
         require(
             no.status == Operator.NodeOperatorStatus.STAKED,
-            "The operator status is not staked"
+            "The operator status is not STAKED"
         );
         IValidator(no.validatorContract).topUpForFee(msg.sender, _heimdallFee);
 
@@ -307,21 +339,19 @@ contract NodeOperatorRegistry is
         require(validatorId != 0, "Operator not exists");
 
         Operator.NodeOperator storage no = operators[validatorId];
-
         require(
             no.status == Operator.NodeOperatorStatus.UNSTAKED,
             "Operator status not UNSTAKED"
         );
 
-        (uint256 amount, uint256 rewards) = IValidator(no.validatorContract)
-            .unstakeClaim(msg.sender, validatorId);
+        uint256 amount = IValidator(no.validatorContract).unstakeClaim(
+            msg.sender,
+            validatorId
+        );
 
-        // check if the validator contract has still rewards buffred if not set status to EXIT.
-        if (rewards == 0) {
-            no.status = Operator.NodeOperatorStatus.EXIT;
-            state.totalUnstakedNodeOpearator--;
-            state.totalExitNodeOpearator++;
-        }
+        no.status = Operator.NodeOperatorStatus.EXIT;
+        state.totalUnstakedNodeOpearator--;
+        state.totalExitNodeOpearator++;
 
         emit ClaimUnstake(validatorId, msg.sender, amount);
     }
@@ -445,14 +475,14 @@ contract NodeOperatorRegistry is
         Operator.NodeOperator memory no = operators[operatorId];
 
         require(
-            no.status == Operator.NodeOperatorStatus.UNSTAKED,
-            "Operator status not UNSTAKED"
+            no.status == Operator.NodeOperatorStatus.EXIT,
+            "Operator status not EXIT"
         );
 
         require(_proof.length != 0, "Empty proof");
         require(_accumFeeAmount != 0, "AccumFeeAmount is ZERO");
         require(_index != 0, "index is ZERO");
-         
+
         IValidator(no.validatorContract).claimFee(
             _accumFeeAmount,
             _index,
@@ -468,24 +498,12 @@ contract NodeOperatorRegistry is
         );
     }
 
-    /// @notice Allows to update commission rate for all staked validators
-    /// @param _newCommissionRate new commission rate
-    function updateCommissionRate(uint256 _newCommissionRate)
-        external
-        override
-        userHasRole(UPDATE_COMMISION_RATE_OPERATOR_ROLE)
-    {
-        for (uint256 idx = 0; idx < operatorIds.length; idx++) {
-            updateOperatorCommissionRate(operatorIds[idx], _newCommissionRate);
-        }
-    }
-
     /// @notice Allows to update commission rate
     /// @param _newCommissionRate new commission rate
     function updateOperatorCommissionRate(
         uint256 _operatorId,
         uint256 _newCommissionRate
-    ) public override userHasRole(UPDATE_COMMISION_RATE_OPERATOR_ROLE) {
+    ) public override userHasRole(DEFAULT_ADMIN_ROLE) {
         Operator.NodeOperator memory no = operators[_operatorId];
         if (no.status != Operator.NodeOperatorStatus.STAKED)
             revert("Operator status no STAKED");
@@ -497,7 +515,7 @@ contract NodeOperatorRegistry is
         emit UpdateCommissionRate(_newCommissionRate);
     }
 
-    /// @notice Allows to unjail the validator.
+    /// @notice Allows to unjail the validator and turn his status from UNSTAKED to STAKED.
     function unjail() external override {
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
@@ -510,7 +528,7 @@ contract NodeOperatorRegistry is
         );
 
         IValidator(no.validatorContract).unjail(no.validatorId);
-        
+
         no.status = Operator.NodeOperatorStatus.STAKED;
         state.totalStakedNodeOpearator++;
         state.totalUnstakedNodeOpearator--;
@@ -518,16 +536,24 @@ contract NodeOperatorRegistry is
         emit Unjail(operatorId, no.validatorId);
     }
 
-    function exitNodeOperator(uint256 _operatorId)
-        external
-        override
-        userHasRole(EXIT_OPERATOR_ROLE)
-    {
-        Operator.NodeOperator storage no = operators[_operatorId];
+    function setStakeAmountAndFees(
+        uint256 _minAmountStake,
+        uint256 _maxAmountStake,
+        uint256 _minHeimdallFees,
+        uint256 _maxHeimdallFees
+    ) public userHasRole(UPDATE_STAKE_HEIMDALL_FEES_ROLE) {
         require(
-            no.status == Operator.NodeOperatorStatus.ACTIVE,
-            "Operator status not active"
+            _minAmountStake > 0 && _minAmountStake <= _maxAmountStake,
+            "Invalid amount"
         );
-        no.status = Operator.NodeOperatorStatus.EXIT;
+        require(
+            _minHeimdallFees > 0 && _minHeimdallFees <= _maxHeimdallFees,
+            "Invalid heimdallFees"
+        );
+
+        state.maxAmountStake = _maxAmountStake;
+        state.minAmountStake = _minAmountStake;
+        state.maxHeimdallFees = _maxHeimdallFees;
+        state.minHeimdallFees = _minHeimdallFees;
     }
 }

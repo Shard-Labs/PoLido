@@ -4,6 +4,7 @@ pragma solidity ^0.8.7;
 library Operator {
     /// @notice The node operator states.
     enum NodeOperatorStatus {
+        NONE,
         ACTIVE,
         STAKED,
         UNSTAKED,
@@ -37,6 +38,10 @@ library Operator {
         address stakeManager;
         address polygonERC20;
         address lido;
+        uint256 maxAmountStake;
+        uint256 minAmountStake;
+        uint256 maxHeimdallFees;
+        uint256 minHeimdallFees;
     }
 
     /// @notice State struct

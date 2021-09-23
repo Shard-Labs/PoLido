@@ -5,20 +5,24 @@ pragma solidity ^0.8.7;
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
-import "./storages/ValidatorStorage.sol";
 
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "hardhat/console.sol";
 
 /// @title Validator
 /// @author 2021 Shardlabs.
 /// @notice Validator is the contract used to manage a staked validator on Polygon stake manager
 /// @dev Validator is the contract used to manage a staked validator on Polygon stake manager
-contract Validator is IValidator, ValidatorStorage {
+contract Validator is IValidator {
     using SafeERC20 for IERC20;
+
+    // ====================================================================
+    // =========================== Global Vars ============================
+    // ====================================================================
+
+    /// @notice node operator registry address
+    Operator.ValidatorState internal state;
 
     // ====================================================================
     // =========================== MODIFIERS ==============================
@@ -36,6 +40,10 @@ contract Validator is IValidator, ValidatorStorage {
     // ====================================================================
     // =========================== FUNCTIONS ==============================
     // ====================================================================
+
+    // constructor (address _operator) {
+    //     state.operator = _operator;
+    // }
 
     /// @notice Stake allows to stake on the Polygon stakeManager contract
     /// @dev  Stake allows to stake on the Polygon stakeManager contract by
@@ -79,13 +87,39 @@ contract Validator is IValidator, ValidatorStorage {
             _acceptDelegation,
             _signerPubkey
         );
+    }
 
-        emit Stake(
-            address(this),
+    /// @notice Restake Matics for a validator on polygon stake manager.
+    /// @param _sender operator owner which approved tokens to the validato contract.
+    /// @param _validatorId validator id.
+    /// @param _amount amount to stake.
+    /// @param _stakeRewards restake rewards.
+    function restake(
+        address _sender,
+        uint256 _validatorId,
+        uint256 _amount,
+        bool _stakeRewards
+    ) external override isOperator {
+        // get operator
+        INodeOperatorRegistry operator = getOperator();
+
+        // get stakeManager
+        address stakeManager = operator.getStakeManager();
+
+        // approve Polygon token to stake manager totalAmount
+        address polygonERC20 = operator.getPolygonERC20();
+
+        // transfer tokens from user to this contract
+        IERC20(polygonERC20).safeTransferFrom(_sender, address(this), _amount);
+
+        // approve to stakeManager
+        IERC20(polygonERC20).safeApprove(stakeManager, _amount);
+
+        // call polygon stake manager
+        IStakeManager(stakeManager).restake(
+            _validatorId,
             _amount,
-            _heimdallFee,
-            _acceptDelegation,
-            _signerPubkey
+            _stakeRewards
         );
     }
 
@@ -97,7 +131,6 @@ contract Validator is IValidator, ValidatorStorage {
 
         // call polygon stake manager
         IStakeManager(stakeManager).unstake(_validatorId);
-        emit Unstake(_validatorId);
     }
 
     /// @notice Allows to top up heimdall fees.
@@ -126,7 +159,6 @@ contract Validator is IValidator, ValidatorStorage {
 
         // call polygon stake manager
         IStakeManager(stakeManager).topUpForFee(address(this), _heimdallFee);
-        emit TopUpForFee(address(this), _heimdallFee);
     }
 
     /// @notice Allows to withdraw rewards from the validator.
@@ -150,7 +182,6 @@ contract Validator is IValidator, ValidatorStorage {
         uint256 balance = IERC20(polygonERC20).balanceOf(address(this));
         IERC20(polygonERC20).safeTransfer(operator.getLido(), balance);
 
-        emit WithdrawRewards(_validatorId);
         return balance;
     }
 
@@ -163,22 +194,21 @@ contract Validator is IValidator, ValidatorStorage {
         external
         override
         isOperator
-        returns (uint256, uint256)
+        returns (uint256)
     {
         INodeOperatorRegistry operator = getOperator();
         IStakeManager stakeManager = IStakeManager(operator.getStakeManager());
 
-        uint256 amount = stakeManager.validatorStake(_validatorId);
         stakeManager.unstakeClaim(_validatorId);
         uint256 balance = IERC20(operator.getPolygonERC20()).balanceOf(
             address(this)
         );
         IERC20(operator.getPolygonERC20()).safeTransfer(
             _ownerRecipient,
-            amount
+            balance
         );
 
-        return (amount, balance - amount);
+        return balance;
     }
 
     /// @notice Allows to update signer publickey
@@ -231,9 +261,26 @@ contract Validator is IValidator, ValidatorStorage {
         return INodeOperatorRegistry(state.operator);
     }
 
+    /// @notice Allows to get the operator contract.
+    /// @return Returns operator contract address.
+    function getOperatorA() public view returns (address) {
+        console.log(state.operator);
+        return state.operator;
+    }
+
     /// @notice Allows to set the operator contract.
     function setOperator(address _operator) external {
+        // TODO: check why the default value is 0x1 not 0x0
         state.operator = _operator;
+    }
+
+    /// @notice Allows to set the operator contract.
+    function getState()
+        external
+        view
+        returns (Operator.ValidatorState memory)
+    {
+        return state;
     }
 
     /// @notice Allows to get the stakeManager contract.

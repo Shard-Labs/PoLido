@@ -33,6 +33,10 @@ interface INodeOperatorRegistry {
     /// @param _heimdallFee heimdallFee to stake.
     function stake(uint256 _amount, uint256 _heimdallFee) external;
 
+    /// @notice Restake Matics for a validator on polygon stake manager.
+    /// @param amount amount to stake.
+    function restake(uint256 amount) external;
+
     /// @notice Allows to unstake an operator from the stakeManager.
     /// @dev Unstake an operator from the stakeManager. After the withdraw_delay
     /// the operator owner can call claimStake func to withdraw the staked tokens.
@@ -74,10 +78,6 @@ interface INodeOperatorRegistry {
         external
         returns (uint256[] memory, address[] memory);
 
-    /// @notice Allows to exit a node operator.
-    /// @param _operatorId operator id.
-    function exitNodeOperator(uint256 _operatorId) external;
-
     function updateSigner(bytes memory _signerPubkey) external;
 
     function claimFee(
@@ -85,8 +85,6 @@ interface INodeOperatorRegistry {
         uint256 _index,
         bytes memory _proof
     ) external;
-
-    function updateCommissionRate(uint256 _newCommissionRate) external;
 
     function updateOperatorCommissionRate(
         uint256 _operatorId,
