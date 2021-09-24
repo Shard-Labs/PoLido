@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 interface IValidatorShare {
+    function validatorId() external returns (uint256);
+
     function withdrawRewards() external;
 
     function unstakeClaimTokens() external;

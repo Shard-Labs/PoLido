@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import "./interfaces/IValidatorShare.sol";
 
-contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
+contract LidoMatic is AccessControl, ERC20 {
     ////////////////////////////////////////////////////////////
     ///                                                      ///
     ///               ***State Variables***                  ///
@@ -14,18 +14,14 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     ////////////////////////////////////////////////////////////
 
     mapping(address => RequestWithdraw) public userToWithdrawRequest;
-    // Value of totalDelegated needs to be updated periodically off chain because of slashing and rewarding
-    // It is calculated as the sum of delegated MATIC across all validatorShares
     mapping(address => uint256) public userToShares;
-    // Value of totalBuffered needs to be set to 0 after the periodic update has been done
+    mapping(address => uint256) public validator2Nonce;
+    IValidatorShare[] validatorShares;
     uint256 public totalDelegated;
     uint256 public totalBuffered;
-    // Address of Matic token
     address public token;
     bool paused;
-    IValidatorShare[] validatorShares;
 
-    // Withdrawal structure
     struct RequestWithdraw {
         uint256 amount;
         uint256 validatorNonce;
@@ -54,7 +50,7 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
     /**
      * @param _token - Address of MATIC token on Ethereum Mainnet
      */
-    constructor(address _token) {
+    constructor(address _token) ERC20("Staked MATIC", "StMATIC") {
         token = _token;
     }
 
@@ -96,13 +92,37 @@ contract LidoMatic is ERC20("Staked Matic", "StMATIC"), AccessControl {
         // Burn StMATIC after checking if _amount satisfies user's balance
         // A nonce is dependent on a validator
         // Add a nonce per user
+        uint256 callerBalanceInMATIC = balanceOf(msg.sender);
+
+        if (callerBalanceInMATIC <= _amount) {
+            _burn(msg.sender, _amount);
+        }
+
+        IValidatorShare validator = chooseValidator();
+
+        if (validator2Nonce[address(validator)] == 0) {
+            validator2Nonce[address(validator)] = 1;
+        } else {
+            validator2Nonce[address(validator)] += 1;
+        }
+
         userToWithdrawRequest[msg.sender] = RequestWithdraw(
             _amount,
-            0, // TODO
-            address(0), // TODO
+            validator2Nonce[address(validator)],
+            address(validator),
             false
         );
     }
+
+    function chooseValidator()
+        private
+        view
+        returns (IValidatorShare validator)
+    {
+        return IValidatorShare(validatorShares[0]);
+    }
+
+    function delegate() external auth(GOVERNANCE) {}
 
     /**
      * @notice Only PAUSE_ROLE can call this function. This function puts certain functionalities on pause.

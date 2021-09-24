@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import "../interfaces/IValidatorShare.sol";
 
 contract MockValidatorShare is IValidatorShare {
+    function validatorId() external pure override returns (uint256) {
+        return 1;
+    }
+
     function withdrawRewards() external pure override {
         return;
     }
