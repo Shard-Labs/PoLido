@@ -556,4 +556,38 @@ contract NodeOperatorRegistry is
         state.maxHeimdallFees = _maxHeimdallFees;
         state.minHeimdallFees = _minHeimdallFees;
     }
+
+    /// @notice Allows to get a list of operatorShare struct
+    /// @return Returns a list of operatorShare struct
+    function getOperatorShares()
+        public
+        view
+        returns (Operator.OperatorShare[] memory)
+    {
+        Operator.OperatorShare[]
+            memory operatorShares = new Operator.OperatorShare[](
+                state.totalStakedNodeOpearator
+            );
+
+        for (uint256 idx = 0; idx < operatorIds.length; idx++) {
+            uint256 id = operatorIds[idx];
+            if (operators[id].status == Operator.NodeOperatorStatus.STAKED) {
+                operatorShares[idx] = Operator.OperatorShare({
+                    operatorId: id,
+                    validatorShare: operators[id].validatorShare
+                });
+            }
+        }
+        return operatorShares;
+    }
+
+    /// @notice Allows to get the address of the validatorShare on an operator.
+    /// @return Returns the address of the validatorShare contract
+    function getOperatorShare(uint256 _operatorId)
+        public
+        view
+        returns (address)
+    {
+        return operators[_operatorId].validatorShare;
+    }
 }

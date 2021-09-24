@@ -50,8 +50,14 @@ library Operator {
         address validatorImplementation;
     }
 
-    //// @notice State struct
+    /// @notice State struct
     struct ValidatorState {
         address operator;
+    }
+
+    /// @notice OperatorShare struct
+    struct OperatorShare {
+        uint256 operatorId;
+        address validatorShare;
     }
 }

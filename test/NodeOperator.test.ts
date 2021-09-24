@@ -21,6 +21,7 @@ let stakeManagerMockContract: Contract;
 let lidoMockContract: Contract;
 let polygonERC20Contract: Contract;
 let validatorContract: Contract;
+let ZERO_ADDRESS = ethers.constants.AddressZero
 
 describe('NodeOperator', function () {
     beforeEach(async function () {
@@ -91,99 +92,7 @@ describe('NodeOperator', function () {
         await polygonERC20Contract.transfer(await user1.getAddress(), toEth("1000"))
         await polygonERC20Contract.transfer(await user2.getAddress(), toEth("1000"))
     });
-
-    // it('Success', async function () {
-    //     // deploy validator factory
-    //     try {
-    //         const impl1Artifact: Artifact = await hardhat.artifacts.readArtifact("Impl1");
-    //         const impl1Contract = await deployContract(signer, impl1Artifact)
-
-    //         const impl2Artifact: Artifact = await hardhat.artifacts.readArtifact("Impl2");
-    //         const impl2Contract = await deployContract(signer, impl2Artifact)
-
-    //         const proxyArtifact: Artifact = await hardhat.artifacts.readArtifact("ValidatorProxy");
-    //         const proxyContract = await deployContract(
-    //             signer,
-    //             proxyArtifact,
-    //             [
-    //                 await user1.getAddress(),
-    //                 impl1Contract.address
-    //             ]
-    //         )
-    //         const proxyContract2 = await deployContract(
-    //             signer,
-    //             proxyArtifact,
-    //             [
-    //                 await user1.getAddress(),
-    //                 impl1Contract.address
-    //             ]
-    //         )
-    //         await user1.sendTransaction({
-    //             to: proxyContract.address,
-    //             data: new ethers.utils.Interface(impl1Artifact.abi).encodeFunctionData("setName", ["idir"])
-    //         })
-
-    //         await user1.sendTransaction({
-    //             to: proxyContract2.address,
-    //             data: new ethers.utils.Interface(impl1Artifact.abi).encodeFunctionData("setName", ["nassim"])
-    //         })
-
-    //         let res = await user1.call({
-    //             to: proxyContract.address,
-    //             data: new ethers.utils.Interface(impl1Artifact.abi).encodeFunctionData("getName")
-    //         })
-    //         console.log(new ethers.utils.Interface(impl1Artifact.abi).decodeFunctionResult("getName", res))
-
-    //         res = await user1.call({
-    //             to: proxyContract2.address,
-    //             data: new ethers.utils.Interface(impl1Artifact.abi).encodeFunctionData("getName")
-    //         })
-
-    //         console.log(new ethers.utils.Interface(impl1Artifact.abi).decodeFunctionResult("getName", res))
-
-    //         await proxyContract.connect(user1).setImplementation(impl2Contract.address)
-    //         await proxyContract2.connect(user1).setImplementation(impl2Contract.address)
-
-    //         await user1.sendTransaction({
-    //             to: proxyContract.address,
-    //             data: new ethers.utils.Interface(impl2Artifact.abi).encodeFunctionData("setAge", [30])
-    //         })
-
-    //         await user1.sendTransaction({
-    //             to: proxyContract2.address,
-    //             data: new ethers.utils.Interface(impl2Artifact.abi).encodeFunctionData("setAge", [32])
-    //         })
-
-    //         res = await user1.call({
-    //             to: proxyContract.address,
-    //             data: new ethers.utils.Interface(impl2Artifact.abi).encodeFunctionData("getName")
-    //         })
-    //         console.log(new ethers.utils.Interface(impl2Artifact.abi).decodeFunctionResult("getName", res))
-
-    //         res = await user1.call({
-    //             to: proxyContract2.address,
-    //             data: new ethers.utils.Interface(impl2Artifact.abi).encodeFunctionData("getName")
-    //         })
-
-    //         console.log(new ethers.utils.Interface(impl2Artifact.abi).decodeFunctionResult("getName", res))
-
-    //         res = await user1.call({
-    //             to: proxyContract.address,
-    //             data: new ethers.utils.Interface(impl2Artifact.abi).encodeFunctionData("getAge")
-    //         })
-    //         console.log(new ethers.utils.Interface(impl2Artifact.abi).decodeFunctionResult("getAge", res))
-
-    //         res = await user1.call({
-    //             to: proxyContract2.address,
-    //             data: new ethers.utils.Interface(impl2Artifact.abi).encodeFunctionData("getAge")
-    //         })
-
-    //         console.log(new ethers.utils.Interface(impl2Artifact.abi).decodeFunctionResult("getAge", res))
-    //     } catch (e) {
-    //         console.log(e)
-    //     }
-    // })
-
+    
     it('Success add new operator', async function () {
         try {
             const { name, signerPubkey } = await newValidator(1, user1Address)
@@ -329,6 +238,43 @@ describe('NodeOperator', function () {
         }
     })
 
+    it('Success get operators validatorShare contracts', async function () {
+        // add a new node operator
+        await newValidator(1, user1Address)
+        await newValidator(2, user2Address)
+
+        // get node operator
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false)
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no1[6], toEth("30"))
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1)
+
+        // get node operator
+        const no2 = await nodeOperatorRegistryContract.getNodeOperator(2, false)
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user2).approve(no2[6], toEth("30"))
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user2)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(2, 2)
+
+        const operatorShares = await nodeOperatorRegistryContract.getOperatorShares()
+        expect(operatorShares.length).to.equal(2)
+
+        for (let idx = 0; idx < operatorShares.length; idx++) {
+            expect(operatorShares[idx][1]).not.equal(ZERO_ADDRESS)
+        }
+
+        expect(await nodeOperatorRegistryContract.getOperatorShare(1)).not.equal(ZERO_ADDRESS)
+    })
+    
     it('Success unstake an operator', async function () {
         // add a new node operator
         await newValidator(1, user1Address)
