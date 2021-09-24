@@ -11,10 +11,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title ValidatorFactory
 /// @author 2021 Shardlabs.
-/// @notice ValidatorFactory is a Factory that allows to clone new validators from
-/// a validator contract implementation
-/// @dev ValidatorFactory is a Factory that allows to clone new validators from
-/// a validator contract implementation
+/// @notice It allows to create an remove validator proxy that are used to StakeManager
 contract ValidatorFactory is
     Initializable,
     OwnableUpgradeable,
@@ -76,7 +73,7 @@ contract ValidatorFactory is
     function remove(address _validatorProxy) external isOperator {
         for (uint256 idx = 0; idx < validators.length; idx++) {
             if (_validatorProxy == validators[idx]) {
-                validators[idx] = validators[validators.length-1];
+                validators[idx] = validators[validators.length - 1];
                 validators.pop();
             }
         }

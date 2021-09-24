@@ -74,12 +74,6 @@ describe('NodeOperator', function () {
             { kind: 'uups' }
         )
 
-        await nodeOperatorRegistryContract.grantRole(ethers.utils.formatBytes32String("ADD_OPERATOR"), signerAddress)
-        await nodeOperatorRegistryContract.grantRole(ethers.utils.formatBytes32String("REMOVE_OPERATOR"), signerAddress)
-        await nodeOperatorRegistryContract.grantRole(ethers.utils.formatBytes32String("EXIT_OPERATOR"), signerAddress)
-        await nodeOperatorRegistryContract.grantRole(ethers.utils.formatBytes32String("UPGRADE_OPERATOR"), signerAddress)
-        await nodeOperatorRegistryContract.grantRole(ethers.utils.formatBytes32String("UPDATE_COMMISION_RATE_OPERATOR"), signerAddress)
-
         await validatorFactoryContract.setOperatorAddress(nodeOperatorRegistryContract.address)
         await lidoMockContract.setOperator(nodeOperatorRegistryContract.address)
 
@@ -92,6 +86,32 @@ describe('NodeOperator', function () {
         await polygonERC20Contract.transfer(await user1.getAddress(), toEth("1000"))
         await polygonERC20Contract.transfer(await user2.getAddress(), toEth("1000"))
     });
+
+    it('Node Operator Pause Unpause', async function () {
+        // pause the node operator contract
+        await nodeOperatorRegistryContract.pause()
+
+        // check if calls revert
+        await expect(newValidator(1, user1Address)).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.unstake()).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.removeOperator(0)).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.stake(0, 0)).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.restake(0)).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.unstake()).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.topUpForFee(0)).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.unstakeClaim()).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.withdrawRewards()).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.updateSigner(ethers.utils.randomBytes(64))).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.claimFee(0, 0, ethers.utils.randomBytes(64))).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.updateOperatorCommissionRate(0, 0)).to.revertedWith("Pausable: paused")
+        await expect(nodeOperatorRegistryContract.unjail()).to.revertedWith("Pausable: paused")
+
+        // unpasue the node operator contract
+        await nodeOperatorRegistryContract.unpause()
+
+        // add new operator
+        await newValidator(1, user1Address)
+    })
 
     it('Success add new operator', async function () {
         const { name, signerPubkey } = await newValidator(1, user1Address)

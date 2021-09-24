@@ -5,7 +5,7 @@ pragma solidity ^0.8.7;
 import "../storages/NodeOperatorStorage.sol";
 import "../lib/Operator.sol";
 
-/// @title Node operator registry interface
+/// @title INodeOperatorRegistry
 /// @author 2021 Shardlabs
 /// @notice Node operator registry interface
 interface INodeOperatorRegistry {
@@ -78,19 +78,29 @@ interface INodeOperatorRegistry {
         external
         returns (uint256[] memory, address[] memory);
 
+    /// @notice Allows to update the signer pubkey
+    /// @param _signerPubkey update signer public key
     function updateSigner(bytes memory _signerPubkey) external;
 
+    /// @notice Allows to claim the heimdall fees staked by the owner of the operator
+    /// @param _accumFeeAmount accumulated fees amount
+    /// @param _index index
+    /// @param _proof proof
     function claimFee(
         uint256 _accumFeeAmount,
         uint256 _index,
         bytes memory _proof
     ) external;
 
+    /// @notice Allows to update the commision rate of an operator
+    /// @param _operatorId operator id
+    /// @param _newCommissionRate commission rate
     function updateOperatorCommissionRate(
         uint256 _operatorId,
         uint256 _newCommissionRate
     ) external;
 
+    /// @notice Allows to unjail a validator and switch from UNSTAKE status to STAKED
     function unjail() external;
 
     /// @notice The version of the actual contract.
@@ -123,4 +133,13 @@ interface INodeOperatorRegistry {
         external
         view
         returns (Operator.NodeOperator memory);
+
+    /// @notice Allows to get the validatorShare address of an operator.
+    /// @param _operatorId operator id.
+    function getOperatorShare(uint256 _operatorId) external returns (address);
+
+    /// @notice Allows to list all the staked operator validatorShare address and id.
+    function getOperatorShares()
+        external
+        returns (Operator.OperatorShare[] memory);
 }

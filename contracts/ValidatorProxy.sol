@@ -5,6 +5,8 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol";
 
+/// @title ValidatorProxy
+/// @author 2021 Shardlabs.
 contract ValidatorProxy is Proxy, ERC1967UpgradeUpgradeable {
     // ====================================================================
     // =========================== MODIFIERS ==============================
@@ -20,19 +22,19 @@ contract ValidatorProxy is Proxy, ERC1967UpgradeUpgradeable {
     // ====================================================================
 
     constructor(address _admin, address _newImplementation) {
-        initialize(_admin, _newImplementation);
-    }
-
-    function initialize(address _admin, address _newImplementation) internal {
         _changeAdmin(_admin);
         _upgradeTo(_newImplementation);
         __ERC1967Upgrade_init();
     }
 
+    /// @notice Allows admin to upgrade the validator implementation
+    /// @param _newImplementation set a new implementation
     function setImplementation(address _newImplementation) external isAdmin {
         _upgradeTo(_newImplementation);
     }
 
+    /// @notice Allows to get the contract implementation address.
+    /// @return Returns the address of the implementation
     function _implementation()
         internal
         view

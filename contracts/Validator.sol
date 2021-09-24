@@ -201,7 +201,7 @@ contract Validator is IValidator {
         IStakeManager stakeManager = IStakeManager(operator.getStakeManager());
 
         stakeManager.unstakeClaim(_validatorId);
-        
+
         // get total staked by the validator
         uint256 amount = stakeManager.validatorStake(_validatorId);
 

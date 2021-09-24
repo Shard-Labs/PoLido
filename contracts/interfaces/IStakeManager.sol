@@ -67,19 +67,30 @@ interface IStakeManager {
     /// @param validatorId validator id.
     function unstakeClaim(uint256 validatorId) external;
 
+    /// @notice Allows to update the signer pubkey
+    /// @param _validatorId validator id
+    /// @param _signerPubkey update signer public key
     function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
         external;
 
+    /// @notice Allows to claim the heimdall fees.
+    /// @param _accumFeeAmount accumulated fees amount
+    /// @param _index index
+    /// @param _proof proof
     function claimFee(
         uint256 _accumFeeAmount,
         uint256 _index,
         bytes memory _proof
     ) external;
 
+    /// @notice Allows to update the commision rate of a validator
+    /// @param _validatorId operator id
+    /// @param _newCommissionRate commission rate
     function updateCommissionRate(
         uint256 _validatorId,
         uint256 _newCommissionRate
     ) external;
 
+    /// @notice Allows to unjail a validator.
     function unjail(uint256 _validatorId) external;
 }

@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.7;
 
-import "hardhat/console.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "./storages/NodeOperatorStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./lib/Operator.sol";
+import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 Shardlabs.
@@ -19,7 +19,8 @@ import "./lib/Operator.sol";
 contract NodeOperatorRegistry is
     INodeOperatorRegistry,
     Initializable,
-    AccessControl,
+    PausableUpgradeable,
+    AccessControlUpgradeable,
     UUPSUpgradeable,
     NodeOperatorStorage
 {
@@ -45,6 +46,10 @@ contract NodeOperatorRegistry is
         address _stakeManager,
         address _polygonERC20
     ) public initializer {
+        __Pausable_init();
+        __AccessControl_init();
+
+        // set default state
         state.validatorFactory = _validatorFactory;
         state.lido = _lido;
         state.stakeManager = _stakeManager;
@@ -56,20 +61,12 @@ contract NodeOperatorRegistry is
         state.minHeimdallFees = 20 * 10**18;
 
         // Set ACL roles
-        // TODO: remove and set only the admin role
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
         _setupRole(EXIT_OPERATOR_ROLE, msg.sender);
         _setupRole(UPDATE_COMMISSION_RATE_ROLE, msg.sender);
         _setupRole(UPDATE_STAKE_HEIMDALL_FEES_ROLE, msg.sender);
-
-        setStakeAmountAndFees(
-            10 * 10**18,
-            10 * 10**18,
-            20 * 10**18,
-            20 * 10**18
-        );
     }
 
     /// @notice Add a new node operator to the system.
@@ -80,7 +77,7 @@ contract NodeOperatorRegistry is
         string memory _name,
         address _rewardAddress,
         bytes memory _signerPubkey
-    ) public override userHasRole(ADD_OPERATOR_ROLE) {
+    ) public override whenNotPaused userHasRole(ADD_OPERATOR_ROLE) {
         require(_signerPubkey.length == 64, "Invalid Public Key");
         require(_rewardAddress != address(0), "Invalid reward address");
         require(operatorOwners[_rewardAddress] == 0, "Address already used");
@@ -125,6 +122,7 @@ contract NodeOperatorRegistry is
     function removeOperator(uint256 _operatorId)
         public
         override
+        whenNotPaused
         userHasRole(REMOVE_OPERATOR_ROLE)
     {
         Operator.NodeOperator storage no = operators[_operatorId];
@@ -153,7 +151,6 @@ contract NodeOperatorRegistry is
         delete operatorOwners[no.rewardAddress];
         delete operators[_operatorId];
 
-        // TODO delete the proxy from validatorFactory
         emit RemoveOperator(_operatorId);
     }
 
@@ -237,7 +234,11 @@ contract NodeOperatorRegistry is
     /// @dev Stake a validator on the Polygon stakeManager contract.
     /// @param _amount amount to stake.
     /// @param _heimdallFee herimdall fees.
-    function stake(uint256 _amount, uint256 _heimdallFee) external override {
+    function stake(uint256 _amount, uint256 _heimdallFee)
+        external
+        override
+        whenNotPaused
+    {
         require(
             _amount >= state.minAmountStake && _amount <= state.maxAmountStake,
             "Invalid amount"
@@ -279,7 +280,9 @@ contract NodeOperatorRegistry is
         emit StakeOperator(operatorId, no.validatorId);
     }
 
-    function restake(uint256 _amount) external override {
+    /// @notice Alloxs to restake Matics to Polygin stakeManager
+    /// @param _amount amount to stake.
+    function restake(uint256 _amount) external override whenNotPaused {
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
 
@@ -302,7 +305,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
-    function unstake() external override {
+    function unstake() external override whenNotPaused {
         uint256 id = operatorOwners[msg.sender];
         require(id != 0, "Operator not exists");
 
@@ -322,7 +325,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows to top up heimdall fees.
     /// @param _heimdallFee amount
-    function topUpForFee(uint256 _heimdallFee) external override {
+    function topUpForFee(uint256 _heimdallFee) external override whenNotPaused {
         require(_heimdallFee > 0, "HeimdallFee is ZERO");
 
         uint256 id = operatorOwners[msg.sender];
@@ -338,7 +341,8 @@ contract NodeOperatorRegistry is
         emit TopUpHeimdallFees(id, _heimdallFee);
     }
 
-    function unstakeClaim() external override {
+    /// @notice Allows to unstake staked tokens after withdraw delay.
+    function unstakeClaim() external override whenNotPaused {
         uint256 validatorId = operatorOwners[msg.sender];
         require(validatorId != 0, "Operator not exists");
 
@@ -407,6 +411,7 @@ contract NodeOperatorRegistry is
     function withdrawRewards()
         external
         override
+        whenNotPaused
         returns (uint256[] memory, address[] memory)
     {
         require(msg.sender == state.lido, "Caller is not the lido contract");
@@ -444,7 +449,11 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows to update signer publickey
     /// @param _signerPubkey new signer publickey
-    function updateSigner(bytes memory _signerPubkey) external override {
+    function updateSigner(bytes memory _signerPubkey)
+        external
+        override
+        whenNotPaused
+    {
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
 
@@ -472,7 +481,7 @@ contract NodeOperatorRegistry is
         uint256 _accumFeeAmount,
         uint256 _index,
         bytes memory _proof
-    ) external override {
+    ) external override whenNotPaused {
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
 
@@ -507,7 +516,7 @@ contract NodeOperatorRegistry is
     function updateOperatorCommissionRate(
         uint256 _operatorId,
         uint256 _newCommissionRate
-    ) public override userHasRole(UPDATE_COMMISSION_RATE_ROLE) {
+    ) public override whenNotPaused userHasRole(UPDATE_COMMISSION_RATE_ROLE) {
         Operator.NodeOperator memory no = operators[_operatorId];
         if (no.status != Operator.NodeOperatorStatus.STAKED)
             revert("Operator status no STAKED");
@@ -523,7 +532,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows to unjail the validator and turn his status from UNSTAKED to STAKED.
-    function unjail() external override {
+    function unjail() external override whenNotPaused {
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
 
@@ -543,6 +552,11 @@ contract NodeOperatorRegistry is
         emit Unjail(operatorId, no.validatorId);
     }
 
+    /// @notice Allows to update the stake amount and heimdall fees
+    /// @param _minAmountStake min amount to stake
+    /// @param _maxAmountStake max amount to stake
+    /// @param _minHeimdallFees min amount of heimdall fees
+    /// @param _maxHeimdallFees max amount of heimdall fees
     function setStakeAmountAndFees(
         uint256 _minAmountStake,
         uint256 _maxAmountStake,
@@ -567,8 +581,9 @@ contract NodeOperatorRegistry is
     /// @notice Allows to get a list of operatorShare struct
     /// @return Returns a list of operatorShare struct
     function getOperatorShares()
-        public
+        external
         view
+        override
         returns (Operator.OperatorShare[] memory)
     {
         Operator.OperatorShare[]
@@ -591,10 +606,21 @@ contract NodeOperatorRegistry is
     /// @notice Allows to get the address of the validatorShare on an operator.
     /// @return Returns the address of the validatorShare contract
     function getOperatorShare(uint256 _operatorId)
-        public
+        external
         view
+        override
         returns (address)
     {
         return operators[_operatorId].validatorShare;
+    }
+
+    /// @notice Allows to pause the contract.
+    function pause() external userHasRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    /// @notice Allows to unpause the contract.
+    function unpause() external userHasRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 }

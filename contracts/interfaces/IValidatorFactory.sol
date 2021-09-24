@@ -4,7 +4,7 @@ pragma solidity ^0.8.7;
 
 import "../Validator.sol";
 
-/// @title Validator Factory interface.
+/// @title IValidatorFactory.
 /// @author 2021 Shardlabs
 /// @notice Validator Factory interface.
 interface IValidatorFactory {

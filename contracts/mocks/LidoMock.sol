@@ -9,7 +9,10 @@ contract LidoMock {
     event LogRewards(uint256 share, address recipient);
 
     function withdrawRewards() public {
-        (uint256[] memory shares, address[] memory recipients) = INodeOperatorRegistry(operator).withdrawRewards();
+        (
+            uint256[] memory shares,
+            address[] memory recipients
+        ) = INodeOperatorRegistry(operator).withdrawRewards();
         require(shares.length == recipients.length, "Shares != Recipients");
         for (uint256 idx = 0; idx < recipients.length; idx++) {
             emit LogRewards(shares[idx], recipients[idx]);
