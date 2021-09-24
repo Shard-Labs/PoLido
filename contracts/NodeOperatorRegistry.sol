@@ -18,10 +18,10 @@ import "./lib/Operator.sol";
 /// @dev NodeOperatorRegistry is the main contract that manage validators
 contract NodeOperatorRegistry is
     INodeOperatorRegistry,
-    NodeOperatorStorage,
     Initializable,
     AccessControl,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    NodeOperatorStorage
 {
     // ====================================================================
     // =========================== MODIFIERS ==============================
@@ -49,6 +49,11 @@ contract NodeOperatorRegistry is
         state.lido = _lido;
         state.stakeManager = _stakeManager;
         state.polygonERC20 = _polygonERC20;
+        state.commissionRate = 0;
+        state.maxAmountStake = 10 * 10**18;
+        state.minAmountStake = 10 * 10**18;
+        state.maxHeimdallFees = 20 * 10**18;
+        state.minHeimdallFees = 20 * 10**18;
 
         // Set ACL roles
         // TODO: remove and set only the admin role
@@ -56,9 +61,9 @@ contract NodeOperatorRegistry is
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
         _setupRole(EXIT_OPERATOR_ROLE, msg.sender);
-        _setupRole(UPDATE_COMMISION_RATE_OPERATOR_ROLE, msg.sender);
+        _setupRole(UPDATE_COMMISSION_RATE_ROLE, msg.sender);
         _setupRole(UPDATE_STAKE_HEIMDALL_FEES_ROLE, msg.sender);
-        
+
         setStakeAmountAndFees(
             10 * 10**18,
             10 * 10**18,
@@ -68,9 +73,8 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Add a new node operator to the system.
-    /// @dev Add a new operator
     /// @param _name the node operator name.
-    /// @param _rewardAddress public address used for ACL and receive rewards.
+    /// @param _rewardAddress address used for ACL and receive rewards.
     /// @param _signerPubkey public key used on heimdall len 64 bytes.
     function addOperator(
         string memory _name,
@@ -95,7 +99,8 @@ contract NodeOperatorRegistry is
             validatorId: 0,
             signerPubkey: _signerPubkey,
             validatorShare: address(0),
-            validatorContract: validatorContract
+            validatorContract: validatorContract,
+            commissionRate: state.commissionRate
         });
 
         // update global state.
@@ -131,7 +136,7 @@ contract NodeOperatorRegistry is
         state.totalNodeOpearator--;
         state.totalExitNodeOpearator--;
 
-        // update the operatorIds array by removing the actual deleted operator
+        // update the operatorIds array by removing the operator id.
         for (uint256 idx = 0; idx < operatorIds.length - 1; idx++) {
             if (_operatorId == operatorIds[idx]) {
                 operatorIds[idx] = operatorIds[operatorIds.length - 1];
@@ -141,10 +146,14 @@ contract NodeOperatorRegistry is
         delete operatorIds[operatorIds.length - 1];
         operatorIds.pop();
 
+        // remove validator proxy from the validatorFactory.
+        IValidatorFactory(state.validatorFactory).remove(no.validatorContract);
+
         // delete operator and owner mappings from operators and operatorOwners;
         delete operatorOwners[no.rewardAddress];
         delete operators[_operatorId];
 
+        // TODO delete the proxy from validatorFactory
         emit RemoveOperator(_operatorId);
     }
 
@@ -249,26 +258,21 @@ contract NodeOperatorRegistry is
         );
 
         // stake a validator
-        IValidator(no.validatorContract).stake(
-            msg.sender,
-            _amount,
-            _heimdallFee,
-            true,
-            no.signerPubkey
-        );
+        (no.validatorId, no.validatorShare) = IValidator(no.validatorContract)
+            .stake(
+                msg.sender,
+                _amount,
+                _heimdallFee,
+                true,
+                no.signerPubkey,
+                no.commissionRate
+            );
 
-        IStakeManager stakeManager = IStakeManager(state.stakeManager);
-        no.validatorId = stakeManager.getValidatorId(no.validatorContract);
-        require(no.validatorId != 0, "Validator id is ZERO");
-
-        no.validatorShare = stakeManager.getValidatorContract(no.validatorId);
-        require(
-            no.validatorShare != address(0),
-            "Validator share address is ZERO"
-        );
-
+        // update the operator status to STAKED.
         no.status = Operator.NodeOperatorStatus.STAKED;
+        no.commissionRate = state.commissionRate;
 
+        // update global state.
         state.totalActiveNodeOpearator--;
         state.totalStakedNodeOpearator++;
 
@@ -282,7 +286,7 @@ contract NodeOperatorRegistry is
         Operator.NodeOperator storage no = operators[operatorId];
         require(
             no.status == Operator.NodeOperatorStatus.STAKED,
-            "The operator status is not staked"
+            "The operator status is not STAKED"
         );
 
         require(_amount > 0, "Amount is ZERO");
@@ -503,7 +507,7 @@ contract NodeOperatorRegistry is
     function updateOperatorCommissionRate(
         uint256 _operatorId,
         uint256 _newCommissionRate
-    ) public override userHasRole(DEFAULT_ADMIN_ROLE) {
+    ) public override userHasRole(UPDATE_COMMISSION_RATE_ROLE) {
         Operator.NodeOperator memory no = operators[_operatorId];
         if (no.status != Operator.NodeOperatorStatus.STAKED)
             revert("Operator status no STAKED");
@@ -512,7 +516,10 @@ contract NodeOperatorRegistry is
             no.validatorId,
             _newCommissionRate
         );
-        emit UpdateCommissionRate(_newCommissionRate);
+
+        no.commissionRate = state.commissionRate;
+
+        emit UpdateCommissionRate(no.validatorId, _newCommissionRate);
     }
 
     /// @notice Allows to unjail the validator and turn his status from UNSTAKED to STAKED.

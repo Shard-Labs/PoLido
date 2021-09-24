@@ -14,8 +14,10 @@ contract NodeOperatorStorage {
     bytes32 public constant ADD_OPERATOR_ROLE = keccak256("ADD_OPERATOR");
     bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
     bytes32 public constant EXIT_OPERATOR_ROLE = keccak256("EXIT_OPERATOR");
-    bytes32 public constant UPDATE_COMMISION_RATE_OPERATOR_ROLE = keccak256("UPDATE_COMMISION_RATE_OPERATOR");
-    bytes32 public constant UPDATE_STAKE_HEIMDALL_FEES_ROLE = keccak256("UPDATE_STAKE_HEIMDALL_FEES_OPERATOR");
+    bytes32 public constant UPDATE_COMMISSION_RATE_ROLE =
+        keccak256("UPDATE_COMMISSION_RATE_OPERATOR");
+    bytes32 public constant UPDATE_STAKE_HEIMDALL_FEES_ROLE =
+        keccak256("UPDATE_STAKE_HEIMDALL_FEES_OPERATOR");
 
     // ====================================================================
     // =========================== Global Vars ============================
@@ -84,7 +86,18 @@ contract NodeOperatorStorage {
         bytes signerPubkey
     );
 
-    event ClaimFee(uint256 id, uint256 validatorId, uint256 accumFeeAmount, uint256 index, bytes proof);
-    event UpdateCommissionRate(uint256 newCommissionRate);
+    /// @dev claim herimdall fee.
+    event ClaimFee(
+        uint256 id,
+        uint256 validatorId,
+        uint256 accumFeeAmount,
+        uint256 index,
+        bytes proof
+    );
+
+    /// @dev update commission rate.
+    event UpdateCommissionRate(uint256 validatorId, uint256 newCommissionRate);
+
+    /// @dev Unjail a validator.
     event Unjail(uint256 id, uint256 validatorId);
 }

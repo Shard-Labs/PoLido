@@ -13,6 +13,10 @@ interface IValidatorFactory {
     /// @return return the address of the deployed contract
     function create() external returns (address);
 
+    /// @notice Remove a validator proxy from the validators.
+    /// @dev This function is called by the operator.
+    function remove(address _validatorProxy) external;
+
     /// @notice Get the deployed validator contracts.
     /// @return returns a list of all deployed validator contracts.
     function getValidators() external view returns (Validator[] memory);

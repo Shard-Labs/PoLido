@@ -7,7 +7,6 @@ import "../lib/Operator.sol";
 /// @author 2021 Shardlabs
 /// @notice Validator factory storage
 contract ValidatorFactoryStorage {
-
     // ====================================================================
     // =========================== Global Vars ============================
     // ====================================================================

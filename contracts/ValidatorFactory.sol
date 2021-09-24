@@ -52,7 +52,7 @@ contract ValidatorFactory is
 
     /// @notice Deploy a new validator contract
     /// @return return the address of the new validator contract deployed
-    function create() public isOperator returns (address) {
+    function create() external isOperator returns (address) {
         require(state.operator != address(0), "Operator contract not set");
 
         // create a new validator proxy
@@ -70,6 +70,16 @@ contract ValidatorFactory is
 
         emit CreateValidator(proxy);
         return proxy;
+    }
+
+    /// @notice Remove a validator proxy from the list.
+    function remove(address _validatorProxy) external isOperator {
+        for (uint256 idx = 0; idx < validators.length; idx++) {
+            if (_validatorProxy == validators[idx]) {
+                validators[idx] = validators[validators.length-1];
+                validators.pop();
+            }
+        }
     }
 
     /// @notice Get validators contracts.

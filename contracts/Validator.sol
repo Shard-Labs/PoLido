@@ -13,7 +13,6 @@ import "hardhat/console.sol";
 /// @title Validator
 /// @author 2021 Shardlabs.
 /// @notice Validator is the contract used to manage a staked validator on Polygon stake manager
-/// @dev Validator is the contract used to manage a staked validator on Polygon stake manager
 contract Validator is IValidator {
     using SafeERC20 for IERC20;
 
@@ -41,52 +40,60 @@ contract Validator is IValidator {
     // =========================== FUNCTIONS ==============================
     // ====================================================================
 
-    // constructor (address _operator) {
-    //     state.operator = _operator;
-    // }
-
     /// @notice Stake allows to stake on the Polygon stakeManager contract
     /// @dev  Stake allows to stake on the Polygon stakeManager contract by
     /// calling stakeFor function and set the user address equal to this contract address
-    /// @param _amount amount to stake with.
-    /// @param _heimdallFee heimdall fees.
+    /// @param _sender the address of the operator-owner that approved Matics.
+    /// @param _amount the amount to stake with.
+    /// @param _heimdallFee the heimdall fees.
     /// @param _acceptDelegation accept delegation.
     /// @param _signerPubkey signer public key used on the heimdall node.
+    /// @param _commissionRate validator commision rate
+    /// @return Returns the validatorId and the validatorShare contract address.
     function stake(
         address _sender,
         uint256 _amount,
         uint256 _heimdallFee,
         bool _acceptDelegation,
-        bytes memory _signerPubkey
-    ) external override isOperator {
+        bytes memory _signerPubkey,
+        uint256 _commissionRate
+    ) external override isOperator returns (uint256, address) {
         // get operator
         INodeOperatorRegistry operator = getOperator();
 
         // get stakeManager
-        address stakeManager = operator.getStakeManager();
+        IStakeManager stakeManager = IStakeManager(operator.getStakeManager());
 
         uint256 totalAmount = _amount + _heimdallFee;
         // approve Polygon token to stake manager totalAmount
-        address polygonERC20 = operator.getPolygonERC20();
+        IERC20 polygonERC20 = IERC20(operator.getPolygonERC20());
 
         // transfer tokens from user to this contract
-        IERC20(polygonERC20).safeTransferFrom(
+        polygonERC20.safeTransferFrom(
             _sender,
             address(this),
             (_amount + _heimdallFee)
         );
 
         // approve to stakeManager
-        IERC20(polygonERC20).safeApprove(stakeManager, totalAmount);
+        polygonERC20.safeApprove(address(stakeManager), totalAmount);
 
         // call polygon stake manager
-        IStakeManager(stakeManager).stakeFor(
+        stakeManager.stakeFor(
             address(this),
             _amount,
             _heimdallFee,
             _acceptDelegation,
             _signerPubkey
         );
+        // get validator id
+        uint256 validatorId = stakeManager.getValidatorId(address(this));
+        // get validatorShare contract
+        address validatorShare = stakeManager.getValidatorContract(validatorId);
+        // set commision
+        stakeManager.updateCommissionRate(validatorId, _commissionRate);
+
+        return (validatorId, validatorShare);
     }
 
     /// @notice Restake Matics for a validator on polygon stake manager.
@@ -107,13 +114,13 @@ contract Validator is IValidator {
         address stakeManager = operator.getStakeManager();
 
         // approve Polygon token to stake manager totalAmount
-        address polygonERC20 = operator.getPolygonERC20();
+        IERC20 polygonERC20 = IERC20(operator.getPolygonERC20());
 
         // transfer tokens from user to this contract
-        IERC20(polygonERC20).safeTransferFrom(_sender, address(this), _amount);
+        polygonERC20.safeTransferFrom(_sender, address(this), _amount);
 
         // approve to stakeManager
-        IERC20(polygonERC20).safeApprove(stakeManager, _amount);
+        polygonERC20.safeApprove(stakeManager, _amount);
 
         // call polygon stake manager
         IStakeManager(stakeManager).restake(
@@ -127,10 +134,8 @@ contract Validator is IValidator {
     /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
     /// @param _validatorId validatorId.
     function unstake(uint256 _validatorId) external override isOperator {
-        address stakeManager = getStakeManager();
-
         // call polygon stake manager
-        IStakeManager(stakeManager).unstake(_validatorId);
+        IStakeManager(getStakeManager()).unstake(_validatorId);
     }
 
     /// @notice Allows to top up heimdall fees.
@@ -145,17 +150,13 @@ contract Validator is IValidator {
         // get stakeManager
         address stakeManager = operator.getStakeManager();
 
-        address polygonERC20 = operator.getPolygonERC20();
+        IERC20 polygonERC20 = IERC20(operator.getPolygonERC20());
 
         // transfer tokens from user to this contract
-        IERC20(polygonERC20).safeTransferFrom(
-            _sender,
-            address(this),
-            _heimdallFee
-        );
+        polygonERC20.safeTransferFrom(_sender, address(this), _heimdallFee);
 
         // approve to stakeManager
-        IERC20(polygonERC20).safeApprove(stakeManager, _heimdallFee);
+        polygonERC20.safeApprove(stakeManager, _heimdallFee);
 
         // call polygon stake manager
         IStakeManager(stakeManager).topUpForFee(address(this), _heimdallFee);
@@ -178,9 +179,9 @@ contract Validator is IValidator {
         IStakeManager(operator.getStakeManager()).withdrawRewards(_validatorId);
 
         // transfer rewards to lido contract.
-        address polygonERC20 = operator.getPolygonERC20();
-        uint256 balance = IERC20(polygonERC20).balanceOf(address(this));
-        IERC20(polygonERC20).safeTransfer(operator.getLido(), balance);
+        IERC20 polygonERC20 = IERC20(operator.getPolygonERC20());
+        uint256 balance = polygonERC20.balanceOf(address(this));
+        polygonERC20.safeTransfer(operator.getLido(), balance);
 
         return balance;
     }
@@ -200,9 +201,21 @@ contract Validator is IValidator {
         IStakeManager stakeManager = IStakeManager(operator.getStakeManager());
 
         stakeManager.unstakeClaim(_validatorId);
+        
+        // get total staked by the validator
+        uint256 amount = stakeManager.validatorStake(_validatorId);
+
         uint256 balance = IERC20(operator.getPolygonERC20()).balanceOf(
             address(this)
         );
+
+        // transfer the amount to the owner.
+        IERC20(operator.getPolygonERC20()).safeTransfer(
+            _ownerRecipient,
+            amount - balance
+        );
+
+        // transfer the rest(rewards) to the lido contract
         IERC20(operator.getPolygonERC20()).safeTransfer(
             _ownerRecipient,
             balance
@@ -261,25 +274,16 @@ contract Validator is IValidator {
         return INodeOperatorRegistry(state.operator);
     }
 
-    /// @notice Allows to get the operator contract.
-    /// @return Returns operator contract address.
-    function getOperatorA() public view returns (address) {
-        console.log(state.operator);
-        return state.operator;
-    }
-
     /// @notice Allows to set the operator contract.
     function setOperator(address _operator) external {
         // TODO: check why the default value is 0x1 not 0x0
-        state.operator = _operator;
+        if (state.operator == address(0) || state.operator == address(1)) {
+            state.operator = _operator;
+        }
     }
 
     /// @notice Allows to set the operator contract.
-    function getState()
-        external
-        view
-        returns (Operator.ValidatorState memory)
-    {
+    function getState() external view returns (Operator.ValidatorState memory) {
         return state;
     }
 

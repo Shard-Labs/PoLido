@@ -15,13 +15,15 @@ interface IValidator {
     /// @param _heimdallFee herimdall fees.
     /// @param _acceptDelegation accept delegation.
     /// @param _signerPubkey signer public key used on the heimdall.
+    /// @param _commisionRate commision rate of a validator
     function stake(
         address _sender,
         uint256 _amount,
         uint256 _heimdallFee,
         bool _acceptDelegation,
-        bytes memory _signerPubkey
-    ) external;
+        bytes memory _signerPubkey,
+        uint256 _commisionRate
+    ) external returns (uint256, address);
 
     /// @notice Restake Matics for a validator on polygon stake manager.
     /// @param _sender operator owner which approved tokens to the validato contract.

@@ -25,6 +25,7 @@ library Operator {
         bytes signerPubkey;
         address validatorShare;
         address validatorContract;
+        uint256 commissionRate;
     }
 
     /// @notice Node operator registry state.
@@ -42,6 +43,7 @@ library Operator {
         uint256 minAmountStake;
         uint256 maxHeimdallFees;
         uint256 minHeimdallFees;
+        uint256 commissionRate;
     }
 
     /// @notice State struct
