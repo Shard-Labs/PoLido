@@ -26,7 +26,6 @@ contract LidoMatic is AccessControl, ERC20 {
         uint256 amount;
         uint256 validatorNonce;
         uint256 validatorID;
-        bool done;
     }
 
     /** Roles */
@@ -98,18 +97,46 @@ contract LidoMatic is AccessControl, ERC20 {
             _burn(msg.sender, _amount);
         }
 
+        // TODO this is just a mock
         uint256 validatorId = IOperator.getValidatorId();
         uint256 validatorNonce = IOperator.getValidatorNonce();
+        uint256 validatorShare = IOperator.getValidatorShareAddress();
 
         userToWithdrawRequest[msg.sender] = RequestWithdraw(
             _amount,
             validatorNonce,
-            validatorId,
-            false
+            validatorId
+        );
+
+        sellVoucher_new(
+            validatorShare,
+            callerBalanceInMATIC,
+            callerBalanceInMATIC
         );
     }
 
     function delegate() external auth(GOVERNANCE) {}
+
+    /**
+     * @dev Claims tokens from validator share and sends them to the
+     * user if his request is in the userToWithdrawRequest
+     */
+    function claimTokens() external {
+        RequestWithdraw userRequest = userToWithdrawRequest[msg.sender];
+
+        require(userRequest.amount, "Not allowed to claim");
+
+        IValidatorShare validatorShare = operator.getValidatorShare(
+            userRequest.validatorId
+        );
+
+        unstakeClaimTokens_new(
+            address(validatorShare),
+            userRequest.validatorNonce
+        );
+
+        IERC20(token).transfer(msg.sender, userRequest.amount);
+    }
 
     /**
      * @notice Only PAUSE_ROLE can call this function. This function puts certain functionalities on pause.
