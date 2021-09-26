@@ -25,7 +25,7 @@ contract LidoMatic is AccessControl, ERC20 {
     struct RequestWithdraw {
         uint256 amount;
         uint256 validatorNonce;
-        address validatorShareAddress;
+        uint256 validatorID;
         bool done;
     }
 
@@ -98,28 +98,15 @@ contract LidoMatic is AccessControl, ERC20 {
             _burn(msg.sender, _amount);
         }
 
-        IValidatorShare validator = chooseValidator();
-
-        if (validator2Nonce[address(validator)] == 0) {
-            validator2Nonce[address(validator)] = 1;
-        } else {
-            validator2Nonce[address(validator)] += 1;
-        }
+        uint256 validatorId = IOperator.getValidatorId();
+        uint256 validatorNonce = IOperator.getValidatorNonce();
 
         userToWithdrawRequest[msg.sender] = RequestWithdraw(
             _amount,
-            validator2Nonce[address(validator)],
-            address(validator),
+            validatorNonce,
+            validatorId,
             false
         );
-    }
-
-    function chooseValidator()
-        private
-        view
-        returns (IValidatorShare validator)
-    {
-        return IValidatorShare(validatorShares[0]);
     }
 
     function delegate() external auth(GOVERNANCE) {}
