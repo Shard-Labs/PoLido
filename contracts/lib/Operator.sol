@@ -44,6 +44,8 @@ library Operator {
         uint256 maxHeimdallFees;
         uint256 minHeimdallFees;
         uint256 commissionRate;
+        bool restake;
+        bool unjail;
     }
 
     /// @notice State struct

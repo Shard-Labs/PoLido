@@ -226,6 +226,9 @@ describe('NodeOperator', function () {
             .stake(toEth("10"), toEth("20")))
             .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1)
 
+        // set restake to true
+        await nodeOperatorRegistryContract.setRestake(true)
+
         // restake a node operator
         expect(await nodeOperatorRegistryContract.connect(user1)
             .restake(toEth("20")))
@@ -239,6 +242,13 @@ describe('NodeOperator', function () {
 
         // get node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false)
+
+        // revert restake a node operator
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .restake(toEth("20"))).to.revertedWith("Restake is disabled")
+
+        // set restake to true
+        await nodeOperatorRegistryContract.setRestake(true)
 
         // revert restake a node operator
         await expect(nodeOperatorRegistryContract.connect(user1)
@@ -541,6 +551,9 @@ describe('NodeOperator', function () {
 
         // unstake a node operator
         await nodeOperatorRegistryContract.connect(user1).unstake()
+        
+        // set unjail to true
+        await nodeOperatorRegistryContract.setUnjail(true)
 
         // unjail a node operator
         expect(await nodeOperatorRegistryContract.connect(user1).unjail())
@@ -566,6 +579,13 @@ describe('NodeOperator', function () {
 
         // stake a node operator
         await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"))
+
+        // revert unjail a node operator
+        await expect(nodeOperatorRegistryContract.connect(user2).unjail())
+            .to.revertedWith("Unjail is disabled")
+
+        // set unjail to true
+        await nodeOperatorRegistryContract.setUnjail(true)
 
         // revert unjail a node operator that not exists
         await expect(nodeOperatorRegistryContract.connect(user2).unjail())

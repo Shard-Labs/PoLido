@@ -55,6 +55,8 @@ contract NodeOperatorRegistry is
         state.stakeManager = _stakeManager;
         state.polygonERC20 = _polygonERC20;
         state.commissionRate = 0;
+        state.restake = false;
+        state.unjail = false;
         state.maxAmountStake = 10 * 10**18;
         state.minAmountStake = 10 * 10**18;
         state.maxHeimdallFees = 20 * 10**18;
@@ -283,6 +285,8 @@ contract NodeOperatorRegistry is
     /// @notice Alloxs to restake Matics to Polygin stakeManager
     /// @param _amount amount to stake.
     function restake(uint256 _amount) external override whenNotPaused {
+        require(state.restake, "Restake is disabled");
+
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
 
@@ -533,6 +537,8 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows to unjail the validator and turn his status from UNSTAKED to STAKED.
     function unjail() external override whenNotPaused {
+        require(state.unjail, "Unjail is disabled");
+        
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
 
@@ -622,5 +628,15 @@ contract NodeOperatorRegistry is
     /// @notice Allows to unpause the contract.
     function unpause() external userHasRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
+    }
+
+    /// @notice Allows to toggle restake.
+    function setRestake(bool _restake) external userHasRole(DEFAULT_ADMIN_ROLE) {
+        state.restake = _restake;
+    }
+
+    /// @notice Allows to toggle unjail.
+    function setUnjail(bool _unjail) external userHasRole(DEFAULT_ADMIN_ROLE) {
+        state.unjail = _unjail;
     }
 }
