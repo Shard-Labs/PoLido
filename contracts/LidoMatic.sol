@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import "./interfaces/IValidatorShare.sol";
+import "./interfaces/INodeOperatorRegistry.sol";
 
 contract LidoMatic is AccessControl, ERC20 {
     ////////////////////////////////////////////////////////////
@@ -13,14 +14,20 @@ contract LidoMatic is AccessControl, ERC20 {
     ///                                                      ///
     ////////////////////////////////////////////////////////////
 
-    mapping(address => RequestWithdraw) public userToWithdrawRequest;
-    mapping(address => uint256) public userToShares;
+    mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
+    mapping(address => uint256) public user2Shares;
     mapping(address => uint256) public validator2Nonce;
+    mapping(address => uint256) public user2Nonce;
     IValidatorShare[] validatorShares;
     uint256 public totalDelegated;
     uint256 public totalBuffered;
+    uint256 public lastWithdrawnValidatorId;
     address public token;
     bool paused;
+
+    INodeOperatorRegistry public nodeOperator;
+
+    uint256 constant WITHDRAWAL_DELAY = 2**13;
 
     struct RequestWithdraw {
         uint256 amount;
@@ -50,8 +57,12 @@ contract LidoMatic is AccessControl, ERC20 {
 
     /**
      * @param _token - Address of MATIC token on Ethereum Mainnet
+     * @param _nodeOperator - Address of the node operator
      */
-    constructor(address _token) ERC20("Staked MATIC", "StMATIC") {
+    constructor(address _token, address _nodeOperator)
+        ERC20("Staked MATIC", "StMATIC")
+    {
+        nodeOperator = _nodeOperator;
         token = _token;
     }
 
@@ -93,28 +104,50 @@ contract LidoMatic is AccessControl, ERC20 {
         // Burn StMATIC after checking if _amount satisfies user's balance
         // A nonce is dependent on a validator
         // Add a nonce per user
-        uint256 callerBalanceInMATIC = balanceOf(msg.sender);
+        Operator.OperatorShare[] operatorShares = nodeOperator
+            .getOperatorShares();
 
-        if (callerBalanceInMATIC <= _amount) {
-            _burn(msg.sender, _amount);
+        if (lastWithdrawnValidatorId > operatorShares.length - 1) {
+            lastWithdrawnValidatorId = 0;
         }
 
-        // TODO this is just a mock
-        uint256 validatorId = operator.getValidatorId();
-        uint256 validatorNonce = operator.getValidatorNonce();
-        uint256 validatorShare = operator.getValidatorShareAddress();
+        address validatorShare = operatorShares[lastWithdrawnValidatorId]
+            .shares;
 
-        userToWithdrawRequest[msg.sender] = RequestWithdraw(
-            _amount,
-            validatorNonce,
-            validatorId
+        uint256 callerBalance = balanceOf(msg.sender);
+
+        require(callerBalance <= _amount, "Invalid amount");
+
+        _burn(msg.sender, _amount);
+
+        uint256 amountInMATIC = getUserBalanceInMATIC(_amount);
+
+        sellVoucher_new(validatorShare, amountInMATIC, type(uint256).max);
+
+        if (!validator2Nonce[validatorShare])
+            validator2Nonce[validatorShare] = 1;
+
+        validator2Nonce[validatorShare]++;
+
+        if (!user2Nonce[msg.sender]) user2Nonce[msg.sender] = 1;
+
+        user2Nonce[msg.sender]++;
+
+        RequestWithdraw[] storage requestWithdraws = user2WithdrawRequest[
+            msg.sender
+        ];
+
+        requestWithdraws.push(
+            RequestWithdraw(
+                amountInMATIC,
+                validator2Nonce[validatorShare],
+                block.timestamp,
+                validatorShare,
+                true
+            )
         );
 
-        sellVoucher_new(
-            validatorShare,
-            callerBalanceInMATIC,
-            callerBalanceInMATIC
-        );
+        lastWithdrawnValidatorId++;
     }
 
     /**
