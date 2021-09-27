@@ -98,9 +98,9 @@ contract LidoMatic is AccessControl, ERC20 {
         }
 
         // TODO this is just a mock
-        uint256 validatorId = IOperator.getValidatorId();
-        uint256 validatorNonce = IOperator.getValidatorNonce();
-        uint256 validatorShare = IOperator.getValidatorShareAddress();
+        uint256 validatorId = operator.getValidatorId();
+        uint256 validatorNonce = operator.getValidatorNonce();
+        uint256 validatorShare = operator.getValidatorShareAddress();
 
         userToWithdrawRequest[msg.sender] = RequestWithdraw(
             _amount,
@@ -115,7 +115,16 @@ contract LidoMatic is AccessControl, ERC20 {
         );
     }
 
-    function delegate() external auth(GOVERNANCE) {}
+    /**
+     * @dev Delegates tokens to validator share contract
+     */
+    function delegate(IValidatorShare validatorShare)
+        external
+        auth(GOVERNANCE)
+    {
+        uint256 tokenBalance = IERC20(token).balanceOf(address(this));
+        IERC20(token).transfer(address(validatorShare), tokenBalance);
+    }
 
     /**
      * @dev Claims tokens from validator share and sends them to the
