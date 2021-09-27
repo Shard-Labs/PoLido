@@ -25,7 +25,9 @@ contract LidoMatic is AccessControl, ERC20 {
     struct RequestWithdraw {
         uint256 amount;
         uint256 validatorNonce;
-        uint256 validatorID;
+        uint256 requestTime;
+        address validatorAddress;
+        bool active;
     }
 
     /** Roles */
