@@ -62,7 +62,7 @@ contract LidoMatic is AccessControl, ERC20 {
     constructor(address _token, address _nodeOperator)
         ERC20("Staked MATIC", "StMATIC")
     {
-        nodeOperator = _nodeOperator;
+        nodeOperator = INodeOperatorRegistry(_nodeOperator);
         token = _token;
     }
 
@@ -104,7 +104,7 @@ contract LidoMatic is AccessControl, ERC20 {
         // Burn StMATIC after checking if _amount satisfies user's balance
         // A nonce is dependent on a validator
         // Add a nonce per user
-        Operator.OperatorShare[] operatorShares = nodeOperator
+        Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
         if (lastWithdrawnValidatorId > operatorShares.length - 1) {
@@ -112,7 +112,7 @@ contract LidoMatic is AccessControl, ERC20 {
         }
 
         address validatorShare = operatorShares[lastWithdrawnValidatorId]
-            .shares;
+            .validatorShare;
 
         uint256 callerBalance = balanceOf(msg.sender);
 
@@ -120,16 +120,16 @@ contract LidoMatic is AccessControl, ERC20 {
 
         _burn(msg.sender, _amount);
 
-        uint256 amountInMATIC = getUserBalanceInMATIC(_amount);
+        uint256 amountInMATIC = getUserBalanceInMATIC();
 
         sellVoucher_new(validatorShare, amountInMATIC, type(uint256).max);
 
-        if (!validator2Nonce[validatorShare])
+        if (validator2Nonce[validatorShare] == 0)
             validator2Nonce[validatorShare] = 1;
 
         validator2Nonce[validatorShare]++;
 
-        if (!user2Nonce[msg.sender]) user2Nonce[msg.sender] = 1;
+        if (user2Nonce[msg.sender] == 0) user2Nonce[msg.sender] = 1;
 
         user2Nonce[msg.sender]++;
 
@@ -166,20 +166,41 @@ contract LidoMatic is AccessControl, ERC20 {
      * user if his request is in the userToWithdrawRequest
      */
     function claimTokens() external {
-        RequestWithdraw userRequest = userToWithdrawRequest[msg.sender];
+        RequestWithdraw[] storage userRequests = user2WithdrawRequest[
+            msg.sender
+        ];
 
-        require(userRequest.amount, "Not allowed to claim");
+        uint256 requestIndex;
 
-        IValidatorShare validatorShare = operator.getValidatorShare(
-            userRequest.validatorId
+        for (uint256 i = userRequests.length - 1; i >= 0; i--) {
+            if (i > 0 && userRequests[i - 1].active) continue;
+            requestIndex = i;
+            break;
+        }
+
+        require(userRequests[requestIndex].active, "No active withdrawals");
+
+        require(
+            block.timestamp >=
+                userRequests[requestIndex].requestTime + WITHDRAWAL_DELAY,
+            "Not able to claim yet"
         );
+
+        uint256 balanceBeforeClaim = IERC20(token).balanceOf(address(this));
 
         unstakeClaimTokens_new(
-            address(validatorShare),
-            userRequest.validatorNonce
+            userRequests[requestIndex].validatorAddress,
+            userRequests[requestIndex].validatorNonce
         );
 
-        IERC20(token).transfer(msg.sender, userRequest.amount);
+        uint256 balanceAfterClaim = IERC20(token).balanceOf(address(this));
+        uint256 amount = balanceAfterClaim - balanceBeforeClaim;
+
+        IERC20(token).transfer(msg.sender, amount);
+
+        userRequests[requestIndex].active = false;
+
+        totalDelegated -= amount;
     }
 
     /**
