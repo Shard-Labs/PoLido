@@ -13,21 +13,22 @@ contract LidoMatic is AccessControl, ERC20 {
     ///               ***State Variables***                  ///
     ///                                                      ///
     ////////////////////////////////////////////////////////////
+    uint256 constant WITHDRAWAL_DELAY = 2**13;
+
+    INodeOperatorRegistry public nodeOperator;
+    uint256 public lastWithdrawnValidatorId;
+    uint256 public totalDelegated;
+    uint256 public totalBuffered;
+    address public token;
+    bool public paused;
+
+    IValidatorShare[] validatorShares;
 
     mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
+    mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
     mapping(address => uint256) public validator2Nonce;
     mapping(address => uint256) public user2Nonce;
-    IValidatorShare[] validatorShares;
-    uint256 public totalDelegated;
-    uint256 public totalBuffered;
-    uint256 public lastWithdrawnValidatorId;
-    address public token;
-    bool paused;
-
-    INodeOperatorRegistry public nodeOperator;
-
-    uint256 constant WITHDRAWAL_DELAY = 2**13;
 
     struct RequestWithdraw {
         uint256 amount;
@@ -153,12 +154,28 @@ contract LidoMatic is AccessControl, ERC20 {
     /**
      * @dev Delegates tokens to validator share contract
      */
-    function delegate(IValidatorShare validatorShare)
-        external
-        auth(GOVERNANCE)
-    {
-        uint256 tokenBalance = IERC20(token).balanceOf(address(this));
-        IERC20(token).transfer(address(validatorShare), tokenBalance);
+    function delegate() external auth(GOVERNANCE) {
+        Operator.OperatorShare[] memory operatorShares = nodeOperator
+            .getOperatorShares();
+
+        uint256 amountPerValidator = totalBuffered / operatorShares.length;
+        uint256 remainder = totalBuffered % operatorShares.length;
+
+        for (uint256 i = 0; i < operatorShares.length; i++) {
+            IERC20(token).approve(
+                operatorShares[i].validatorShare,
+                amountPerValidator
+            );
+
+            buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
+
+            validator2DelegatedAmount[
+                operatorShares[i].validatorShare
+            ] = amountPerValidator;
+        }
+
+        totalDelegated += totalBuffered - remainder;
+        totalBuffered = remainder;
     }
 
     /**
@@ -218,7 +235,7 @@ contract LidoMatic is AccessControl, ERC20 {
     ////////////////////////////////////////////////////////////
 
     /**
-     * @dev API for delegatet buying vouchers from validatorShare
+     * @dev API for delegated buying vouchers from validatorShare
      * @param _validatorShare - Address of validatorShare contract
      * @param _amount - Amount of MATIC to use for buying vouchers
      * @param _minSharesToMint - Minimum of shares that is bought with _amount of MATIC
