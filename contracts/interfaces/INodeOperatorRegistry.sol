@@ -118,6 +118,10 @@ interface INodeOperatorRegistry {
     /// @return Return a list of operator Ids.
     function getOperators() external returns (uint256[] memory);
 
+    /// @notice Get the all operator addresses availablein the system.
+    /// @return Return a list of operator addresses.
+    function getOperatorAddresses() external returns (address[] memory);
+
     /// @notice Allows to get the validator factory address.
     /// @return Returns the validator factory address.
     function getValidatorFactory() external view returns (address);

@@ -235,6 +235,40 @@ contract LidoMatic is AccessControl, ERC20 {
     }
 
     /**
+     * @dev Distributes rewards claimed from validator shares based on fees defined in entityFee
+     */
+    function distributeRewards() external {
+        Operator.OperatorShare[] memory operatorShares = nodeOperator
+            .getOperatorShares();
+
+        for (uint256 i = 0; i < operatorShares.length; i++) {
+            IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
+        }
+
+        uint256 totalRewards = IERC20(token).balanceOf(address(this)) -
+            totalBuffered;
+
+        uint256 daoRewards = (totalRewards * entityFees.dao) / 100;
+        uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
+        uint256 operatorsRewards = (totalRewards * entityFees.operators) / 100;
+
+        IERC20(token).transfer(governance, daoRewards);
+        IERC20(token).transfer(insurance, insuranceRewards);
+
+        address[] memory operators = nodeOperator.getOperatorAddresses();
+        uint256 rewardsPerOperator = operatorsRewards / operators.length;
+
+        for (uint256 i = 0; i < operators.length; i++) {
+            IERC20(token).transfer(operators[i], rewardsPerOperator);
+        }
+
+        // Add the remainder to totalBuffered
+        uint256 remainder = IERC20(token).balanceOf(address(this)) -
+            totalBuffered;
+        totalBuffered += remainder;
+    }
+
+    /**
      * @notice Only PAUSE_ROLE can call this function. This function puts certain functionalities on pause.
      * @param _pause - Determines if the contract will be paused (true) or unpaused (false)
      */
