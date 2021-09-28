@@ -16,6 +16,9 @@ contract LidoMatic is AccessControl, ERC20 {
     uint256 constant WITHDRAWAL_DELAY = 2**13;
 
     INodeOperatorRegistry public nodeOperator;
+    FeeDistribution public entityFees;
+    address public governance;
+    address public insurance;
     uint256 public lastWithdrawnValidatorId;
     uint256 public totalDelegated;
     uint256 public totalBuffered;
@@ -36,6 +39,12 @@ contract LidoMatic is AccessControl, ERC20 {
         uint256 requestTime;
         address validatorAddress;
         bool active;
+    }
+
+    struct FeeDistribution {
+        uint256 dao;
+        uint256 operators;
+        uint256 insurance;
     }
 
     /** Roles */
@@ -60,11 +69,16 @@ contract LidoMatic is AccessControl, ERC20 {
      * @param _token - Address of MATIC token on Ethereum Mainnet
      * @param _nodeOperator - Address of the node operator
      */
-    constructor(address _token, address _nodeOperator)
-        ERC20("Staked MATIC", "StMATIC")
-    {
+    constructor(
+        address _nodeOperator,
+        address _token,
+        address _governance
+    ) ERC20("Staked MATIC", "StMATIC") {
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
+        governance = _governance;
         token = _token;
+
+        entityFees = FeeDistribution(5, 5, 90);
     }
 
     /**
@@ -352,5 +366,68 @@ contract LidoMatic is AccessControl, ERC20 {
             totalShares;
 
         return userBalanceInMATIC;
+    }
+
+    ////////////////////////////////////////////////////////////
+    /////                                                    ///
+    /////                 ***Setters***                      ///
+    /////                                                    ///
+    ////////////////////////////////////////////////////////////
+
+    /**
+     * @dev Function that sets new dao fee
+     * @notice Callable only by governance
+     * @param _fee - New fee in %
+     */
+    function setDaoFee(uint256 _fee) external auth(GOVERNANCE) {
+        entityFees.dao = _fee;
+    }
+
+    /**
+     * @dev Function that sets new operators fee
+     * @notice Callable only by governance
+     * @param _fee - New fee in %
+     */
+    function setOperatorsFee(uint256 _fee) external auth(GOVERNANCE) {
+        entityFees.operators = _fee;
+    }
+
+    /**
+     * @dev Function that sets new insurance fee
+     * @notice Callable only by governance
+     * @param _fee - New fee in %
+     */
+    function setInsuranceFee(uint256 _fee) external auth(GOVERNANCE) {
+        entityFees.insurance = _fee;
+    }
+
+    /**
+     * @dev Function that sets new dao address
+     * @notice Callable only by governance
+     * @param _address - New dao address
+     */
+    function setDaoAddress(address _address) external auth(GOVERNANCE) {
+        governance = _address;
+    }
+
+    /**
+     * @dev Function that sets new insurance address
+     * @notice Callable only by governance
+     * @param _address - New insurance address
+     */
+    function setInsuranceAddress(address _address) external auth(GOVERNANCE) {
+        insurance = _address;
+    }
+
+    /**
+     * @dev Function that sets new node operator address
+     * @notice Only callable by governance
+     * @param _address - New node operator address
+     */
+    function setNodeOperatorAddress(address _address)
+        external
+        auth(GOVERNANCE)
+    {
+        nodeOperator = INodeOperatorRegistry(_address);
     }
 }
