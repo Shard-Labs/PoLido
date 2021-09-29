@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./interfaces/IValidatorShare.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 
-contract LidoMatic is AccessControl, ERC20 {
+contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     ////////////////////////////////////////////////////////////
     ///                                                      ///
     ///               ***State Variables***                  ///
@@ -17,12 +18,12 @@ contract LidoMatic is AccessControl, ERC20 {
 
     INodeOperatorRegistry public nodeOperator;
     FeeDistribution public entityFees;
-    address public governance;
+    address public dao;
     address public insurance;
+    address public token;
     uint256 public lastWithdrawnValidatorId;
     uint256 public totalDelegated;
     uint256 public totalBuffered;
-    address public token;
     bool public paused;
 
     IValidatorShare[] validatorShares;
@@ -47,13 +48,6 @@ contract LidoMatic is AccessControl, ERC20 {
         uint256 insurance;
     }
 
-    /** Roles */
-    bytes32 public constant GOVERNANCE = keccak256("GOVERNANCE");
-    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
-    bytes32 public constant MANAGE_FEE = keccak256("MANAGE_FEE");
-    bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
-    bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
-
     /** Modifiers */
     modifier auth(bytes32 _role) {
         require(hasRole(_role, msg.sender));
@@ -69,13 +63,22 @@ contract LidoMatic is AccessControl, ERC20 {
      * @param _token - Address of MATIC token on Ethereum Mainnet
      * @param _nodeOperator - Address of the node operator
      */
-    constructor(
+    function initialize(
         address _nodeOperator,
         address _token,
-        address _governance
-    ) ERC20("Staked MATIC", "StMATIC") {
+        address _dao
+    ) public initializer {
+        __ERC20_init("Staked MATIC", "StMATIC");
+
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole("PAUSE_ROLE", msg.sender);
+        _setupRole("DAO", _dao);
+        _setupRole("MANAGE_FEE", _dao);
+        _setupRole("BURN_ROLE", _dao);
+        _setupRole("SET_TREASURY", _dao);
+
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
-        governance = _governance;
+        dao = _dao;
         token = _token;
 
         entityFees = FeeDistribution(5, 5, 90);
@@ -168,7 +171,7 @@ contract LidoMatic is AccessControl, ERC20 {
     /**
      * @dev Delegates tokens to validator share contract
      */
-    function delegate() external auth(GOVERNANCE) {
+    function delegate() external auth("dao") {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
@@ -252,7 +255,7 @@ contract LidoMatic is AccessControl, ERC20 {
         uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
         uint256 operatorsRewards = (totalRewards * entityFees.operators) / 100;
 
-        IERC20(token).transfer(governance, daoRewards);
+        IERC20(token).transfer(dao, daoRewards);
         IERC20(token).transfer(insurance, insuranceRewards);
 
         address[] memory operators = nodeOperator.getOperatorAddresses();
@@ -272,7 +275,7 @@ contract LidoMatic is AccessControl, ERC20 {
      * @notice Only PAUSE_ROLE can call this function. This function puts certain functionalities on pause.
      * @param _pause - Determines if the contract will be paused (true) or unpaused (false)
      */
-    function pause(bool _pause) external auth(PAUSE_ROLE) {
+    function pause(bool _pause) external auth("PAUSE_ROLE") {
         paused = _pause;
     }
 
@@ -410,58 +413,55 @@ contract LidoMatic is AccessControl, ERC20 {
 
     /**
      * @dev Function that sets new dao fee
-     * @notice Callable only by governance
+     * @notice Callable only by dao
      * @param _fee - New fee in %
      */
-    function setDaoFee(uint256 _fee) external auth(GOVERNANCE) {
+    function setDaoFee(uint256 _fee) external auth("DAO") {
         entityFees.dao = _fee;
     }
 
     /**
      * @dev Function that sets new operators fee
-     * @notice Callable only by governance
+     * @notice Callable only by dao
      * @param _fee - New fee in %
      */
-    function setOperatorsFee(uint256 _fee) external auth(GOVERNANCE) {
+    function setOperatorsFee(uint256 _fee) external auth("DAO") {
         entityFees.operators = _fee;
     }
 
     /**
      * @dev Function that sets new insurance fee
-     * @notice Callable only by governance
+     * @notice Callable only by dao
      * @param _fee - New fee in %
      */
-    function setInsuranceFee(uint256 _fee) external auth(GOVERNANCE) {
+    function setInsuranceFee(uint256 _fee) external auth("DAO") {
         entityFees.insurance = _fee;
     }
 
     /**
      * @dev Function that sets new dao address
-     * @notice Callable only by governance
+     * @notice Callable only by dao
      * @param _address - New dao address
      */
-    function setDaoAddress(address _address) external auth(GOVERNANCE) {
-        governance = _address;
+    function setDaoAddress(address _address) external auth("DAO") {
+        dao = _address;
     }
 
     /**
      * @dev Function that sets new insurance address
-     * @notice Callable only by governance
+     * @notice Callable only by dao
      * @param _address - New insurance address
      */
-    function setInsuranceAddress(address _address) external auth(GOVERNANCE) {
+    function setInsuranceAddress(address _address) external auth("DAO") {
         insurance = _address;
     }
 
     /**
      * @dev Function that sets new node operator address
-     * @notice Only callable by governance
+     * @notice Only callable by dao
      * @param _address - New node operator address
      */
-    function setNodeOperatorAddress(address _address)
-        external
-        auth(GOVERNANCE)
-    {
+    function setNodeOperatorAddress(address _address) external auth("DAO") {
         nodeOperator = INodeOperatorRegistry(_address);
     }
 }
