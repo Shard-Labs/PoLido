@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import { ethers, upgrades } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import {
@@ -25,7 +25,7 @@ describe('LidoMatic', () => {
             'MockToken'
         )) as MockToken__factory;
 
-        const LidoMatic = (await ethers.getContractFactory(
+        const LidoMatic: LidoMatic__factory = (await ethers.getContractFactory(
             'LidoMatic'
         )) as LidoMatic__factory;
 
@@ -34,8 +34,17 @@ describe('LidoMatic', () => {
         )) as MockValidatorShare__factory;
 
         mockToken = await MockToken.deploy();
-        lidoMatic = await LidoMatic.deploy(mockToken.address);
+        await mockToken.deployed();
+
+        lidoMatic = (await upgrades.deployProxy(LidoMatic, [
+            ethers.constants.AddressZero,
+            mockToken.address,
+            ethers.constants.AddressZero,
+        ])) as LidoMatic;
+        await lidoMatic.deployed();
+
         mockValidatorShare = await MockValidatorShare.deploy();
+        await mockValidatorShare.deployed();
     });
 
     it('should mint equal amount of tokens submitted', async () => {
@@ -89,8 +98,7 @@ describe('LidoMatic', () => {
 
     it('should sucessfully execute getTotalStake delegatecall', async () => {
         const totalStake = await lidoMatic.getTotalStake(
-            mockValidatorShare.address,
-            deployer.address
+            mockValidatorShare.address
         );
 
         expect(totalStake).to.eql([BigNumber.from(1), BigNumber.from(1)]);
@@ -98,8 +106,7 @@ describe('LidoMatic', () => {
 
     it('should sucessfully execute getLiquidRewards delegatecall', async () => {
         const liquidRewards = await lidoMatic.getLiquidRewards(
-            mockValidatorShare.address,
-            deployer.address
+            mockValidatorShare.address
         );
 
         expect(liquidRewards).to.equal(1);
