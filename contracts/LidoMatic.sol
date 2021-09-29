@@ -171,7 +171,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     /**
      * @dev Delegates tokens to validator share contract
      */
-    function delegate() external auth("dao") {
+    function delegate() external auth("DAO") {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
