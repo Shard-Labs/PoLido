@@ -466,4 +466,12 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     function setNodeOperatorAddress(address _address) external auth("DAO") {
         nodeOperator = INodeOperatorRegistry(_address);
     }
+
+    /**
+     * @dev Used for testing purposes only
+     */
+    function simulateSlashing() external {
+        totalDelegated = totalBuffered / 2;
+        totalBuffered = 0;
+    }
 }

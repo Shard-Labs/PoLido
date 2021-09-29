@@ -16,6 +16,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 describe('LidoMatic', () => {
     let deployer: SignerWithAddress;
     let lidoMatic: LidoMatic;
+    let upgradedLido: LidoMaticUpgrade;
     let mockToken: IERC20;
     let mockValidatorShare: MockValidatorShare;
 
@@ -51,20 +52,6 @@ describe('LidoMatic', () => {
         await mockValidatorShare.deployed();
     });
 
-    it('it should mint equal amount of tokens while no slashing or rewarding happened', async () => {
-        const tokenAmount = ethers.utils.parseEther('0.1');
-
-        const balanceOld = await lidoMatic.balanceOf(deployer.address);
-
-        await mockToken.approve(lidoMatic.address, tokenAmount);
-
-        await lidoMatic.submit(tokenAmount);
-
-        const balanceNew = await lidoMatic.balanceOf(deployer.address);
-
-        expect(balanceNew.sub(balanceOld).eq(tokenAmount)).to.be.true;
-    });
-
     describe('Testing initialization and upgradeability...', () => {
         it('should successfully assign roles', async () => {
             const admin = ethers.utils.hexZeroPad('0x00', 32);
@@ -87,13 +74,45 @@ describe('LidoMatic', () => {
                 'LidoMaticUpgrade'
             );
 
-            const upgradedLido = (await upgrades.upgradeProxy(
+            upgradedLido = (await upgrades.upgradeProxy(
                 lidoMatic.address,
                 LidoMaticUpgrade
             )) as LidoMaticUpgrade;
 
             expect(await upgradedLido.upgraded()).to.be.true;
             expect(upgradedLido.address).to.equal(lidoMatic.address);
+        });
+    });
+
+    describe('Testing main functionalities...', async () => {
+        it('it should mint equal amount of tokens while no slashing or rewarding happened', async () => {
+            const tokenAmount = ethers.utils.parseEther('0.1');
+
+            const balanceOld = await upgradedLido.balanceOf(deployer.address);
+
+            await mockToken.approve(upgradedLido.address, tokenAmount);
+
+            await upgradedLido.submit(tokenAmount);
+
+            const balanceNew = await upgradedLido.balanceOf(deployer.address);
+
+            expect(balanceNew.sub(balanceOld).eq(tokenAmount)).to.be.true;
+        });
+
+        it('it should mint greater amount of tokens after slashing has happened', async () => {
+            const tokenAmount = ethers.utils.parseEther('0.1');
+
+            const balanceOld = await upgradedLido.balanceOf(deployer.address);
+
+            await upgradedLido.simulateSlashing();
+
+            await mockToken.approve(upgradedLido.address, tokenAmount);
+
+            await upgradedLido.submit(tokenAmount);
+
+            const balanceNew = await upgradedLido.balanceOf(deployer.address);
+
+            expect(balanceNew.sub(balanceOld).gt(tokenAmount)).to.be.true;
         });
     });
 
