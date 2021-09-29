@@ -471,7 +471,15 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @dev Used for testing purposes only
      */
     function simulateSlashing() external {
-        totalDelegated = totalBuffered / 2;
+        totalDelegated = totalSupply() / 2;
+        totalBuffered = 0;
+    }
+
+    /**
+     * @dev Used for testing purposes only
+     */
+    function simulateRewarding() external {
+        totalDelegated = totalSupply() * 2;
         totalBuffered = 0;
     }
 }

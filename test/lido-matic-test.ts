@@ -114,6 +114,22 @@ describe('LidoMatic', () => {
 
             expect(balanceNew.sub(balanceOld).gt(tokenAmount)).to.be.true;
         });
+
+        it('it should mint lesser amount of tokens after the rewarding has happened', async () => {
+            const tokenAmount = ethers.utils.parseEther('0.1');
+
+            const balanceOld = await upgradedLido.balanceOf(deployer.address);
+
+            await upgradedLido.simulateRewarding();
+
+            await mockToken.approve(upgradedLido.address, tokenAmount);
+
+            await upgradedLido.submit(tokenAmount);
+
+            const balanceNew = await upgradedLido.balanceOf(deployer.address);
+
+            expect(balanceNew.sub(balanceOld).lt(tokenAmount)).to.be.true;
+        });
     });
 
     describe('Testing API...', () => {
