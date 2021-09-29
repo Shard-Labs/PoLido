@@ -96,17 +96,15 @@ contract ValidatorFactory is
     /// @notice Allows to set the NodeOperatorRegistry contract.
     /// @dev Allows to set the NodeOperatorRegistry contract. this is done only one time.
     function setOperatorAddress(address _operator) public {
-        if (state.operator == address(0)) {
-            require(
-                INodeOperatorRegistry(_operator).getValidatorFactory() ==
-                    address(this),
-                "Operator contract not valide"
-            );
-            state.operator = _operator;
-            emit SetOperatorContract(_operator);
-            return;
-        }
-        revert("Operator already set");
+        require(state.operator == address(0), "Operator already set");
+        require(
+            INodeOperatorRegistry(_operator).getValidatorFactory() ==
+                address(this),
+            "Operator contract not valide"
+        );
+        state.operator = _operator;
+        emit SetOperatorContract(_operator);
+        return;
     }
 
     /// @notice Alows to get the operator contract.

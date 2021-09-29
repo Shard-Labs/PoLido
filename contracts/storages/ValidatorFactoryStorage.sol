@@ -11,11 +11,11 @@ contract ValidatorFactoryStorage {
     // =========================== Global Vars ============================
     // ====================================================================
 
-    /// @notice Global state
-    Operator.ValidatorFactoryState internal state;
-
     /// @notice validators contracts.
     address[] internal validators;
+
+    /// @notice Global state
+    Operator.ValidatorFactoryState internal state;
 
     // ====================================================================
     // ============================== EVENTS ==============================

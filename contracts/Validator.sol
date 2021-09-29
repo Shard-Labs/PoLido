@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.7;
 
-import "./interfaces/IStakeManager.sol";
-import "./interfaces/IValidator.sol";
-import "./interfaces/INodeOperatorRegistry.sol";
-
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "hardhat/console.sol";
+
+import "./interfaces/IStakeManager.sol";
+import "./interfaces/IValidator.sol";
+import "./interfaces/INodeOperatorRegistry.sol";
 
 /// @title Validator
 /// @author 2021 Shardlabs.
@@ -69,11 +69,7 @@ contract Validator is IValidator {
         IERC20 polygonERC20 = IERC20(operator.getPolygonERC20());
 
         // transfer tokens from user to this contract
-        polygonERC20.safeTransferFrom(
-            _sender,
-            address(this),
-            (_amount + _heimdallFee)
-        );
+        polygonERC20.safeTransferFrom(_sender, address(this), totalAmount);
 
         // approve to stakeManager
         polygonERC20.safeApprove(address(stakeManager), totalAmount);
@@ -200,28 +196,33 @@ contract Validator is IValidator {
         INodeOperatorRegistry operator = getOperator();
         IStakeManager stakeManager = IStakeManager(operator.getStakeManager());
 
+        // get total staked before unstake.
+        uint256 amountStaked = stakeManager.validatorStake(_validatorId);
+
+        // claim unstake
         stakeManager.unstakeClaim(_validatorId);
 
-        // get total staked by the validator
-        uint256 amount = stakeManager.validatorStake(_validatorId);
-
+        // get the balance of this contract.
         uint256 balance = IERC20(operator.getPolygonERC20()).balanceOf(
             address(this)
         );
 
+        uint256 amount = (balance >= amountStaked ? amountStaked : balance);
         // transfer the amount to the owner.
         IERC20(operator.getPolygonERC20()).safeTransfer(
             _ownerRecipient,
-            amount - balance
+            amount
         );
 
-        // transfer the rest(rewards) to the lido contract
-        IERC20(operator.getPolygonERC20()).safeTransfer(
-            _ownerRecipient,
-            balance
-        );
+        if (balance - amount > 0) {
+            // transfer the rest(rewards) to the lido contract
+            IERC20(operator.getPolygonERC20()).safeTransfer(
+                operator.getLido(),
+                balance - amount
+            );
+        }
 
-        return balance;
+        return amount;
     }
 
     /// @notice Allows to update signer publickey

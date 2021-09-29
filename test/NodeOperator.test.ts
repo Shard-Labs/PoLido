@@ -83,7 +83,7 @@ describe('NodeOperator', function () {
             ethers.utils.parseEther("10000")
         )
 
-        await polygonERC20Contract.transfer(await user1.getAddress(), toEth("1000"))
+        await polygonERC20Contract.transfer(user1Address, toEth("1000"))
         await polygonERC20Contract.transfer(await user2.getAddress(), toEth("1000"))
     });
 
@@ -231,7 +231,7 @@ describe('NodeOperator', function () {
 
         // restake a node operator
         expect(await nodeOperatorRegistryContract.connect(user1)
-            .restake(toEth("20")))
+            .restake(toEth("10")))
             .to.emit(nodeOperatorRegistryContract, "RestakeOperator").withArgs(1, 1)
     })
 
@@ -242,17 +242,20 @@ describe('NodeOperator', function () {
 
         // get node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false)
+        // revert restake a node operator
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .restake(toEth("0"))).to.revertedWith("Invalid amount")
 
         // revert restake a node operator
         await expect(nodeOperatorRegistryContract.connect(user1)
-            .restake(toEth("20"))).to.revertedWith("Restake is disabled")
+            .restake(toEth("10"))).to.revertedWith("Restake is disabled")
 
         // set restake to true
         await nodeOperatorRegistryContract.setRestake(true)
 
         // revert restake a node operator
         await expect(nodeOperatorRegistryContract.connect(user1)
-            .restake(toEth("20"))).to.revertedWith("The operator status is not STAKED")
+            .restake(toEth("10"))).to.revertedWith("The operator status is not STAKED")
 
         // approve token to validator contract
         await polygonERC20Contract.connect(user1).approve(no[6], toEth("50"))
@@ -261,14 +264,9 @@ describe('NodeOperator', function () {
         expect(await nodeOperatorRegistryContract.connect(user1)
             .stake(toEth("10"), toEth("20")))
             .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1)
-
-        // revert restake a node operator
-        await expect(nodeOperatorRegistryContract.connect(user1)
-            .restake(toEth("0"))).to.revertedWith("Amount is ZERO")
     })
 
     it('Fail to stake an operator', async function () {
-
         // add a new node operator
         await newValidator(1, user1Address)
 
@@ -283,7 +281,7 @@ describe('NodeOperator', function () {
         // revert the caller is not the owner(owner is user1 and here the signer is the caller).
         await expect(nodeOperatorRegistryContract
             .stake(toEth("10"), toEth("20")))
-            .to.revertedWith("Operator not exists")
+            .to.revertedWith("Operator doesn't exist")
 
         // get node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false)
@@ -369,7 +367,7 @@ describe('NodeOperator', function () {
         expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0")
     })
 
-    it('Fail unstake an operator', async function () {
+    it('Fail to unstake an operator', async function () {
         // add a new node operator
         await newValidator(1, user1Address)
 
@@ -389,7 +387,7 @@ describe('NodeOperator', function () {
 
         // revert caller does not has any node operator
         await expect(nodeOperatorRegistryContract.unstake())
-            .to.revertedWith("Operator not exists")
+            .to.revertedWith("Operator doesn't exist")
     })
 
     it('Success topUpFee for a validator', async function () {
@@ -431,11 +429,11 @@ describe('NodeOperator', function () {
 
         // revert heimdall fees = 0
         await expect(nodeOperatorRegistryContract.connect(user1).topUpForFee(0))
-            .to.revertedWith("HeimdallFee is ZERO")
+            .to.revertedWith("Invalid heimdallFee")
 
         // revert the caller has no node operator.
         await expect(nodeOperatorRegistryContract.topUpForFee(toEth("20")))
-            .to.revertedWith("Operator not exists")
+            .to.revertedWith("Operator doesn't exist")
 
         // unstake a node operator
         await nodeOperatorRegistryContract.connect(user1).unstake()
@@ -475,7 +473,7 @@ describe('NodeOperator', function () {
         }
 
         expect(await lidoMockContract.withdrawRewards())
-            .to.emit(lidoMockContract, "LogRewards").withArgs(50, await user1.getAddress())
+            .to.emit(lidoMockContract, "LogRewards").withArgs(50, user1Address)
             .to.emit(lidoMockContract, "LogRewards").withArgs(50, await user2.getAddress());
     })
 
@@ -516,13 +514,16 @@ describe('NodeOperator', function () {
             .unstake())
             .to.emit(nodeOperatorRegistryContract, "UnstakeOperator").withArgs(1)
 
-        let beforeBalance = await polygonERC20Contract.balanceOf(await user1.getAddress())
+        let beforeBalance = await polygonERC20Contract.balanceOf(user1Address)
+        let beforeBalanceLido = await polygonERC20Contract.balanceOf(lidoMockContract.address)
         expect(await nodeOperatorRegistryContract.connect(user1)
             .unstakeClaim())
             .to.emit(nodeOperatorRegistryContract, "ClaimUnstake")
-        let afterBalance = await polygonERC20Contract.balanceOf(await user1.getAddress())
+        let afterBalance = await polygonERC20Contract.balanceOf(user1Address)
+        let afterBalanceLido = await polygonERC20Contract.balanceOf(lidoMockContract.address)
 
         expect(beforeBalance.toString()).not.equal(afterBalance.toString())
+        expect(beforeBalanceLido.toString()).not.equal(afterBalanceLido.toString())
 
         // check global state
         no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false)
@@ -551,7 +552,7 @@ describe('NodeOperator', function () {
 
         // unstake a node operator
         await nodeOperatorRegistryContract.connect(user1).unstake()
-        
+
         // set unjail to true
         await nodeOperatorRegistryContract.setUnjail(true)
 
@@ -589,11 +590,11 @@ describe('NodeOperator', function () {
 
         // revert unjail a node operator that not exists
         await expect(nodeOperatorRegistryContract.connect(user2).unjail())
-            .to.revertedWith("Operator not exists")
+            .to.revertedWith("Operator doesn't exist")
 
         // revert unjail a node operator that was not unstaked
         await expect(nodeOperatorRegistryContract.connect(user1).unjail())
-            .to.revertedWith("Operator status not UNSTAKED")
+            .to.revertedWith("Operator status isn't UNSTAKED")
     })
 
     it('Success claim heimdall fees', async function () {
@@ -638,12 +639,12 @@ describe('NodeOperator', function () {
         // claim fees before unstake
         await expect(nodeOperatorRegistryContract.connect(user1)
             .claimFee(1, 1, ethers.utils.randomBytes(64)))
-            .to.revertedWith("Operator status not EXIT")
+            .to.revertedWith("Operator status isn't EXIT")
 
         // claim fees of an operator that not exists
         await expect(nodeOperatorRegistryContract.connect(user2)
             .claimFee(1, 1, ethers.utils.randomBytes(64)))
-            .to.revertedWith("Operator not exists")
+            .to.revertedWith("Operator doesn't exist")
 
         // unstake a node operator
         await nodeOperatorRegistryContract.connect(user1).unstake()
@@ -690,7 +691,7 @@ describe('NodeOperator', function () {
 
         // update commission rate
         await expect(nodeOperatorRegistryContract.updateOperatorCommissionRate(0, 10))
-            .to.revertedWith("Operator status no STAKED")
+            .to.revertedWith("Operator status isn't STAKED")
     })
 
     it('Success update signer publickey', async function () {
@@ -789,7 +790,7 @@ describe('NodeOperator', function () {
 
         // revert remove node operator that not exists.
         await expect(nodeOperatorRegistryContract.removeOperator(2))
-            .to.revertedWith("Node Operator state not exit")
+            .to.revertedWith("Node Operator state isn't EXIT")
     })
 
     it('Success set stake amount and fees', async function () {
@@ -879,7 +880,7 @@ describe('NodeOperator', function () {
         expect(await validatorFactoryContract.version() === "2.0.0");
     })
 
-    it('Success upgrade validator factory validator implementation', async function () {
+    it('Success upgrade validator Proxy validator implementation', async function () {
         // add a new node operator
         await newValidator(1, user1Address)
         await newValidator(2, user2Address)
@@ -935,7 +936,42 @@ describe('NodeOperator', function () {
             })
             const op = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getOperator", res)
             expect(op[0], "operator address").to.equal(nodeOperatorRegistryContract.address)
+
+            await signer.sendTransaction({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorArtifactV2.abi)
+                    .encodeFunctionData("setX", [idx+10])
+            })
+
+            res = await signer.call({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorArtifactV2.abi).encodeFunctionData("getX")
+            })
+
+            const x = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getX", res)
+            expect(x[0], "validator version").to.equal(idx+10)
         }
+    })
+    
+    it('Fail to upgrade validator factory proxy implementation', async function () {
+        // add a new node operator
+        await newValidator(1, user1Address)
+
+        const validatorArtifactV2: Artifact = await hardhat.artifacts.readArtifact("ValidatorV2");
+        const validatorContractV2 = await deployContract(
+            signer,
+            validatorArtifactV2,
+            []
+        )
+        const validatorProxyArtifact: Artifact = await hardhat.artifacts.readArtifact("ValidatorProxy");
+        const v = await validatorFactoryContract.getValidators()
+
+        // revert user1 is not the owner
+        await expect(user1.sendTransaction({
+            to: v[0],
+            data: new ethers.utils.Interface(validatorProxyArtifact.abi)
+                .encodeFunctionData("setImplementation", [validatorContractV2.address])
+        })).to.revertedWith("You don't have permission")
     })
 });
 

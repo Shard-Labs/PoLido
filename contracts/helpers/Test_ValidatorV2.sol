@@ -8,8 +8,16 @@ import "../Validator.sol";
 /// @dev this contract is used only for test the upgradibility
 contract ValidatorV2 is Validator {
     uint256 x;
-    
+
     function version() public pure override returns (string memory) {
         return "2.0.0";
+    }
+
+    function setX(uint256 _x) public {
+        x = _x;
+    }
+
+    function getX() public view returns (uint256) {
+        return x;
     }
 }
