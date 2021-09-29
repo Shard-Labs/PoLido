@@ -8,6 +8,7 @@ import {
     MockToken__factory,
     MockValidatorShare__factory,
     MockValidatorShare,
+    LidoMaticUpgrade,
 } from '../typechain';
 import { expect } from 'chai';
 import { BigNumber } from '@ethersproject/bignumber';
@@ -81,6 +82,19 @@ describe('LidoMatic', () => {
             expect(await lidoMatic.hasRole(pauser, deployer.address)).to.be
                 .true;
         });
+        it('should upgrade lido matic contract successfully', async () => {
+            const LidoMaticUpgrade = await ethers.getContractFactory(
+                'LidoMaticUpgrade'
+            );
+
+            const upgradedLido = (await upgrades.upgradeProxy(
+                lidoMatic.address,
+                LidoMaticUpgrade
+            )) as LidoMaticUpgrade;
+
+            expect(await upgradedLido.upgraded()).to.be.true;
+            expect(upgradedLido.address).to.equal(lidoMatic.address);
+        });
     });
 
     describe('Testing API...', () => {
@@ -111,7 +125,7 @@ describe('LidoMatic', () => {
             expect(tx.status).to.equal(1);
         });
 
-        it('should sucessfully execute sellVoucher_new delegatecall', async () => {
+        it('should sucessfully execute sellVoucher_new', async () => {
             const tx = await (
                 await lidoMatic.sellVoucher_new(
                     mockValidatorShare.address,
@@ -123,7 +137,7 @@ describe('LidoMatic', () => {
             expect(tx.status).to.equal(1);
         });
 
-        it('should sucessfully execute getTotalStake delegatecall', async () => {
+        it('should sucessfully execute getTotalStake', async () => {
             const totalStake = await lidoMatic.getTotalStake(
                 mockValidatorShare.address
             );
@@ -131,7 +145,7 @@ describe('LidoMatic', () => {
             expect(totalStake).to.eql([BigNumber.from(1), BigNumber.from(1)]);
         });
 
-        it('should sucessfully execute getLiquidRewards delegatecall', async () => {
+        it('should sucessfully execute getLiquidRewards', async () => {
             const liquidRewards = await lidoMatic.getLiquidRewards(
                 mockValidatorShare.address
             );
