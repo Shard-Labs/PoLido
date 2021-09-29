@@ -18,6 +18,9 @@ describe('LidoMatic', () => {
     let mockToken: IERC20;
     let mockValidatorShare: MockValidatorShare;
 
+    const DAO = ethers.constants.AddressZero;
+    const NODE_OPERATOR = ethers.constants.AddressZero;
+
     before(async () => {
         [deployer] = await ethers.getSigners();
 
@@ -37,9 +40,9 @@ describe('LidoMatic', () => {
         await mockToken.deployed();
 
         lidoMatic = (await upgrades.deployProxy(LidoMatic, [
-            ethers.constants.AddressZero,
+            NODE_OPERATOR,
             mockToken.address,
-            ethers.constants.AddressZero,
+            DAO,
         ])) as LidoMatic;
         await lidoMatic.deployed();
 
@@ -47,7 +50,7 @@ describe('LidoMatic', () => {
         await mockValidatorShare.deployed();
     });
 
-    it('should mint equal amount of tokens submitted', async () => {
+    it('it should mint equal amount of tokens while no slashing or rewarding happened', async () => {
         const tokenAmount = ethers.utils.parseEther('0.1');
 
         const balanceOld = await lidoMatic.balanceOf(deployer.address);
@@ -61,54 +64,79 @@ describe('LidoMatic', () => {
         expect(balanceNew.sub(balanceOld).eq(tokenAmount)).to.be.true;
     });
 
-    it('should sucessfully execute buyVoucher delegatecall', async () => {
-        const tx = await (
-            await lidoMatic.buyVoucher(mockValidatorShare.address, 100, 0)
-        ).wait();
+    describe('Testing initialization and upgradeability...', () => {
+        it('should successfully assign roles', async () => {
+            const admin = ethers.utils.hexZeroPad('0x00', 32);
+            const dao = ethers.utils.formatBytes32String('DAO');
+            const manageFee = ethers.utils.formatBytes32String('MANAGE_FEE');
+            const pauser = ethers.utils.formatBytes32String('PAUSE_ROLE');
+            const burner = ethers.utils.formatBytes32String('BURN_ROLE');
+            const treasury = ethers.utils.formatBytes32String('SET_TREASURY');
 
-        expect(tx.status).to.equal(1);
+            expect(await lidoMatic.hasRole(admin, deployer.address)).to.be.true;
+            expect(await lidoMatic.hasRole(dao, DAO)).to.be.true;
+            expect(await lidoMatic.hasRole(manageFee, DAO)).to.be.true;
+            expect(await lidoMatic.hasRole(burner, DAO)).to.be.true;
+            expect(await lidoMatic.hasRole(treasury, DAO)).to.be.true;
+            expect(await lidoMatic.hasRole(pauser, deployer.address)).to.be
+                .true;
+        });
     });
 
-    it('should sucessfully execute restake delegatecall', async () => {
-        const tx = await (
-            await lidoMatic.restake(mockValidatorShare.address)
-        ).wait();
+    describe('Testing API...', () => {
+        it('should sucessfully execute buyVoucher', async () => {
+            const tx = await (
+                await lidoMatic.buyVoucher(mockValidatorShare.address, 100, 0)
+            ).wait();
 
-        expect(tx.status).to.equal(1);
-    });
+            expect(tx.status).to.equal(1);
+        });
 
-    it('should sucessfully execute unstakeClaimTokens_new delegatecall', async () => {
-        const tx = await (
-            await lidoMatic.unstakeClaimTokens_new(
-                mockValidatorShare.address,
-                0
-            )
-        ).wait();
+        it('should sucessfully execute restake', async () => {
+            const tx = await (
+                await lidoMatic.restake(mockValidatorShare.address)
+            ).wait();
 
-        expect(tx.status).to.equal(1);
-    });
+            expect(tx.status).to.equal(1);
+        });
 
-    it('should sucessfully execute sellVoucher_new delegatecall', async () => {
-        const tx = await (
-            await lidoMatic.sellVoucher_new(mockValidatorShare.address, 100, 0)
-        ).wait();
+        it('should sucessfully execute unstakeClaimTokens_new', async () => {
+            const tx = await (
+                await lidoMatic.unstakeClaimTokens_new(
+                    mockValidatorShare.address,
+                    0
+                )
+            ).wait();
 
-        expect(tx.status).to.equal(1);
-    });
+            expect(tx.status).to.equal(1);
+        });
 
-    it('should sucessfully execute getTotalStake delegatecall', async () => {
-        const totalStake = await lidoMatic.getTotalStake(
-            mockValidatorShare.address
-        );
+        it('should sucessfully execute sellVoucher_new delegatecall', async () => {
+            const tx = await (
+                await lidoMatic.sellVoucher_new(
+                    mockValidatorShare.address,
+                    100,
+                    0
+                )
+            ).wait();
 
-        expect(totalStake).to.eql([BigNumber.from(1), BigNumber.from(1)]);
-    });
+            expect(tx.status).to.equal(1);
+        });
 
-    it('should sucessfully execute getLiquidRewards delegatecall', async () => {
-        const liquidRewards = await lidoMatic.getLiquidRewards(
-            mockValidatorShare.address
-        );
+        it('should sucessfully execute getTotalStake delegatecall', async () => {
+            const totalStake = await lidoMatic.getTotalStake(
+                mockValidatorShare.address
+            );
 
-        expect(liquidRewards).to.equal(1);
+            expect(totalStake).to.eql([BigNumber.from(1), BigNumber.from(1)]);
+        });
+
+        it('should sucessfully execute getLiquidRewards delegatecall', async () => {
+            const liquidRewards = await lidoMatic.getLiquidRewards(
+                mockValidatorShare.address
+            );
+
+            expect(liquidRewards).to.equal(1);
+        });
     });
 });
