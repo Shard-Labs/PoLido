@@ -142,7 +142,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 callerBalance = balanceOf(msg.sender);
 
-        require(callerBalance <= _amount, "Invalid amount");
+        require(callerBalance >= _amount, "Invalid amount");
 
         _burn(msg.sender, _amount);
 
@@ -150,10 +150,11 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
         sellVoucher_new(validatorShare, amountInMATIC, type(uint256).max);
 
-        if (validator2Nonce[validatorShare] == 0)
+        if (validator2Nonce[validatorShare] == 0) {
             validator2Nonce[validatorShare] = 1;
-
-        validator2Nonce[validatorShare]++;
+        } else {
+            validator2Nonce[validatorShare]++;
+        }
 
         if (user2Nonce[msg.sender] == 0) user2Nonce[msg.sender] = 1;
 

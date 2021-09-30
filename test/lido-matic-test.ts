@@ -66,11 +66,11 @@ describe('LidoMatic', () => {
     describe('Testing initialization and upgradeability...', () => {
         it('should successfully assign roles', async () => {
             const admin = ethers.utils.hexZeroPad('0x00', 32);
-            const daoRole = keccak256(toUtf8Bytes('DAO'))
-            const manageFee = keccak256(toUtf8Bytes('MANAGE_FEE'))
-            const pauser = keccak256(toUtf8Bytes('PAUSE_ROLE'))
-            const burner = keccak256(toUtf8Bytes('BURN_ROLE'))
-            const treasury = keccak256(toUtf8Bytes('SET_TREASURY'))
+            const daoRole = keccak256(toUtf8Bytes('DAO'));
+            const manageFee = keccak256(toUtf8Bytes('MANAGE_FEE'));
+            const pauser = keccak256(toUtf8Bytes('PAUSE_ROLE'));
+            const burner = keccak256(toUtf8Bytes('BURN_ROLE'));
+            const treasury = keccak256(toUtf8Bytes('SET_TREASURY'));
 
             expect(await lidoMatic.hasRole(admin, deployer.address)).to.be.true;
             expect(await lidoMatic.hasRole(daoRole, dao.address)).to.be.true;
@@ -162,6 +162,23 @@ describe('LidoMatic', () => {
             );
 
             expect(validatorShareBalance.gt(0)).to.be.true;
+        });
+
+        it('should successfully request withdraw', async () => {
+            const senderBalance = await upgradedLido.balanceOf(
+                deployer.address
+            );
+
+            // If we withdraw all tokens and totalAmount() is equal to users balance
+            // we get an error "reverted with panic code 0x12 (Division or modulo division by zero)"
+            await upgradedLido.requestWithdraw(senderBalance.div(2));
+
+            const withdrawRequest = await upgradedLido.user2WithdrawRequest(
+                deployer.address,
+                0
+            );
+
+            expect(withdrawRequest.validatorNonce.eq(1)).to.be.true;
         });
     });
 
