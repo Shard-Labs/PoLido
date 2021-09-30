@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "../interfaces/IValidatorShare.sol";
 
 contract MockValidatorShare is IValidatorShare {
+    address public token;
+
+    constructor(address _token) {
+        token = _token;
+    }
+
     function validatorId() external pure override returns (uint256) {
         return 1;
     }
@@ -27,10 +35,17 @@ contract MockValidatorShare is IValidatorShare {
 
     function buyVoucher(uint256 _amount, uint256 _minSharesToMint)
         external
-        pure
         override
         returns (uint256)
     {
+        bool res = IERC20(token).transferFrom(
+            msg.sender,
+            address(this),
+            _amount
+        );
+
+        require(res, "token transfer wasn't successful");
+
         return 1;
     }
 

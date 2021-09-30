@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.7;
 
-contract NodeOperatorRegistry {
+contract MockNodeOperatorRegistry {
     /// @notice OperatorShare struct
     struct OperatorShare {
         uint256 operatorId;
@@ -11,6 +11,10 @@ contract NodeOperatorRegistry {
 
     OperatorShare[] operatorShare;
     uint256[] operatorIds;
+
+    constructor(address validatorShare) {
+        operatorShare.push(OperatorShare(1, validatorShare));
+    }
 
     /// @notice Get the all operator ids availablein the system.
     /// @return Return a list of operator Ids.
@@ -43,9 +47,11 @@ contract NodeOperatorRegistry {
 
     /// @notice Allows to get a list of operatorShare struct
     /// @return Returns a list of operatorShare struct
-    function getOperatorShares() external returns (OperatorShare[] memory) {
-        operatorShare.push(OperatorShare(1, address(0)));
-
+    function getOperatorShares()
+        external
+        view
+        returns (OperatorShare[] memory)
+    {
         return operatorShare;
     }
 }

@@ -34,6 +34,12 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     mapping(address => uint256) public validator2Nonce;
     mapping(address => uint256) public user2Nonce;
 
+    bytes32 public constant DAO = keccak256("DAO");
+    bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
+    bytes32 public constant MANAGE_FEE = keccak256("MANAGE_FEE");
+    bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
+    bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
+
     bool public constant upgraded = true;
 
     struct RequestWithdraw {
@@ -52,7 +58,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
     /** Modifiers */
     modifier auth(bytes32 _role) {
-        require(hasRole(_role, msg.sender));
+        require(hasRole(_role, msg.sender), "Not authorized");
         _;
     }
 
@@ -73,11 +79,11 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         __ERC20_init("Staked MATIC", "StMATIC");
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole("PAUSE_ROLE", msg.sender);
-        _setupRole("DAO", _dao);
-        _setupRole("MANAGE_FEE", _dao);
-        _setupRole("BURN_ROLE", _dao);
-        _setupRole("SET_TREASURY", _dao);
+        _setupRole(PAUSE_ROLE, msg.sender);
+        _setupRole(DAO, _dao);
+        _setupRole(MANAGE_FEE, _dao);
+        _setupRole(BURN_ROLE, _dao);
+        _setupRole(SET_TREASURY, _dao);
 
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
         dao = _dao;
@@ -173,7 +179,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     /**
      * @dev Delegates tokens to validator share contract
      */
-    function delegate() external auth("dao") {
+    function delegate() external auth(DAO) {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
@@ -277,7 +283,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Only PAUSE_ROLE can call this function. This function puts certain functionalities on pause.
      * @param _pause - Determines if the contract will be paused (true) or unpaused (false)
      */
-    function pause(bool _pause) external auth("PAUSE_ROLE") {
+    function pause(bool _pause) external auth(PAUSE_ROLE) {
         paused = _pause;
     }
 
@@ -418,7 +424,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Callable only by dao
      * @param _fee - New fee in %
      */
-    function setDaoFee(uint256 _fee) external auth("DAO") {
+    function setDaoFee(uint256 _fee) external auth(DAO) {
         entityFees.dao = _fee;
     }
 
@@ -427,7 +433,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Callable only by dao
      * @param _fee - New fee in %
      */
-    function setOperatorsFee(uint256 _fee) external auth("DAO") {
+    function setOperatorsFee(uint256 _fee) external auth(DAO) {
         entityFees.operators = _fee;
     }
 
@@ -436,7 +442,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Callable only by dao
      * @param _fee - New fee in %
      */
-    function setInsuranceFee(uint256 _fee) external auth("DAO") {
+    function setInsuranceFee(uint256 _fee) external auth(DAO) {
         entityFees.insurance = _fee;
     }
 
@@ -445,7 +451,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Callable only by dao
      * @param _address - New dao address
      */
-    function setDaoAddress(address _address) external auth("DAO") {
+    function setDaoAddress(address _address) external auth(DAO) {
         dao = _address;
     }
 
@@ -454,7 +460,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Callable only by dao
      * @param _address - New insurance address
      */
-    function setInsuranceAddress(address _address) external auth("DAO") {
+    function setInsuranceAddress(address _address) external auth(DAO) {
         insurance = _address;
     }
 
@@ -463,7 +469,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Only callable by dao
      * @param _address - New node operator address
      */
-    function setNodeOperatorAddress(address _address) external auth("DAO") {
+    function setNodeOperatorAddress(address _address) external auth(DAO) {
         nodeOperator = INodeOperatorRegistry(_address);
     }
 

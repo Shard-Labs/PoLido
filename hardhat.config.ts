@@ -1,10 +1,12 @@
 import * as dotenv from "dotenv";
 import * as path from "path";
 import { task, HardhatUserConfig } from "hardhat/config";
+
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
+import 'hardhat-gas-reporter';
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
