@@ -37,11 +37,6 @@ describe('NodeOperator', function () {
         const polygonERC20Artifact: Artifact = await hardhat.artifacts.readArtifact("Polygon");
         polygonERC20Contract = await deployContract(signer, polygonERC20Artifact)
 
-        // deploy lido mock contract
-        // TODO: change later with the real lido contract.
-        const lidoMockArtifact: Artifact = await hardhat.artifacts.readArtifact("LidoMock");
-        lidoMockContract = await deployContract(signer, lidoMockArtifact)
-
         // deploy stake manager mock
         const stakeManagerMockArtifact: Artifact = await hardhat.artifacts.readArtifact("StakeManagerMock");
         stakeManagerMockContract = await deployContract(
@@ -67,14 +62,19 @@ describe('NodeOperator', function () {
             nodeOperatorRegistryArtifact,
             [
                 validatorFactoryContract.address,
-                lidoMockContract.address,
                 stakeManagerMockContract.address,
                 polygonERC20Contract.address
             ],
             { kind: 'uups' }
         )
 
+        // deploy lido mock contract
+        // TODO: change later with the real lido contract.
+        const lidoMockArtifact: Artifact = await hardhat.artifacts.readArtifact("LidoMock");
+        lidoMockContract = await deployContract(signer, lidoMockArtifact)
+
         await validatorFactoryContract.setOperatorAddress(nodeOperatorRegistryContract.address)
+        await nodeOperatorRegistryContract.setLidoAddress(lidoMockContract.address)
         await lidoMockContract.setOperator(nodeOperatorRegistryContract.address)
 
         // transfer some funds to the stake manager, so we can use it to withdraw rewards.

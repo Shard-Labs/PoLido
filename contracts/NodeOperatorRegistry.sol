@@ -63,7 +63,7 @@ contract NodeOperatorRegistry is
     /// @notice Initialize the NodeOperator contract.
     function initialize(
         address _validatorFactory,
-        address _lido,
+        // address _lido,
         address _stakeManager,
         address _polygonERC20
     ) public initializer {
@@ -72,7 +72,7 @@ contract NodeOperatorRegistry is
 
         // set default state
         state.validatorFactory = _validatorFactory;
-        state.lido = _lido;
+        // state.lido = _lido;
         state.stakeManager = _stakeManager;
         state.polygonERC20 = _polygonERC20;
         state.commissionRate = 0;
@@ -87,7 +87,7 @@ contract NodeOperatorRegistry is
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
-        _setupRole(EXIT_OPERATOR_ROLE, msg.sender);
+        _setupRole(PAUSE_OPERATOR_ROLE, msg.sender);
         _setupRole(UPDATE_COMMISSION_RATE_ROLE, msg.sender);
         _setupRole(UPDATE_STAKE_HEIMDALL_FEES_ROLE, msg.sender);
     }
@@ -644,12 +644,12 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows to pause the contract.
-    function pause() external userHasRole(DEFAULT_ADMIN_ROLE) {
+    function pause() external userHasRole(PAUSE_OPERATOR_ROLE) {
         _pause();
     }
 
     /// @notice Allows to unpause the contract.
-    function unpause() external userHasRole(DEFAULT_ADMIN_ROLE) {
+    function unpause() external userHasRole(PAUSE_OPERATOR_ROLE) {
         _unpause();
     }
 
@@ -664,5 +664,9 @@ contract NodeOperatorRegistry is
     /// @notice Allows to toggle unjail.
     function setUnjail(bool _unjail) external userHasRole(DEFAULT_ADMIN_ROLE) {
         state.unjail = _unjail;
+    }
+
+    function setLidoAddress(address _lido) external userHasRole(DEFAULT_ADMIN_ROLE) {
+        state.lido = _lido;
     }
 }

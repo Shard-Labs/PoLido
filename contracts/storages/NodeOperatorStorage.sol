@@ -13,7 +13,7 @@ contract NodeOperatorStorage {
 
     bytes32 public constant ADD_OPERATOR_ROLE = keccak256("ADD_OPERATOR");
     bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
-    bytes32 public constant EXIT_OPERATOR_ROLE = keccak256("EXIT_OPERATOR");
+    bytes32 public constant PAUSE_OPERATOR_ROLE = keccak256("PAUSE_OPERATOR");
     bytes32 public constant UPDATE_COMMISSION_RATE_ROLE =
         keccak256("UPDATE_COMMISSION_RATE");
     bytes32 public constant UPDATE_STAKE_HEIMDALL_FEES_ROLE =
