@@ -639,7 +639,7 @@ describe('NodeOperator', function () {
         // claim fees before unstake
         await expect(nodeOperatorRegistryContract.connect(user1)
             .claimFee(1, 1, ethers.utils.randomBytes(64)))
-            .to.revertedWith("Operator status isn't EXIT")
+            .to.revertedWith("Operator status isn't CLAIMED")
 
         // claim fees of an operator that not exists
         await expect(nodeOperatorRegistryContract.connect(user2)
@@ -790,7 +790,7 @@ describe('NodeOperator', function () {
 
         // revert remove node operator that not exists.
         await expect(nodeOperatorRegistryContract.removeOperator(2))
-            .to.revertedWith("Node Operator state isn't EXIT")
+            .to.revertedWith("Node Operator state isn't CLAIMED or EXIT")
     })
 
     it('Success set stake amount and fees', async function () {

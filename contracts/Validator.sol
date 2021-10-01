@@ -12,7 +12,8 @@ import "./interfaces/INodeOperatorRegistry.sol";
 
 /// @title Validator
 /// @author 2021 Shardlabs.
-/// @notice Validator is the contract used to manage a staked validator on Polygon stake manager
+/// @notice The Validator is a contract implementation used by the validator proxy.
+/// The msg.sender has to be always the node operator registry contract.
 contract Validator is IValidator {
     using SafeERC20 for IERC20;
 
@@ -41,8 +42,9 @@ contract Validator is IValidator {
     // ====================================================================
 
     /// @notice Stake allows to stake on the Polygon stakeManager contract
-    /// @dev  Stake allows to stake on the Polygon stakeManager contract by
-    /// calling stakeFor function and set the user address equal to this contract address
+    /// @dev Allows to stake on the Polygon stakeManager contract by
+    /// calling stakeFor function and set the user as the equal to this validator proxy
+    /// address.
     /// @param _sender the address of the operator-owner that approved Matics.
     /// @param _amount the amount to stake with.
     /// @param _heimdallFee the heimdall fees.
@@ -278,6 +280,8 @@ contract Validator is IValidator {
     /// @notice Allows to set the operator contract.
     function setOperator(address _operator) external {
         // TODO: check why the default value is 0x1 not 0x0
+        console.log(state.operator);
+        
         if (state.operator == address(0) || state.operator == address(1)) {
             state.operator = _operator;
         }

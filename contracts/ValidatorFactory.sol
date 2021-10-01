@@ -11,7 +11,8 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title ValidatorFactory
 /// @author 2021 Shardlabs.
-/// @notice It allows to create an remove validator proxy that are used to StakeManager
+/// @notice Allows to create an remove validator proxy that are used as validator's
+// owner on Polygon StakeManager
 contract ValidatorFactory is
     Initializable,
     OwnableUpgradeable,
@@ -77,13 +78,7 @@ contract ValidatorFactory is
                 validators.pop();
             }
         }
-    }
-
-    /// @notice Get validators contracts.
-    /// @return return a list of deployed validator contracts.
-    function getValidators() public view returns (address[] memory) {
-        return validators;
-    }
+    }    
 
     /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
     /// @param newImplementation new contract implementation address.
@@ -100,6 +95,12 @@ contract ValidatorFactory is
         emit SetOperatorContract(_operator);
     }
 
+    /// @notice Get validators contracts.
+    /// @return return a list of deployed validator contracts.
+    function getValidators() public view returns (address[] memory) {
+        return validators;
+    }
+    
     /// @notice Alows to get the operator contract.
     /// @dev Returns operator address.
     function getOperator() external view returns (address) {

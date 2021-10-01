@@ -8,6 +8,7 @@ library Operator {
         ACTIVE,
         STAKED,
         UNSTAKED,
+        CLAIMED,
         EXIT
     }
 

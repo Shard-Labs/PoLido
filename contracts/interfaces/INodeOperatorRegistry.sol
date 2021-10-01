@@ -63,14 +63,6 @@ interface INodeOperatorRegistry {
     /// @return Returns the validator id
     function getValidatorId(address _user) external view returns (uint256);
 
-    /// @notice Allows to get the validatorContract address using the _validatorId.
-    /// @param _validatorId validator id.
-    /// @return Returns the validatorContract address
-    function getValidatorContract(uint256 _validatorId)
-        external
-        view
-        returns (address);
-
     /// @notice Allows to withdraw rewards accumulated in the stakeManager by all
     /// the operators, then calculate the shares per operator.
     /// @return Returns the shares of the operators and the receipient addresses
