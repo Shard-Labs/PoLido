@@ -57,6 +57,8 @@ library Operator {
 
     /// @notice State struct
     struct ValidatorState {
+        address owner;
+        address implementation;
         address operator;
     }
 

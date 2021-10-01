@@ -55,14 +55,8 @@ contract ValidatorFactory is
 
         // create a new validator proxy
         address proxy = address(
-            new ValidatorProxy(owner(), state.validatorImplementation)
+            new ValidatorProxy(owner(), state.validatorImplementation, state.operator)
         );
-
-        // set the operator address.
-        (bool success, ) = proxy.call(
-            abi.encodeWithSignature("setOperator(address)", state.operator)
-        );
-        require(success, "Set operator fails");
 
         validators.push(proxy);
 

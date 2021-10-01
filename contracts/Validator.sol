@@ -278,16 +278,6 @@ contract Validator is IValidator {
     }
 
     /// @notice Allows to set the operator contract.
-    function setOperator(address _operator) external {
-        // TODO: check why the default value is 0x1 not 0x0
-        console.log(state.operator);
-        
-        if (state.operator == address(0) || state.operator == address(1)) {
-            state.operator = _operator;
-        }
-    }
-
-    /// @notice Allows to set the operator contract.
     function getState() external view returns (Operator.ValidatorState memory) {
         return state;
     }

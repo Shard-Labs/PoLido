@@ -3,34 +3,28 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/ERC1967/ERC1967UpgradeUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title ValidatorProxy
 /// @author 2021 Shardlabs.
-contract ValidatorProxy is Proxy, ERC1967UpgradeUpgradeable {
-    // ====================================================================
-    // =========================== MODIFIERS ==============================
-    // ====================================================================
-
-    modifier isAdmin() {
-        require(_getAdmin() == msg.sender, "You don't have permission");
-        _;
-    }
-
+contract ValidatorProxy is Ownable, Proxy {
+    address private implementation;
+    address private operator;
+    
     // ====================================================================
     // =========================== FUNCTIONS ==============================
     // ====================================================================
 
-    constructor(address _admin, address _newImplementation) {
-        _changeAdmin(_admin);
-        _upgradeTo(_newImplementation);
-        __ERC1967Upgrade_init();
+    constructor(address _admin, address _newImplementation, address _operator) {
+        implementation = _newImplementation;
+        operator = _operator;
+        transferOwnership(_admin);
     }
 
     /// @notice Allows admin to upgrade the validator implementation
     /// @param _newImplementation set a new implementation
-    function setImplementation(address _newImplementation) external isAdmin {
-        _upgradeTo(_newImplementation);
+    function setImplementation(address _newImplementation) external onlyOwner() {
+        implementation = _newImplementation;
     }
 
     /// @notice Allows to get the contract implementation address.
@@ -42,6 +36,12 @@ contract ValidatorProxy is Proxy, ERC1967UpgradeUpgradeable {
         override
         returns (address)
     {
-        return _getImplementation();
+        return implementation;
+    }
+
+    /// @notice Allows admin to set the operator address
+    /// @param _newoperator set a new operator.
+    function setOperator(address _newoperator) external onlyOwner() {
+        operator = _newoperator;
     }
 }

@@ -74,7 +74,7 @@ describe('NodeOperator', function () {
         lidoMockContract = await deployContract(signer, lidoMockArtifact)
 
         await validatorFactoryContract.setOperatorAddress(nodeOperatorRegistryContract.address)
-        await nodeOperatorRegistryContract.setLidoAddress(lidoMockContract.address)
+        await nodeOperatorRegistryContract.setLido(lidoMockContract.address)
         await lidoMockContract.setOperator(nodeOperatorRegistryContract.address)
 
         // transfer some funds to the stake manager, so we can use it to withdraw rewards.
@@ -180,7 +180,6 @@ describe('NodeOperator', function () {
     })
 
     it('Success stake an operator', async function () {
-
         // add a new node operator
         await newValidator(1, user1Address)
 
@@ -868,6 +867,16 @@ describe('NodeOperator', function () {
         expect(state[12], "minHeimdallFees").to.equal(toEth("30"))
     })
 
+    it('Success set lido and validatorFactory addresses', async function () {
+        const newValidatorFactoryAddress = ethers.utils.hexZeroPad('0x1', 20)
+        const newLidoAddress = ethers.utils.hexZeroPad('0x2', 20)
+        await nodeOperatorRegistryContract.setValidatorFactory(newValidatorFactoryAddress)
+        await nodeOperatorRegistryContract.setLido(newLidoAddress)
+
+        expect(await nodeOperatorRegistryContract.getLido()).equal(newLidoAddress)
+        expect(await nodeOperatorRegistryContract.getValidatorFactory()).equal(newValidatorFactoryAddress)
+    })
+
     it('Success upgrade validator factory', async function () {
         // before upgrade
         expect(await validatorFactoryContract.version() === "1.0.0");
@@ -911,7 +920,6 @@ describe('NodeOperator', function () {
             []
         )
 
-
         const validatorProxyArtifact: Artifact = await hardhat.artifacts.readArtifact("ValidatorProxy");
         const v = await validatorFactoryContract.getValidators()
 
@@ -937,10 +945,18 @@ describe('NodeOperator', function () {
             const op = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getOperator", res)
             expect(op[0], "operator address").to.equal(nodeOperatorRegistryContract.address)
 
+            res = await signer.call({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorArtifactV2.abi).encodeFunctionData("getX")
+            })
+
+            let x = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getX", res)
+            expect(x[0], "validator version").to.equal(0)
+
             await signer.sendTransaction({
                 to: v[idx],
                 data: new ethers.utils.Interface(validatorArtifactV2.abi)
-                    .encodeFunctionData("setX", [idx+10])
+                    .encodeFunctionData("setX", [idx + 10])
             })
 
             res = await signer.call({
@@ -948,15 +964,14 @@ describe('NodeOperator', function () {
                 data: new ethers.utils.Interface(validatorArtifactV2.abi).encodeFunctionData("getX")
             })
 
-            const x = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getX", res)
-            expect(x[0], "validator version").to.equal(idx+10)
+            x = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getX", res)
+            expect(x[0], "validator version").to.equal(idx + 10)
         }
     })
-    
+
     it('Fail to upgrade validator factory proxy implementation', async function () {
         // add a new node operator
         await newValidator(1, user1Address)
-
         const validatorArtifactV2: Artifact = await hardhat.artifacts.readArtifact("ValidatorV2");
         const validatorContractV2 = await deployContract(
             signer,
@@ -971,7 +986,7 @@ describe('NodeOperator', function () {
             to: v[0],
             data: new ethers.utils.Interface(validatorProxyArtifact.abi)
                 .encodeFunctionData("setImplementation", [validatorContractV2.address])
-        })).to.revertedWith("You don't have permission")
+        })).to.revertedWith("Ownable: caller is not the owner")
     })
 });
 

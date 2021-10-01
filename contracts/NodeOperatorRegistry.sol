@@ -82,9 +82,9 @@ import "hardhat/console.sol";
 ///
 /// **setUnjail**: allows operators to unjail.
 ///
-/// **setLidoAddress**: set lido contract.
+/// **setLido**: set lido contract.
 ///
-/// **setValidatorFactoryAddress**: set validato factory contract.
+/// **setValidatorFactory**: set validato factory contract.
 contract NodeOperatorRegistry is
     INodeOperatorRegistry,
     Initializable,
@@ -632,7 +632,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows to set the lido contract address.
-    function setLidoAddress(address _lido)
+    function setLido(address _lido)
         external
         whenNotPaused
         userHasRole(DEFAULT_ADMIN_ROLE)
@@ -641,7 +641,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows to set the validator factory contract address.
-    function setValidatorFactoryAddress(address _validatorFactory)
+    function setValidatorFactory(address _validatorFactory)
         external
         whenNotPaused
         userHasRole(DEFAULT_ADMIN_ROLE)

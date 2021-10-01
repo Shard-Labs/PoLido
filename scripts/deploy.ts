@@ -103,7 +103,7 @@ async function main() {
   // set operator address for the validator factory
   await validatorFactoryContract.setOperatorAddress(nodeOperatorRegistryContract.address)
   // set lido contract fot the operator
-  await nodeOperatorRegistryContract.setLidoAddress(lidoMatic.address)
+  await nodeOperatorRegistryContract.setLido(lidoMatic.address)
 
   // write addreses into json file
   const data = {
