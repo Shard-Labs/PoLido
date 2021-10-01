@@ -9,25 +9,48 @@ import {
   NodeOperatorRegistry__factory,
   NodeOperatorRegistry
 } from '../typechain';
-import config from "../config.json"
 
 const { deployContract } = hardhat.waffle;
 
 async function main() {
+  // get network
   const networkName: string = hardhat.network.name
-
-  // matic token address
-  const maticERC20Address: string =
-    config.networks[networkName == "mainnet" ? "mainnet" : "goerli"].StakeManagerProxy
-
-  // polygon stake manager address
-  const polygonStakeManager: string =
-    config.networks[networkName == "mainnet" ? "mainnet" : "goerli"].Token
 
   // get signer
   const accounts = await ethers.getSigners();
   let signer: Signer = accounts[0]
   let signerAddress = await signer.getAddress()
+  
+  let polygonStakeManager: string
+  let maticERC20Address: string
+
+  // parse config file
+  const configData: string = fs.readFileSync(
+    path.join(process.cwd(), "config.json"),
+    "utf-8"
+  )
+  const config = JSON.parse(configData)
+
+  if (networkName === "goerli" || networkName === "mainnet") {
+    // matic token address
+    maticERC20Address = config.networks[networkName].StakeManagerProxy
+  
+    // polygon stake manager address
+    polygonStakeManager = config.networks[networkName].Token
+  } else {
+    // if the network is localhost, deploy mock for erc20 token and stakeManager
+    // deploy ERC20 token
+    const polygonERC20Artifact: Artifact = await hardhat.artifacts.readArtifact("Polygon");
+    maticERC20Address = (await deployContract(signer, polygonERC20Artifact)).address
+
+    // deploy stake manager mock
+    const stakeManagerMockArtifact: Artifact = await hardhat.artifacts.readArtifact("StakeManagerMock");
+    polygonStakeManager = (await deployContract(
+        signer,
+        stakeManagerMockArtifact,
+        [maticERC20Address]
+    )).address
+  }
 
   // deploy validator implementation
   const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact("Validator");
@@ -84,6 +107,7 @@ async function main() {
 
   // write addreses into json file
   const data = {
+    network: networkName,
     signer: signerAddress,
     dao: config.dao,
     treasury: config.treasury,
