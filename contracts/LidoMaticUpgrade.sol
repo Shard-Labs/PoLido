@@ -74,7 +74,8 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     function initialize(
         address _nodeOperator,
         address _token,
-        address _dao
+        address _dao,
+        address _insurance
     ) public initializer {
         __ERC20_init("Staked MATIC", "StMATIC");
 
@@ -87,6 +88,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
         dao = _dao;
+        insurance = _insurance;
         token = _token;
 
         entityFees = FeeDistribution(5, 5, 90);

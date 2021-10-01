@@ -16,8 +16,11 @@ contract MockValidatorShare is IValidatorShare {
         return 1;
     }
 
-    function withdrawRewards() external pure override {
-        return;
+    function withdrawRewards() external override {
+        IERC20(token).transfer(
+            msg.sender,
+            IERC20(token).balanceOf(address(this))
+        );
     }
 
     function unstakeClaimTokens() external pure override {
@@ -57,12 +60,11 @@ contract MockValidatorShare is IValidatorShare {
         return;
     }
 
-    function unstakeClaimTokens_new(uint256 unbondNonce)
-        external
-        pure
-        override
-    {
-        return;
+    function unstakeClaimTokens_new(uint256 unbondNonce) external override {
+        IERC20(token).transfer(
+            msg.sender,
+            IERC20(token).balanceOf(address(this)) / 2
+        );
     }
 
     function getTotalStake(address user)

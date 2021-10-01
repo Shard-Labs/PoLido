@@ -10,10 +10,13 @@ contract MockNodeOperatorRegistry {
     }
 
     OperatorShare[] operatorShare;
-    uint256[] operatorIds;
 
-    constructor(address validatorShare) {
-        operatorShare.push(OperatorShare(1, validatorShare));
+    uint256[] operatorIds;
+    address[] operatorAddresses;
+
+    constructor(address _validatorShare, address _operator) {
+        operatorShare.push(OperatorShare(1, _validatorShare));
+        operatorAddresses.push(_operator);
     }
 
     /// @notice Get the all operator ids availablein the system.
@@ -53,5 +56,9 @@ contract MockNodeOperatorRegistry {
         returns (OperatorShare[] memory)
     {
         return operatorShare;
+    }
+
+    function getOperatorAddresses() external returns (address[] memory) {
+        return operatorAddresses;
     }
 }
