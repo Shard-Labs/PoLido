@@ -243,7 +243,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         userRequests[requestIndex].active = false;
 
-        totalDelegated -= amount;
+        totalDelegated -= userRequests[id].amountInMATIC
+        validator2DelegatedAmount[userRequests.validatorShare] -= userRequests[id].amountInMATIC
     }
 
     /**
