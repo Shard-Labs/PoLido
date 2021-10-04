@@ -239,7 +239,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 balanceAfterClaim = IERC20(token).balanceOf(address(this));
         uint256 amount = balanceAfterClaim - balanceBeforeClaim;
 
-        IERC20(token).transfer(msg.sender, amount);
+        IERC20(token).transfer(msg.sender, userRequests[id].amountInMATIC);
 
         userRequests[requestIndex].active = false;
 
