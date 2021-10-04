@@ -3,12 +3,16 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/IValidatorShare.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
+    using SafeERC20 for IERC20;
+
     ////////////////////////////////////////////////////////////
     ///                                                      ///
     ///               ***State Variables***                  ///
@@ -101,7 +105,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     function submit(uint256 _amount) external returns (uint256) {
         require(_amount > 0, "Invalid amount");
 
-        IERC20(token).transferFrom(msg.sender, address(this), _amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
 
         uint256 totalShares = totalSupply();
         uint256 totalPooledMatic = totalBuffered + totalDelegated;
@@ -239,12 +243,15 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 balanceAfterClaim = IERC20(token).balanceOf(address(this));
         uint256 amount = balanceAfterClaim - balanceBeforeClaim;
 
-        IERC20(token).transfer(msg.sender, userRequests[id].amountInMATIC);
+        IERC20(token).safeTransfer(msg.sender, amount);
 
         userRequests[requestIndex].active = false;
 
-        totalDelegated -= userRequests[id].amountInMATIC
-        validator2DelegatedAmount[userRequests.validatorShare] -= userRequests[id].amountInMATIC
+        totalDelegated -= amount;
+
+        validator2DelegatedAmount[
+            userRequests[requestIndex].validatorAddress
+        ] -= amount;
     }
 
     /**
@@ -265,14 +272,14 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
         uint256 operatorsRewards = (totalRewards * entityFees.operators) / 100;
 
-        IERC20(token).transfer(dao, daoRewards);
-        IERC20(token).transfer(insurance, insuranceRewards);
+        IERC20(token).safeTransfer(dao, daoRewards);
+        IERC20(token).safeTransfer(insurance, insuranceRewards);
 
         address[] memory operators = nodeOperator.getOperatorAddresses();
         uint256 rewardsPerOperator = operatorsRewards / operators.length;
 
         for (uint256 i = 0; i < operators.length; i++) {
-            IERC20(token).transfer(operators[i], rewardsPerOperator);
+            IERC20(token).safeTransfer(operators[i], rewardsPerOperator);
         }
 
         // Add the remainder to totalBuffered
