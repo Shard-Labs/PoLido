@@ -134,4 +134,8 @@ interface INodeOperatorRegistry {
     function getOperatorShares()
         external
         returns (Operator.OperatorShare[] memory);
+    
+    /// @notice get the operator reward addresses.
+    /// @return return a list of staked operator reward addresses.
+    function getOperatorRewardAddresses() external returns (address[] memory);
 }

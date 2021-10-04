@@ -3,7 +3,7 @@ import { task, HardhatUserConfig } from "hardhat/config";
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
-import '@openzeppelin/hardhat-upgrades';
+import "@openzeppelin/hardhat-upgrades";
 import * as path from "path";
 
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -28,13 +28,13 @@ const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY;
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
     solidity: {
-        version: '0.8.7',
+        version: "0.8.7",
         settings: {
             optimizer: {
                 enabled: true,
                 runs: 200
             }
-        },
+        }
     },
     networks: {
         localhost: {
@@ -42,11 +42,11 @@ const config: HardhatUserConfig = {
         },
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${GOERLI_PRIVATE_KEY}`],
+            accounts: [`0x${GOERLI_PRIVATE_KEY}`]
         },
         mainnet: {
             url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${MAINNET_PRIVATE_KEY}`],
+            accounts: [`0x${MAINNET_PRIVATE_KEY}`]
         }
     },
     typechain: {

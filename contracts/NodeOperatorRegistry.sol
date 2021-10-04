@@ -771,6 +771,29 @@ contract NodeOperatorRegistry is
         return operators[_operatorId].validatorShare;
     }
 
+    /// @notice get the reward addresses of the actual staked operators.
+    /// @return Return the
+    function getOperatorRewardAddresses()
+        external
+        view
+        override
+        returns (address[] memory)
+    {
+        address[] memory rewardAddresses = new address[](
+            state.totalStakedNodeOpearator
+        );
+        uint256 index = 0;
+
+        for (uint256 idx = 0; idx < operatorIds.length; idx++) {
+            uint256 id = operatorIds[idx];
+            if (operators[id].status == Operator.NodeOperatorStatus.STAKED) {
+                rewardAddresses[index] = operators[id].rewardAddress;
+                index++;
+            }
+        }
+        return rewardAddresses;
+    }
+
     /// @notice Get the contract version.
     /// @return Returns the contract version.
     function version() external view virtual override returns (string memory) {

@@ -3,16 +3,22 @@ on:
   push:    
     branches:
       - main
+      - operator
     paths-ignore:
       - '**.md'
       - 'docs/**'
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      INFURA_API_KEY: "00000000000000000000000000000000"
+      MAINNET_PRIVATE_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
+      GOERLI_PRIVATE_KEY: "1111111111111111111111111111111111111111111111111111111111111111"
     steps:
       - uses: actions/checkout@v2
       - name: Setup node 16
         uses: actions/setup-node@v2
         with:
           node-version: 16.x
+      - run: make init
       - run: make test
