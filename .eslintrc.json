@@ -18,7 +18,8 @@
     "rules": {
         "semi": ["error", "always"],
         "quotes": ["error", "double"],
-        "indent": ["error", 4]
+        "indent": ["error", 4],
+        "camelcase": "off"
     },
     "overrides": [
         {
