@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.7;
+pragma solidity ^0.8.0;
 
 import "../lib/Operator.sol";
 
