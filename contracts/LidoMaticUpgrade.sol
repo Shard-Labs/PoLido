@@ -182,7 +182,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     /**
      * @dev Delegates tokens to validator share contract
      */
-    function delegate() external auth(DAO) {
+    function delegate() external {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
