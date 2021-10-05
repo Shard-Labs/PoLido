@@ -5,8 +5,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "./interfaces/IValidatorShare.sol";
-import "./interfaces/INodeOperatorRegistry.sol";
+import "../../interfaces/IValidatorShare.sol";
+import "../../interfaces/INodeOperatorRegistry.sol";
 
 contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     ////////////////////////////////////////////////////////////
@@ -269,7 +269,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         IERC20(token).transfer(dao, daoRewards);
         IERC20(token).transfer(insurance, insuranceRewards);
 
-        address[] memory operators = nodeOperator.getOperatorAddresses();
+        address[] memory operators = nodeOperator.getOperatorRewardAddresses();
         uint256 rewardsPerOperator = operatorsRewards / operators.length;
 
         for (uint256 i = 0; i < operators.length; i++) {

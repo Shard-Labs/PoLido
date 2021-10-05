@@ -286,7 +286,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         IERC20(token).safeTransfer(dao, daoRewards);
         IERC20(token).safeTransfer(insurance, insuranceRewards);
 
-        address[] memory operators = nodeOperator.getOperatorAddresses();
+        address[] memory operators = nodeOperator.getOperatorRewardAddresses();
         uint256 rewardsPerOperator = operatorsRewards / operators.length;
 
         for (uint256 i = 0; i < operators.length; i++) {

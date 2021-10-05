@@ -1,10 +1,6 @@
 // SPDX-FileCopyrightText: 2021 Shardlabs
 // SPDX-License-Identifier: GPL-3.0
-<<<<<<< HEAD
 pragma solidity ^0.8.0;
-=======
-pragma solidity ^0.8.7;
->>>>>>> 984788a... add required node operator contracts
 
 import "../storages/NodeOperatorStorage.sol";
 import "../lib/Operator.sol";
@@ -67,17 +63,6 @@ interface INodeOperatorRegistry {
     /// @return Returns the validator id
     function getValidatorId(address _user) external view returns (uint256);
 
-<<<<<<< HEAD
-=======
-    /// @notice Allows to get the validatorContract address using the _validatorId.
-    /// @param _validatorId validator id.
-    /// @return Returns the validatorContract address
-    function getValidatorContract(uint256 _validatorId)
-        external
-        view
-        returns (address);
-
->>>>>>> 984788a... add required node operator contracts
     /// @notice Allows to withdraw rewards accumulated in the stakeManager by all
     /// the operators, then calculate the shares per operator.
     /// @return Returns the shares of the operators and the receipient addresses
@@ -118,10 +103,6 @@ interface INodeOperatorRegistry {
     /// @return Return a list of operator Ids.
     function getOperators() external returns (uint256[] memory);
 
-    /// @notice Get the all operator addresses availablein the system.
-    /// @return Return a list of operator addresses.
-    function getOperatorAddresses() external returns (address[] memory);
-
     /// @notice Allows to get the validator factory address.
     /// @return Returns the validator factory address.
     function getValidatorFactory() external view returns (address);
@@ -153,7 +134,7 @@ interface INodeOperatorRegistry {
     function getOperatorShares()
         external
         returns (Operator.OperatorShare[] memory);
-    
+
     /// @notice get the operator reward addresses.
     /// @return return a list of staked operator reward addresses.
     function getOperatorRewardAddresses() external returns (address[] memory);

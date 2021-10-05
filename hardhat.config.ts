@@ -42,14 +42,14 @@ const config: HardhatUserConfig = {
         localhost: {
             url: "http://127.0.0.1:8545"
         },
-        goerli: {
-            url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${GOERLI_PRIVATE_KEY}`]
-        },
-        mainnet: {
-            url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${MAINNET_PRIVATE_KEY}`]
-        }
+        // goerli: {
+        //     url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
+        //     accounts: [`0x${GOERLI_PRIVATE_KEY}`]
+        // },
+        // mainnet: {
+        //     url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
+        //     accounts: [`0x${MAINNET_PRIVATE_KEY}`]
+        // }
     },
     typechain: {
         outDir: 'typechain',
