@@ -237,25 +237,32 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             "Not able to claim yet"
         );
 
-        uint256 balanceBeforeClaim = IERC20(token).balanceOf(address(this));
+        uint256 amount = userRequests[requestIndex].amount;
 
-        unstakeClaimTokens_new(
-            userRequests[requestIndex].validatorAddress,
-            userRequests[requestIndex].validatorNonce
-        );
+        if (userRequests[requestIndex].validatorAddress != address(0)) {
+            // Using balanceAfterClaim - balanceBeforeClaim instead of amount from userRequests
+            // just in case slashing happened
 
-        uint256 balanceAfterClaim = IERC20(token).balanceOf(address(this));
-        uint256 amount = balanceAfterClaim - balanceBeforeClaim;
+            uint256 balanceBeforeClaim = IERC20(token).balanceOf(address(this));
+
+            unstakeClaimTokens_new(
+                userRequests[requestIndex].validatorAddress,
+                userRequests[requestIndex].validatorNonce
+            );
+
+            uint256 balanceAfterClaim = IERC20(token).balanceOf(address(this));
+            amount = balanceAfterClaim - balanceBeforeClaim;
+
+            totalDelegated -= amount;
+
+            validator2DelegatedAmount[
+                userRequests[requestIndex].validatorAddress
+            ] -= amount;
+        }
 
         IERC20(token).safeTransfer(msg.sender, amount);
 
         userRequests[requestIndex].active = false;
-
-        totalDelegated -= amount;
-
-        validator2DelegatedAmount[
-            userRequests[requestIndex].validatorAddress
-        ] -= amount;
     }
 
     /**
