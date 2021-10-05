@@ -121,8 +121,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     }
 
     /**
-     * How to select a validator that we are going to withdraw from?
-     *
      * @dev Stores users request to withdraw into a RequestWithdraw struct
      * @param _amount - Amount of MATIC that is requested to withdraw
      */
@@ -137,12 +135,13 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
+        RequestWithdraw[] storage requestWithdraws = user2WithdrawRequest[
+            msg.sender
+        ];
+
         if (lastWithdrawnValidatorId > operatorShares.length - 1) {
             lastWithdrawnValidatorId = 0;
         }
-
-        address validatorShare = operatorShares[lastWithdrawnValidatorId]
-            .validatorShare;
 
         uint256 callerBalance = balanceOf(msg.sender);
 
@@ -152,33 +151,38 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 amountInMATIC = getUserBalanceInMATIC();
 
-        sellVoucher_new(validatorShare, amountInMATIC, type(uint256).max);
+        if (operatorShares.length > 0) {
+            address validatorShare = operatorShares[lastWithdrawnValidatorId]
+                .validatorShare;
 
-        if (validator2Nonce[validatorShare] == 0) {
-            validator2Nonce[validatorShare] = 1;
-        } else {
+            sellVoucher_new(validatorShare, amountInMATIC, type(uint256).max);
+
             validator2Nonce[validatorShare]++;
+
+            user2Nonce[msg.sender]++;
+
+            requestWithdraws.push(
+                RequestWithdraw(
+                    amountInMATIC,
+                    validator2Nonce[validatorShare],
+                    block.timestamp,
+                    validatorShare,
+                    true
+                )
+            );
+
+            lastWithdrawnValidatorId++;
+        } else {
+            requestWithdraws.push(
+                RequestWithdraw(
+                    amountInMATIC,
+                    0,
+                    block.timestamp,
+                    address(0),
+                    true
+                )
+            );
         }
-
-        if (user2Nonce[msg.sender] == 0) user2Nonce[msg.sender] = 1;
-
-        user2Nonce[msg.sender]++;
-
-        RequestWithdraw[] storage requestWithdraws = user2WithdrawRequest[
-            msg.sender
-        ];
-
-        requestWithdraws.push(
-            RequestWithdraw(
-                amountInMATIC,
-                validator2Nonce[validatorShare],
-                block.timestamp,
-                validatorShare,
-                true
-            )
-        );
-
-        lastWithdrawnValidatorId++;
     }
 
     /**
