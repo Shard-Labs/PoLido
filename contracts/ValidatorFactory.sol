@@ -6,7 +6,6 @@ import "hardhat/console.sol";
 import "./ValidatorProxy.sol";
 import "./storages/ValidatorFactoryStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title ValidatorFactory
@@ -16,7 +15,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 contract ValidatorFactory is
     Initializable,
     OwnableUpgradeable,
-    UUPSUpgradeable,
     ValidatorFactoryStorage
 {
     // ====================================================================
@@ -77,14 +75,6 @@ contract ValidatorFactory is
             }
         }
     }
-
-    /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
-    /// @param newImplementation new contract implementation address.
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        isOwner
-    {}
 
     /// @notice Allows to set the NodeOperatorRegistry contract.
     /// @dev Allows to set the NodeOperatorRegistry contract. this is done only one time.

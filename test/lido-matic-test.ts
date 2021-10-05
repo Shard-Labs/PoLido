@@ -1,5 +1,5 @@
-import { ethers, upgrades } from 'hardhat';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { ethers, upgrades } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import {
     LidoMatic__factory,
@@ -14,13 +14,13 @@ import {
     MockInsurance__factory,
     MockInsurance,
     MockOperator__factory,
-    MockOperator,
-} from '../typechain';
-import { expect } from 'chai';
-import { BigNumber } from '@ethersproject/bignumber';
-import { keccak256, toUtf8Bytes } from 'ethers/lib/utils';
+    MockOperator
+} from "../typechain";
+import { expect } from "chai";
+import { BigNumber } from "@ethersproject/bignumber";
+import { keccak256, toUtf8Bytes } from "ethers/lib/utils";
 
-describe('LidoMatic', () => {
+describe("LidoMatic", () => {
     let dao: SignerWithAddress;
     let deployer: SignerWithAddress;
     let lidoMatic: LidoMatic;
@@ -35,27 +35,27 @@ describe('LidoMatic', () => {
         [deployer, dao] = await ethers.getSigners();
 
         const MockToken = (await ethers.getContractFactory(
-            'MockToken'
+            "MockToken"
         )) as MockToken__factory;
 
         const LidoMatic: LidoMatic__factory = (await ethers.getContractFactory(
-            'LidoMatic'
+            "LidoMatic"
         )) as LidoMatic__factory;
 
         const MockValidatorShare = (await ethers.getContractFactory(
-            'MockValidatorShare'
+            "MockValidatorShare"
         )) as MockValidatorShare__factory;
 
         const MockNodeOperatorRegistry = (await ethers.getContractFactory(
-            'MockNodeOperatorRegistry'
+            "MockNodeOperatorRegistry"
         )) as MockNodeOperatorRegistry__factory;
 
         const MockInsurance = (await ethers.getContractFactory(
-            'MockInsurance'
+            "MockInsurance"
         )) as MockInsurance__factory;
 
         const MockOperator = (await ethers.getContractFactory(
-            'MockOperator'
+            "MockOperator"
         )) as MockOperator__factory;
 
         mockOperator = await MockOperator.deploy();
@@ -80,19 +80,19 @@ describe('LidoMatic', () => {
             mockNodeOperatorRegistry.address,
             mockToken.address,
             dao.address,
-            mockInsurance.address,
+            mockInsurance.address
         ])) as LidoMatic;
         await lidoMatic.deployed();
     });
 
-    describe('Testing initialization and upgradeability...', () => {
-        it('should successfully assign roles', async () => {
-            const admin = ethers.utils.hexZeroPad('0x00', 32);
-            const daoRole = keccak256(toUtf8Bytes('DAO'));
-            const manageFee = keccak256(toUtf8Bytes('MANAGE_FEE'));
-            const pauser = keccak256(toUtf8Bytes('PAUSE_ROLE'));
-            const burner = keccak256(toUtf8Bytes('BURN_ROLE'));
-            const treasury = keccak256(toUtf8Bytes('SET_TREASURY'));
+    describe("Testing initialization and upgradeability...", () => {
+        it("should successfully assign roles", async () => {
+            const admin = ethers.utils.hexZeroPad("0x00", 32);
+            const daoRole = keccak256(toUtf8Bytes("DAO"));
+            const manageFee = keccak256(toUtf8Bytes("MANAGE_FEE"));
+            const pauser = keccak256(toUtf8Bytes("PAUSE_ROLE"));
+            const burner = keccak256(toUtf8Bytes("BURN_ROLE"));
+            const treasury = keccak256(toUtf8Bytes("SET_TREASURY"));
 
             expect(await lidoMatic.hasRole(admin, deployer.address)).to.be.true;
             expect(await lidoMatic.hasRole(daoRole, dao.address)).to.be.true;
@@ -102,9 +102,9 @@ describe('LidoMatic', () => {
             expect(await lidoMatic.hasRole(pauser, deployer.address)).to.be
                 .true;
         });
-        it('should upgrade lido matic contract successfully', async () => {
+        it("should upgrade lido matic contract successfully", async () => {
             const LidoMaticUpgrade = await ethers.getContractFactory(
-                'LidoMaticUpgrade'
+                "LidoMaticUpgrade"
             );
 
             upgradedLido = (await upgrades.upgradeProxy(
@@ -117,9 +117,9 @@ describe('LidoMatic', () => {
         });
     });
 
-    describe('Testing main functionalities...', async () => {
-        it('should mint equal amount of tokens while no slashing or rewarding happened', async () => {
-            const tokenAmount = ethers.utils.parseEther('0.1');
+    describe("Testing main functionalities...", async () => {
+        it("should mint equal amount of tokens while no slashing or rewarding happened", async () => {
+            const tokenAmount = ethers.utils.parseEther("0.1");
 
             const balanceOld = await upgradedLido.balanceOf(deployer.address);
 
@@ -132,8 +132,8 @@ describe('LidoMatic', () => {
             expect(balanceNew.sub(balanceOld).eq(tokenAmount)).to.be.true;
         });
 
-        it('should mint greater amount of tokens after slashing has happened', async () => {
-            const tokenAmount = ethers.utils.parseEther('0.1');
+        it("should mint greater amount of tokens after slashing has happened", async () => {
+            const tokenAmount = ethers.utils.parseEther("0.1");
 
             const balanceOld = await upgradedLido.balanceOf(deployer.address);
 
@@ -148,8 +148,8 @@ describe('LidoMatic', () => {
             expect(balanceNew.sub(balanceOld).gt(tokenAmount)).to.be.true;
         });
 
-        it('should mint lesser amount of tokens after the rewarding has happened', async () => {
-            const tokenAmount = ethers.utils.parseEther('0.1');
+        it("should mint lesser amount of tokens after the rewarding has happened", async () => {
+            const tokenAmount = ethers.utils.parseEther("0.1");
 
             const balanceOld = await upgradedLido.balanceOf(deployer.address);
 
@@ -164,8 +164,8 @@ describe('LidoMatic', () => {
             expect(balanceNew.sub(balanceOld).lt(tokenAmount)).to.be.true;
         });
 
-        it('should successfully delegate', async () => {
-            const tokenAmount = ethers.utils.parseEther('0.1');
+        it("should successfully delegate", async () => {
+            const tokenAmount = ethers.utils.parseEther("0.1");
 
             await mockToken.approve(upgradedLido.address, tokenAmount);
 
@@ -186,7 +186,7 @@ describe('LidoMatic', () => {
             expect(validatorShareBalance.gt(0)).to.be.true;
         });
 
-        it('should successfully request withdraw', async () => {
+        it("should successfully request withdraw", async () => {
             const senderBalance = await upgradedLido.balanceOf(
                 deployer.address
             );
@@ -205,16 +205,16 @@ describe('LidoMatic', () => {
 
         it("shouldn't allow claiming tokens before required time has passed", async () => {
             await expect(upgradedLido.claimTokens()).to.be.revertedWith(
-                'Not able to claim yet'
+                "Not able to claim yet"
             );
         });
 
-        it('should successfully claim tokens', async () => {
+        it("should successfully claim tokens", async () => {
             const userBalanceBefore = await mockToken.balanceOf(
                 deployer.address
             );
 
-            await ethers.provider.send('evm_mine', [1625097606000]);
+            await ethers.provider.send("evm_mine", [1625097606000]);
 
             await upgradedLido.claimTokens();
 
@@ -225,7 +225,7 @@ describe('LidoMatic', () => {
             expect(userBalanceBefore.lt(userBalanceAfter)).to.be.true;
         });
 
-        it('should successfully distribute rewards', async () => {
+        it("should successfully distribute rewards", async () => {
             const operatorBalanceBefore = await mockToken.balanceOf(
                 mockOperator.address
             );
@@ -233,7 +233,7 @@ describe('LidoMatic', () => {
                 mockInsurance.address
             );
             const daoBalanceBefore = await mockToken.balanceOf(dao.address);
-            
+
             await upgradedLido.distributeRewards();
 
             const operatorBalanceAfter = await mockToken.balanceOf(
@@ -250,7 +250,7 @@ describe('LidoMatic', () => {
         });
     });
 
-    describe('Testing API...', () => {
+    describe("Testing API...", () => {
         // it('should sucessfully execute restake', async () => {
         //     const tx = await (
         //         await lidoMatic.restake(mockValidatorShare.address)
@@ -282,7 +282,7 @@ describe('LidoMatic', () => {
         //     expect(tx.status).to.equal(1);
         // });
 
-        it('should sucessfully execute getTotalStake', async () => {
+        it("should sucessfully execute getTotalStake", async () => {
             const totalStake = await lidoMatic.getTotalStake(
                 mockValidatorShare.address
             );

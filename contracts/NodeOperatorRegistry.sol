@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {AccessControlUpgradeable, Initializable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "./storages/NodeOperatorStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
@@ -90,7 +89,6 @@ contract NodeOperatorRegistry is
     Initializable,
     PausableUpgradeable,
     AccessControlUpgradeable,
-    UUPSUpgradeable,
     NodeOperatorStorage
 {
     // ====================================================================
@@ -253,14 +251,6 @@ contract NodeOperatorRegistry is
 
         emit RemoveOperator(_operatorId);
     }
-
-    /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
-    /// @param newImplementation new contract implementation address.
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        userHasRole(DEFAULT_ADMIN_ROLE)
-    {}
 
     // ====================================================================
     // ========================= VALIDATOR API ============================

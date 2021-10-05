@@ -1,0 +1,12 @@
+{
+    "network": "goerli",
+    "signer": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
+    "dao": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
+    "treasury": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
+    "matic_erc20_address": "0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3",
+    "matic_stake_manager_proxy": "0x3f152B63Ec5CA5831061B2DccFb29a874C317502",
+    "lido_matic": "0x5573B995fEf2dd36C40626Cd709EFa0dE8ed82d7",
+    "validator_implementation": "0x5041C65Dabf13aA284C0a45a7b5FD3623cb43A63",
+    "validator_factory_proxy": "0xEA95A04A1111dF083e94b12Cc9705b0271452b0B",
+    "node_operator_registry_proxy": "0xA569E1E00B00db31f12bf8c6b2Ae174eeCa90595"
+}
