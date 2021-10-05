@@ -58,7 +58,7 @@ contract MockNodeOperatorRegistry {
         return operatorShare;
     }
 
-    function getOperatorAddresses() external returns (address[] memory) {
+    function getOperatorRewardAddresses() external returns (address[] memory) {
         return operatorAddresses;
     }
 }
