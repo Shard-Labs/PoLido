@@ -85,6 +85,18 @@ describe("NodeOperator", function () {
         await polygonERC20Contract.transfer(await user2.getAddress(), toEth("1000"));
     });
 
+    it("set stake manager", async function () {
+        const stakeManagerAddress = ethers.utils.hexZeroPad("0x5", 20);
+        expect(await nodeOperatorRegistryContract.getStakeManager()).not.equal(stakeManagerAddress);
+        
+        // update stake manager
+        await nodeOperatorRegistryContract.setStakeManager(stakeManagerAddress);
+        expect(await nodeOperatorRegistryContract.getStakeManager()).to.equal(stakeManagerAddress);
+        
+        // revert user no allowed to update
+        await expect(nodeOperatorRegistryContract.connect(user1).setStakeManager(stakeManagerAddress)).to.reverted;
+    });
+
     it("Node Operator Pause Unpause", async function () {
         // pause the node operator contract
         await nodeOperatorRegistryContract.pause();

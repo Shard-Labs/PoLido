@@ -21,4 +21,5 @@ jobs:
         with:
           node-version: 16.x
       - run: make init
+      - run: make compile
       - run: make test

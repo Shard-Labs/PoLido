@@ -649,6 +649,15 @@ contract NodeOperatorRegistry is
         state.validatorFactory = _validatorFactory;
     }
 
+    /// @notice Allows to set the stake manager contract address.
+    function setStakeManager(address _stakeManager)
+        external
+        whenNotPaused
+        userHasRole(DEFAULT_ADMIN_ROLE)
+    {
+        state.stakeManager = _stakeManager;
+    }
+
     // ====================================================================
     // ============================ GETTERS ===============================
     // ====================================================================
