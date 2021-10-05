@@ -6,7 +6,7 @@ import "hardhat/console.sol";
 import "./ValidatorProxy.sol";
 import "./storages/ValidatorFactoryStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title ValidatorFactory
@@ -55,7 +55,11 @@ contract ValidatorFactory is
 
         // create a new validator proxy
         address proxy = address(
-            new ValidatorProxy(owner(), state.validatorImplementation, state.operator)
+            new ValidatorProxy(
+                owner(),
+                state.validatorImplementation,
+                state.operator
+            )
         );
 
         validators.push(proxy);
@@ -72,7 +76,7 @@ contract ValidatorFactory is
                 validators.pop();
             }
         }
-    }    
+    }
 
     /// @notice Implement _authorizeUpgrade from UUPSUpgradeable contract to make the contract upgradable.
     /// @param newImplementation new contract implementation address.
@@ -94,7 +98,7 @@ contract ValidatorFactory is
     function getValidators() public view returns (address[] memory) {
         return validators;
     }
-    
+
     /// @notice Alows to get the operator contract.
     /// @dev Returns operator address.
     function getOperator() external view returns (address) {
