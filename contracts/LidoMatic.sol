@@ -3,15 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "./interfaces/IValidatorShare.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     ////////////////////////////////////////////////////////////
     ///                                                      ///
@@ -105,7 +104,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     function submit(uint256 _amount) external returns (uint256) {
         require(_amount > 0, "Invalid amount");
 
-        IERC20(token).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), _amount);
 
         uint256 totalShares = totalSupply();
         uint256 totalPooledMatic = totalBuffered + totalDelegated;
@@ -196,7 +195,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 remainder = totalBuffered % operatorShares.length;
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
-            IERC20(token).approve(
+            IERC20Upgradeable(token).approve(
                 operatorShares[i].validatorShare,
                 amountPerValidator
             );
@@ -243,14 +242,14 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             // Using balanceAfterClaim - balanceBeforeClaim instead of amount from userRequests
             // just in case slashing happened
 
-            uint256 balanceBeforeClaim = IERC20(token).balanceOf(address(this));
+            uint256 balanceBeforeClaim = IERC20Upgradeable(token).balanceOf(address(this));
 
             unstakeClaimTokens_new(
                 userRequests[requestIndex].validatorAddress,
                 userRequests[requestIndex].validatorNonce
             );
 
-            uint256 balanceAfterClaim = IERC20(token).balanceOf(address(this));
+            uint256 balanceAfterClaim = IERC20Upgradeable(token).balanceOf(address(this));
             amount = balanceAfterClaim - balanceBeforeClaim;
 
             totalDelegated -= amount;
@@ -260,7 +259,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             ] -= amount;
         }
 
-        IERC20(token).safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
 
         userRequests[requestIndex].active = false;
     }
@@ -276,25 +275,25 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
         }
 
-        uint256 totalRewards = IERC20(token).balanceOf(address(this)) -
+        uint256 totalRewards = IERC20Upgradeable(token).balanceOf(address(this)) -
             totalBuffered;
 
         uint256 daoRewards = (totalRewards * entityFees.dao) / 100;
         uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
         uint256 operatorsRewards = (totalRewards * entityFees.operators) / 100;
 
-        IERC20(token).safeTransfer(dao, daoRewards);
-        IERC20(token).safeTransfer(insurance, insuranceRewards);
+        IERC20Upgradeable(token).safeTransfer(dao, daoRewards);
+        IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
 
         address[] memory operators = nodeOperator.getOperatorRewardAddresses();
         uint256 rewardsPerOperator = operatorsRewards / operators.length;
 
         for (uint256 i = 0; i < operators.length; i++) {
-            IERC20(token).safeTransfer(operators[i], rewardsPerOperator);
+            IERC20Upgradeable(token).safeTransfer(operators[i], rewardsPerOperator);
         }
 
         // Add the remainder to totalBuffered
-        uint256 remainder = IERC20(token).balanceOf(address(this)) -
+        uint256 remainder = IERC20Upgradeable(token).balanceOf(address(this)) -
             totalBuffered;
         totalBuffered += remainder;
     }
