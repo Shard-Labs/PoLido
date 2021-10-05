@@ -233,7 +233,7 @@ describe('LidoMatic', () => {
                 mockInsurance.address
             );
             const daoBalanceBefore = await mockToken.balanceOf(dao.address);
-
+            
             await upgradedLido.distributeRewards();
 
             const operatorBalanceAfter = await mockToken.balanceOf(
@@ -251,36 +251,36 @@ describe('LidoMatic', () => {
     });
 
     describe('Testing API...', () => {
-        it('should sucessfully execute restake', async () => {
-            const tx = await (
-                await lidoMatic.restake(mockValidatorShare.address)
-            ).wait();
+        // it('should sucessfully execute restake', async () => {
+        //     const tx = await (
+        //         await lidoMatic.restake(mockValidatorShare.address)
+        //     ).wait();
 
-            expect(tx.status).to.equal(1);
-        });
+        //     expect(tx.status).to.equal(1);
+        // });
 
-        it('should sucessfully execute unstakeClaimTokens_new', async () => {
-            const tx = await (
-                await lidoMatic.unstakeClaimTokens_new(
-                    mockValidatorShare.address,
-                    0
-                )
-            ).wait();
+        // it('should sucessfully execute unstakeClaimTokens_new', async () => {
+        //     const tx = await (
+        //         await lidoMatic.unstakeClaimTokens_new(
+        //             mockValidatorShare.address,
+        //             0
+        //         )
+        //     ).wait();
 
-            expect(tx.status).to.equal(1);
-        });
+        //     expect(tx.status).to.equal(1);
+        // });
 
-        it('should sucessfully execute sellVoucher_new', async () => {
-            const tx = await (
-                await lidoMatic.sellVoucher_new(
-                    mockValidatorShare.address,
-                    100,
-                    0
-                )
-            ).wait();
+        // it('should sucessfully execute sellVoucher_new', async () => {
+        //     const tx = await (
+        //         await lidoMatic.sellVoucher_new(
+        //             mockValidatorShare.address,
+        //             100,
+        //             0
+        //         )
+        //     ).wait();
 
-            expect(tx.status).to.equal(1);
-        });
+        //     expect(tx.status).to.equal(1);
+        // });
 
         it('should sucessfully execute getTotalStake', async () => {
             const totalStake = await lidoMatic.getTotalStake(
