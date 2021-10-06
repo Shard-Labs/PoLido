@@ -28,6 +28,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public totalDelegated;
     uint256 public totalBuffered;
     uint256 public delegationLowerBound;
+    uint256 public rewardDistributionLowerBound;
     bool public paused;
 
     IValidatorShare[] validatorShares;
@@ -293,6 +294,11 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             address(this)
         ) - totalBuffered;
 
+        require(
+            totalRewards > rewardDistributionLowerBound,
+            "Amount to distribute lower than minimum"
+        );
+
         uint256 daoRewards = (totalRewards * entityFees.dao) / 100;
         uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
         uint256 operatorsRewards = (totalRewards * entityFees.operators) / 100;
@@ -520,5 +526,16 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         auth(DAO)
     {
         delegationLowerBound = _delegationLowerBound;
+    }
+
+    /**
+     * @dev Function that sets new lower bound for rewards distribution
+     * @notice Only callable by dao
+     * @param _rewardDistributionLowerBound - New lower bound for rewards distribution
+     */
+    function setRewardDistributionLowerBound(
+        uint256 _rewardDistributionLowerBound
+    ) external auth(DAO) {
+        rewardDistributionLowerBound = _rewardDistributionLowerBound;
     }
 }
