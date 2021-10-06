@@ -3,10 +3,12 @@
     "signer": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
     "dao": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
     "treasury": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
-    "matic_erc20_address": "0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3",
-    "matic_stake_manager_proxy": "0x3f152B63Ec5CA5831061B2DccFb29a874C317502",
-    "lido_matic": "0x5573B995fEf2dd36C40626Cd709EFa0dE8ed82d7",
-    "validator_implementation": "0x5041C65Dabf13aA284C0a45a7b5FD3623cb43A63",
-    "validator_factory_proxy": "0xEA95A04A1111dF083e94b12Cc9705b0271452b0B",
-    "node_operator_registry_proxy": "0xA569E1E00B00db31f12bf8c6b2Ae174eeCa90595"
+    "matic_erc20_address": "0x3f152B63Ec5CA5831061B2DccFb29a874C317502",
+    "matic_stake_manager_proxy": "0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3",
+    "lido_matic": "0x6618D33F908068a0BA1de78C773600A45f8a259a",
+    "lido_matic_implementation": "0x5D99537Aa8ad5b6417B149fD6500432d2FD5feb3",
+    "validator_factory_proxy": "0x2a512116B4E174cCfa11Ea13B003efd0aef59bBe",
+    "validator_factory_implementation": "0x6Be302f6bD133781cbF5c39d8695e3200b65339a",
+    "node_operator_registry_proxy": "0x7107C6B25E3e29CC10e1eBC97D7cEb205975CF57",
+    "node_operator_registry_implementation": "0xdadDEef2A66005c4ba6ee5bCAEE3c0320104E5d0"
 }
