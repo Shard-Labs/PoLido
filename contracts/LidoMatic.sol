@@ -81,6 +81,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         address _insurance
     ) public initializer {
         __ERC20_init("Staked MATIC", "StMATIC");
+        __AccessControl_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(PAUSE_ROLE, msg.sender);

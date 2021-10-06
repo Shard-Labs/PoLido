@@ -1,6 +1,7 @@
 {
-    "dao": "",
-    "treasury": "",
+    "dao": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
+    "treasury": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
+    "insurance": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
     "networks": {
         "goerli": {
             "config": "https://static.matic.network/network/testnet/mumbai/index.json",

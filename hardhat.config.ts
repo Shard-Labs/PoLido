@@ -6,7 +6,7 @@ import "@typechain/hardhat";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
-import 'hardhat-gas-reporter';
+import "hardhat-gas-reporter";
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
@@ -42,22 +42,23 @@ const config: HardhatUserConfig = {
         localhost: {
             url: "http://127.0.0.1:8545"
         },
-        // goerli: {
-        //     url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-        //     accounts: [`0x${GOERLI_PRIVATE_KEY}`]
-        // },
-        // mainnet: {
-        //     url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
-        //     accounts: [`0x${MAINNET_PRIVATE_KEY}`]
-        // }
+        goerli: {
+            url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
+            accounts: [`0x${GOERLI_PRIVATE_KEY}`],
+            gasPrice: 10000000000
+        },
+        mainnet: {
+            url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
+            accounts: [`0x${MAINNET_PRIVATE_KEY}`]
+        }
     },
     typechain: {
-        outDir: 'typechain',
-        target: 'ethers-v5',
+        outDir: "typechain",
+        target: "ethers-v5"
     },
     mocha: {
-        timeout: 100000,
-    },
+        timeout: 100000
+    }
 };
 
 export default config;

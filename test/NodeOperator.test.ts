@@ -52,7 +52,7 @@ describe("NodeOperator", function () {
         // deploy validator factory
         const validatorFactoryArtifact = await ethers.getContractFactory("ValidatorFactory");
         validatorFactoryContract = await upgrades.deployProxy(
-            validatorFactoryArtifact, [validatorContract.address], { kind: "uups" });
+            validatorFactoryArtifact, [validatorContract.address]);
 
         // deploy node operator contract
         const nodeOperatorRegistryArtifact = await ethers.getContractFactory("NodeOperatorRegistry");
@@ -62,8 +62,8 @@ describe("NodeOperator", function () {
                 validatorFactoryContract.address,
                 stakeManagerMockContract.address,
                 polygonERC20Contract.address
-            ],
-            { kind: "uups" }
+            ]
+
         );
 
         // deploy lido mock contract
@@ -88,11 +88,11 @@ describe("NodeOperator", function () {
     it("set stake manager", async function () {
         const stakeManagerAddress = ethers.utils.hexZeroPad("0x5", 20);
         expect(await nodeOperatorRegistryContract.getStakeManager()).not.equal(stakeManagerAddress);
-        
+
         // update stake manager
         await nodeOperatorRegistryContract.setStakeManager(stakeManagerAddress);
         expect(await nodeOperatorRegistryContract.getStakeManager()).to.equal(stakeManagerAddress);
-        
+
         // revert user no allowed to update
         await expect(nodeOperatorRegistryContract.connect(user1).setStakeManager(stakeManagerAddress)).to.reverted;
     });
