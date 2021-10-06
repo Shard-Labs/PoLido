@@ -27,6 +27,8 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public lastWithdrawnValidatorId;
     uint256 public totalDelegated;
     uint256 public totalBuffered;
+    uint256 public delegationLowerBound;
+    uint256 public rewardDistributionLowerBound;
     bool public paused;
 
     IValidatorShare[] validatorShares;
@@ -106,7 +108,11 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     function submit(uint256 _amount) external returns (uint256) {
         require(_amount > 0, "Invalid amount");
 
-        IERC20Upgradeable(token).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20Upgradeable(token).safeTransferFrom(
+            msg.sender,
+            address(this),
+            _amount
+        );
 
         uint256 totalShares = totalSupply();
         uint256 totalPooledMatic = totalBuffered + totalDelegated;
@@ -186,6 +192,11 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      * @dev Delegates tokens to validator share contract
      */
     function delegate() external {
+        require(
+            totalBuffered > delegationLowerBound,
+            "Amount to delegate lower than minimum"
+        );
+
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
@@ -193,7 +204,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 remainder = totalBuffered % operatorShares.length;
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
-            IERC20Upgradeable(token).safeApprove(
+            IERC20Upgradeable(token).approve(
                 operatorShares[i].validatorShare,
                 amountPerValidator
             );
@@ -202,7 +213,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
             validator2DelegatedAmount[
                 operatorShares[i].validatorShare
-            ] = amountPerValidator;
+            ] += amountPerValidator;
         }
 
         totalDelegated += totalBuffered - remainder;
@@ -234,14 +245,18 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
             "Not able to claim yet"
         );
 
-        uint256 balanceBeforeClaim = IERC20Upgradeable(token).balanceOf(address(this));
+        uint256 balanceBeforeClaim = IERC20Upgradeable(token).balanceOf(
+            address(this)
+        );
 
         unstakeClaimTokens_new(
             userRequests[requestIndex].validatorAddress,
             userRequests[requestIndex].validatorNonce
         );
 
-        uint256 balanceAfterClaim = IERC20Upgradeable(token).balanceOf(address(this));
+        uint256 balanceAfterClaim = IERC20Upgradeable(token).balanceOf(
+            address(this)
+        );
         uint256 amount = balanceAfterClaim - balanceBeforeClaim;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
@@ -262,8 +277,14 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
             IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
         }
 
-        uint256 totalRewards = IERC20Upgradeable(token).balanceOf(address(this)) -
-            totalBuffered;
+        uint256 totalRewards = IERC20Upgradeable(token).balanceOf(
+            address(this)
+        ) - totalBuffered;
+
+        require(
+            totalRewards > rewardDistributionLowerBound,
+            "Amount to distribute lower than minimum"
+        );
 
         uint256 daoRewards = (totalRewards * entityFees.dao) / 100;
         uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
@@ -276,7 +297,10 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 rewardsPerOperator = operatorsRewards / operators.length;
 
         for (uint256 i = 0; i < operators.length; i++) {
-            IERC20Upgradeable(token).safeTransfer(operators[i], rewardsPerOperator);
+            IERC20Upgradeable(token).safeTransfer(
+                operators[i],
+                rewardsPerOperator
+            );
         }
 
         // Add the remainder to totalBuffered
@@ -493,5 +517,28 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     function simulateRewarding() external {
         totalDelegated = totalSupply() * 2;
         totalBuffered = 0;
+    }
+
+    /**
+     * @dev Function that sets new lower bound for delegation
+     * @notice Only callable by dao
+     * @param _delegationLowerBound - New lower bound for delegation
+     */
+    function setDelegationLowerBound(uint256 _delegationLowerBound)
+        external
+        auth(DAO)
+    {
+        delegationLowerBound = _delegationLowerBound;
+    }
+
+    /**
+     * @dev Function that sets new lower bound for rewards distribution
+     * @notice Only callable by dao
+     * @param _rewardDistributionLowerBound - New lower bound for rewards distribution
+     */
+    function setRewardDistributionLowerBound(
+        uint256 _rewardDistributionLowerBound
+    ) external auth(DAO) {
+        rewardDistributionLowerBound = _rewardDistributionLowerBound;
     }
 }
