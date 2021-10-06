@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2021 Shardlabs
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.0;
+pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,12 +10,16 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract ValidatorProxy is Ownable, Proxy {
     address private implementation;
     address private operator;
-    
+
     // ====================================================================
     // =========================== FUNCTIONS ==============================
     // ====================================================================
 
-    constructor(address _admin, address _newImplementation, address _operator) {
+    constructor(
+        address _admin,
+        address _newImplementation,
+        address _operator
+    ) {
         implementation = _newImplementation;
         operator = _operator;
         transferOwnership(_admin);
@@ -23,7 +27,7 @@ contract ValidatorProxy is Ownable, Proxy {
 
     /// @notice Allows admin to upgrade the validator implementation
     /// @param _newImplementation set a new implementation
-    function setImplementation(address _newImplementation) external onlyOwner() {
+    function setImplementation(address _newImplementation) external onlyOwner {
         implementation = _newImplementation;
     }
 
@@ -41,7 +45,7 @@ contract ValidatorProxy is Ownable, Proxy {
 
     /// @notice Allows admin to set the operator address
     /// @param _newoperator set a new operator.
-    function setOperator(address _newoperator) external onlyOwner() {
+    function setOperator(address _newoperator) external onlyOwner {
         operator = _newoperator;
     }
 }
