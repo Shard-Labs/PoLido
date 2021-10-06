@@ -11,12 +11,7 @@ import "./interfaces/INodeOperatorRegistry.sol";
 
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    ////////////////////////////////////////////////////////////
-    ///                                                      ///
-    ///               ***State Variables***                  ///
-    ///                                                      ///
-    ////////////////////////////////////////////////////////////
+    
     uint256 constant WITHDRAWAL_DELAY = 2**13;
 
     INodeOperatorRegistry public nodeOperator;

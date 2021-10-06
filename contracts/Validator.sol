@@ -21,7 +21,6 @@ contract Validator is IValidator {
     // =========================== Global Vars ============================
     // ====================================================================
 
-    /// @notice node operator registry address
     Operator.ValidatorState internal state;
 
     // ====================================================================
