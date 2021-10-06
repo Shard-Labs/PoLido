@@ -27,6 +27,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public lastWithdrawnValidatorId;
     uint256 public totalDelegated;
     uint256 public totalBuffered;
+    uint256 public delegationLowerBound;
     bool public paused;
 
     IValidatorShare[] validatorShares;
@@ -192,6 +193,11 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @dev Delegates tokens to validator share contract
      */
     function delegate() external {
+        require(
+            totalBuffered > delegationLowerBound,
+            "Amount to delegate lower than minimum"
+        );
+
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
@@ -502,5 +508,17 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      */
     function setNodeOperatorAddress(address _address) external auth(DAO) {
         nodeOperator = INodeOperatorRegistry(_address);
+    }
+
+    /**
+     * @dev Function that sets new lower bound for delegation
+     * @notice Only callable by dao
+     * @param _delegationLowerBound - New lower bound for delegation
+     */
+    function setDelegationLowerBound(uint256 _delegationLowerBound)
+        external
+        auth(DAO)
+    {
+        delegationLowerBound = _delegationLowerBound;
     }
 }
