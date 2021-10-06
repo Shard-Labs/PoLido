@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { HardhatUserConfig } from 'hardhat/config';
+import { HardhatUserConfig, task } from 'hardhat/config';
 
 import '@typechain/hardhat';
 import '@nomiclabs/hardhat-waffle';
@@ -9,12 +9,21 @@ import '@openzeppelin/hardhat-upgrades';
 import '@nomiclabs/hardhat-etherscan';
 import 'hardhat-gas-reporter';
 
+import { verify } from './scripts/verify';
+import { HardhatRuntimeEnvironment } from 'hardhat/types';
+
 dotenv.config({ path: path.join(__dirname, '.env') });
 
 const INFURA_API_KEY = process.env.INFURA_API_KEY;
 const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY;
 const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY;
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+
+task('verifyLido', 'Lido contracts verification').setAction(
+    async (args, hre: HardhatRuntimeEnvironment) => {
+        await verify(hre);
+    }
+);
 
 const config: HardhatUserConfig = {
     defaultNetwork: 'hardhat',
