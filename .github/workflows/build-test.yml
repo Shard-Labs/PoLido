@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - operator
+      - fix/lidomatic-upgrade
     paths-ignore:
       - '**.md'
       - 'docs/**'
