@@ -1,31 +1,29 @@
 import * as dotenv from "dotenv";
 import * as path from "path";
-import { task, HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig, task } from "hardhat/config";
 
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
+import "@nomiclabs/hardhat-etherscan";
 import "hardhat-gas-reporter";
 
+import { verify } from "./scripts/verify";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+
 dotenv.config({ path: path.join(__dirname, ".env") });
-
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task("accounts", "Prints the list of accounts", async (args, hre) => {
-    const accounts = await hre.ethers.getSigners();
-
-    for (const account of accounts) {
-        console.log(account.address);
-    }
-});
 
 const INFURA_API_KEY = process.env.INFURA_API_KEY;
 const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY;
 const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY;
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
 
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
+task("verifyLido", "Lido contracts verification").setAction(
+    async (args, hre: HardhatRuntimeEnvironment) => {
+        await verify(hre);
+    }
+);
 
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
@@ -58,6 +56,9 @@ const config: HardhatUserConfig = {
     },
     mocha: {
         timeout: 100000
+    },
+    etherscan: {
+        apiKey: ETHERSCAN_API_KEY
     }
 };
 

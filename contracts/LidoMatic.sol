@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -12,11 +12,6 @@ import "./interfaces/INodeOperatorRegistry.sol";
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    ////////////////////////////////////////////////////////////
-    ///                                                      ///
-    ///               ***State Variables***                  ///
-    ///                                                      ///
-    ////////////////////////////////////////////////////////////
     uint256 constant WITHDRAWAL_DELAY = 2**13;
 
     INodeOperatorRegistry public nodeOperator;
