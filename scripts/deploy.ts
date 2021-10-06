@@ -1,20 +1,20 @@
-import hardhat, { ethers, upgrades } from 'hardhat';
-import { Signer } from 'ethers';
-import fs from 'fs';
-import path from 'path';
-import { Artifact } from 'hardhat/types';
+import hardhat, { ethers, upgrades } from "hardhat";
+import { Signer } from "ethers";
+import fs from "fs";
+import path from "path";
+import { Artifact } from "hardhat/types";
 import {
     ValidatorFactory,
     ValidatorFactory__factory,
     NodeOperatorRegistry__factory,
     NodeOperatorRegistry,
     LidoMatic__factory,
-    LidoMatic,
-} from '../typechain';
+    LidoMatic
+} from "../typechain";
 
 const { deployContract } = hardhat.waffle;
 
-async function main() {
+async function main () {
     // get network
     const networkName: string = hardhat.network.name;
 
@@ -28,12 +28,12 @@ async function main() {
 
     // parse config file
     const configData: string = fs.readFileSync(
-        path.join(process.cwd(), 'config.json'),
-        'utf-8'
+        path.join(process.cwd(), "config.json"),
+        "utf-8"
     );
     const config = JSON.parse(configData);
 
-    if (networkName === 'goerli' || networkName === 'mainnet') {
+    if (networkName === "goerli" || networkName === "mainnet") {
         // matic token address
         maticERC20Address = config.networks[networkName].Token;
 
@@ -43,43 +43,43 @@ async function main() {
         // if the network is localhost, deploy mock for erc20 token and stakeManager
         // deploy ERC20 token
         const polygonERC20Artifact: Artifact =
-            await hardhat.artifacts.readArtifact('Polygon');
+            await hardhat.artifacts.readArtifact("Polygon");
         maticERC20Address = (await deployContract(signer, polygonERC20Artifact))
             .address;
-        console.log('polygonERC20 mock contract deployed');
+        console.log("polygonERC20 mock contract deployed");
 
         // deploy stake manager mock
         const stakeManagerMockArtifact: Artifact =
-            await hardhat.artifacts.readArtifact('StakeManagerMock');
+            await hardhat.artifacts.readArtifact("StakeManagerMock");
         polygonStakeManager = (
             await deployContract(signer, stakeManagerMockArtifact, [
-                maticERC20Address,
+                maticERC20Address
             ])
         ).address;
-        console.log('polygonStakeManager mock contract deployed');
+        console.log("polygonStakeManager mock contract deployed");
     }
-    console.log('start deployment on:', networkName);
+    console.log("start deployment on:", networkName);
 
     // deploy validator implementation
     const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact(
-        'Validator'
+        "Validator"
     );
     const validatorContract: ValidatorFactory = (await deployContract(
         signer,
         validatorArtifact,
         []
     )) as ValidatorFactory;
-    console.log('Validator contract deployed to:', validatorContract.address);
+    console.log("Validator contract deployed to:", validatorContract.address);
 
     // deploy validator factory
     const validatorFactoryArtifact: ValidatorFactory__factory =
         (await ethers.getContractFactory(
-            'ValidatorFactory'
+            "ValidatorFactory"
         )) as ValidatorFactory__factory;
 
     const validatorFactoryContract: ValidatorFactory =
         (await upgrades.deployProxy(validatorFactoryArtifact, [
-            validatorContract.address,
+            validatorContract.address
         ])) as ValidatorFactory;
 
     await validatorFactoryContract.deployed();
@@ -89,25 +89,25 @@ async function main() {
         );
 
     console.log(
-        'ValidatorFactory proxy contract deployed to:',
+        "ValidatorFactory proxy contract deployed to:",
         validatorFactoryContract.address
     );
     console.log(
-        'ValidatorFactory implementation contract deployed to:',
+        "ValidatorFactory implementation contract deployed to:",
         validatorFactoryImplAddress
     );
 
     // deploy node operator
     const nodeOperatorRegistryArtifact: NodeOperatorRegistry__factory =
         (await ethers.getContractFactory(
-            'NodeOperatorRegistry'
+            "NodeOperatorRegistry"
         )) as NodeOperatorRegistry__factory;
 
     const nodeOperatorRegistryContract: NodeOperatorRegistry =
         (await upgrades.deployProxy(nodeOperatorRegistryArtifact, [
             validatorFactoryContract.address,
             polygonStakeManager,
-            maticERC20Address,
+            maticERC20Address
         ])) as NodeOperatorRegistry;
 
     await nodeOperatorRegistryContract.deployed();
@@ -117,31 +117,31 @@ async function main() {
         );
 
     console.log(
-        'NodeOperatorRegistry contract deployed to:',
+        "NodeOperatorRegistry contract deployed to:",
         nodeOperatorRegistryContract.address
     );
     console.log(
-        'NodeOperatorRegistry implementation contract deployed to:',
+        "NodeOperatorRegistry implementation contract deployed to:",
         nodeOperatorRegistryContractImplAddress
     );
 
     // deploy lido contract
     const LidoMaticFactory: LidoMatic__factory =
-        (await ethers.getContractFactory('LidoMatic')) as LidoMatic__factory;
+        (await ethers.getContractFactory("LidoMatic")) as LidoMatic__factory;
     const lidoMatic: LidoMatic = (await upgrades.deployProxy(LidoMaticFactory, [
         nodeOperatorRegistryContract.address,
         maticERC20Address,
         config.dao,
-        config.insurance,
+        config.insurance
     ])) as LidoMatic;
 
     await lidoMatic.deployed();
     const lidoMaticImplAddress =
         await upgrades.erc1967.getImplementationAddress(lidoMatic.address);
 
-    console.log('MaticLido contract deployed to:', lidoMatic.address);
+    console.log("MaticLido contract deployed to:", lidoMatic.address);
     console.log(
-        'MaticLido contract implementation deployed to:',
+        "MaticLido contract implementation deployed to:",
         lidoMaticImplAddress
     );
 
@@ -149,11 +149,11 @@ async function main() {
     await validatorFactoryContract.setOperatorAddress(
         nodeOperatorRegistryContract.address
     );
-    console.log('validatorFactory operator set');
+    console.log("validatorFactory operator set");
 
     // set lido contract fot the operator
     await nodeOperatorRegistryContract.setLido(lidoMatic.address);
-    console.log('NodeOperatorRegistry lido set');
+    console.log("NodeOperatorRegistry lido set");
 
     // write addreses into json file
     const data = {
@@ -169,13 +169,13 @@ async function main() {
         validator_factory_implementation: validatorContract.address,
         node_operator_registry_proxy: nodeOperatorRegistryContract.address,
         node_operator_registry_implementation:
-            nodeOperatorRegistryContractImplAddress,
+            nodeOperatorRegistryContractImplAddress
     };
     const filePath = path.join(
         process.cwd(),
-        'deploy-' + networkName + '.json'
+        "deploy-" + networkName + ".json"
     );
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 4), 'utf8');
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 4), "utf8");
 }
 
 main()
