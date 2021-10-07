@@ -21,4 +21,7 @@ deploy-goerli:
 deploy-localhost:
 	npx hardhat run --network localhost scripts/deploy.ts
 
+verify-goerli:
+	npx hardhat run verifyLido --network goerli
+
 .PHONY: init compile clean test
