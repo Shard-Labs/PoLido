@@ -32,7 +32,7 @@ export const addOperator = async (
     hre: HardhatRuntimeEnvironment,
     name: string,
     rewardAddress: string,
-    pubKey: string
+    pubKey: Uint8Array
 ) => {
     const [admin] = await hre.ethers.getSigners();
     const nodeOperatorRegistryAddress =
@@ -43,7 +43,8 @@ export const addOperator = async (
         NodeOperatorRegistryJSON.abi,
         admin
     ) as NodeOperatorRegistry;
-    console.log(name, rewardAddress, pubKey);
 
-    await nodeOperatorRegistry.addOperator(name, rewardAddress, pubKey);
+    await (
+        await nodeOperatorRegistry.addOperator(name, rewardAddress, pubKey)
+    ).wait();
 };

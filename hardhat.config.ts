@@ -12,6 +12,7 @@ import "hardhat-gas-reporter";
 import { verify, addOperator } from "./scripts/tasks";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperatorArgs } from "./scripts/types";
+import { getPublicKey } from "./scripts/utils";
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
@@ -19,6 +20,7 @@ const INFURA_API_KEY = process.env.INFURA_API_KEY;
 const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY;
 const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY;
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+const VALIDATOR_PRIVATE_KEY = process.env.VALIDATOR_PRIVATE_KEY;
 
 task("verifyLido", "Lido contracts verification").setAction(
     async (args, hre: HardhatRuntimeEnvironment) => {
@@ -27,11 +29,11 @@ task("verifyLido", "Lido contracts verification").setAction(
 );
 
 task("addOperator", "Assigns operator")
-    .addOptionalParam("operatorName", "Name of the new operator")
-    .addOptionalParam("rewardAddress", "Reward address of the new operator")
-    .addOptionalParam("address", "Address of the new operator")
+    .addParam("operatorName", "Name of the new operator")
+    .addParam("rewardAddress", "Reward address of the new operator")
     .setAction(async (args: OperatorArgs, hre: HardhatRuntimeEnvironment) => {
-        const { operatorName, rewardAddress, pubKey } = args;
+        const { operatorName, rewardAddress } = args;
+        const pubKey = getPublicKey(VALIDATOR_PRIVATE_KEY!);
 
         await addOperator(hre, operatorName, rewardAddress, pubKey);
     });
