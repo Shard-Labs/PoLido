@@ -1,8 +1,11 @@
+import { ethers } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 // In the future, select from different deployment details file based on the --network argument
 // For now it is hardcoded to use only Goerli
 import * as GOERLI_DEPLOYMENT_DETAILS from "../deploy-goerli.json";
+import * as NodeOperatorRegistryJSON from "../artifacts/contracts/NodeOperatorRegistry.sol/NodeOperatorRegistry.json";
+import { NodeOperatorRegistry } from "../typechain";
 
 const verifyContract = async (
     hre: HardhatRuntimeEnvironment,
@@ -23,4 +26,24 @@ export const verify = async (hre: HardhatRuntimeEnvironment) => {
     for (const contract of contracts) {
         await verifyContract(hre, contract);
     }
+};
+
+export const addOperator = async (
+    hre: HardhatRuntimeEnvironment,
+    name: string,
+    rewardAddress: string,
+    pubKey: string
+) => {
+    const [admin] = await hre.ethers.getSigners();
+    const nodeOperatorRegistryAddress =
+        GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
+
+    const nodeOperatorRegistry = new ethers.Contract(
+        nodeOperatorRegistryAddress,
+        NodeOperatorRegistryJSON.abi,
+        admin
+    ) as NodeOperatorRegistry;
+    console.log(name, rewardAddress, pubKey);
+
+    await nodeOperatorRegistry.addOperator(name, rewardAddress, pubKey);
 };

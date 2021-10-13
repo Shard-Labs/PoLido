@@ -9,8 +9,9 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-gas-reporter";
 
-import { verify } from "./scripts/verify";
+import { verify, addOperator } from "./scripts/tasks";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { OperatorArgs } from "./scripts/types";
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
@@ -24,6 +25,16 @@ task("verifyLido", "Lido contracts verification").setAction(
         await verify(hre);
     }
 );
+
+task("addOperator", "Assigns operator")
+    .addOptionalParam("operatorName", "Name of the new operator")
+    .addOptionalParam("rewardAddress", "Reward address of the new operator")
+    .addOptionalParam("address", "Address of the new operator")
+    .setAction(async (args: OperatorArgs, hre: HardhatRuntimeEnvironment) => {
+        const { operatorName, rewardAddress, pubKey } = args;
+
+        await addOperator(hre, operatorName, rewardAddress, pubKey);
+    });
 
 const config: HardhatUserConfig = {
     defaultNetwork: "hardhat",
