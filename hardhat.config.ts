@@ -9,7 +9,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-gas-reporter";
 
-import { verify, addOperator } from "./scripts/tasks";
+import { verify, addOperator, removeOperator } from "./scripts/tasks";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperatorArgs } from "./scripts/types";
 import { getPublicKey } from "./scripts/utils";
@@ -28,7 +28,7 @@ task("verifyLido", "Lido contracts verification").setAction(
     }
 );
 
-task("addOperator", "Assigns operator")
+task("addOperator", "Assigns an operator")
     .addParam("operatorName", "Name of the new operator")
     .addParam("rewardAddress", "Reward address of the new operator")
     .setAction(async (args: OperatorArgs, hre: HardhatRuntimeEnvironment) => {
@@ -36,6 +36,13 @@ task("addOperator", "Assigns operator")
         const pubKey = getPublicKey(VALIDATOR_PRIVATE_KEY!);
 
         await addOperator(hre, operatorName, rewardAddress, pubKey);
+    });
+
+task("removeOperator", "Removes an operator")
+    .addParam("id", "Id of an operator that will be removed")
+    .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
+        const {id} = args;
+        await removeOperator(hre, id);
     });
 
 const config: HardhatUserConfig = {

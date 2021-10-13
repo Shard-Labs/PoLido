@@ -6,6 +6,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import * as GOERLI_DEPLOYMENT_DETAILS from "../deploy-goerli.json";
 import * as NodeOperatorRegistryJSON from "../artifacts/contracts/NodeOperatorRegistry.sol/NodeOperatorRegistry.json";
 import { NodeOperatorRegistry } from "../typechain";
+import { GoerliOverrides } from "./constants";
 
 const verifyContract = async (
     hre: HardhatRuntimeEnvironment,
@@ -45,6 +46,23 @@ export const addOperator = async (
     ) as NodeOperatorRegistry;
 
     await (
-        await nodeOperatorRegistry.addOperator(name, rewardAddress, pubKey)
+        await nodeOperatorRegistry.addOperator(name, rewardAddress, pubKey, GoerliOverrides)
     ).wait();
+};
+
+export const removeOperator = async (
+    hre: HardhatRuntimeEnvironment,
+    id: string
+) => {
+    const [admin] = await hre.ethers.getSigners();
+    const nodeOperatorRegistryAddress =
+        GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
+
+    const nodeOperatorRegistry = new ethers.Contract(
+        nodeOperatorRegistryAddress,
+        NodeOperatorRegistryJSON.abi,
+        admin
+    ) as NodeOperatorRegistry;
+
+    await (await nodeOperatorRegistry.removeOperator(id, GoerliOverrides)).wait();
 };
