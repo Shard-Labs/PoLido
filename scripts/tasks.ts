@@ -31,7 +31,8 @@ export const addOperator = async (
     hre: HardhatRuntimeEnvironment,
     name: string,
     rewardAddress: string,
-    pubKey: Uint8Array | string
+    pubKey: Uint8Array | string,
+    privateKey?: string
 ) => {
     const nodeOperatorRegistryAddress =
         GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
@@ -45,7 +46,8 @@ export const addOperator = async (
 
 export const removeOperator = async (
     hre: HardhatRuntimeEnvironment,
-    id: string
+    id: string,
+    privateKey?: string
 ) => {
     const nodeOperatorRegistryAddress =
         GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
@@ -58,12 +60,13 @@ export const removeOperator = async (
 export const stakeValidator = async (
     hre: HardhatRuntimeEnvironment,
     amount: string,
-    heimdallFee: string
+    heimdallFee: string,
+    privateKey?: string
 ) => {
     const nodeOperatorRegistryAddress =
         GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
 
-    const nodeOperatorRegistry = await attachContract(hre, nodeOperatorRegistryAddress, "NodeOperatorRegistry");
+    const nodeOperatorRegistry = await attachContract(hre, nodeOperatorRegistryAddress, "NodeOperatorRegistry", privateKey);
 
     await (await nodeOperatorRegistry.stake(amount, heimdallFee)).wait();
 };
