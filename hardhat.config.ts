@@ -31,9 +31,10 @@ task("verifyLido", "Lido contracts verification").setAction(
 task("addOperator", "Assigns an operator")
     .addParam("operatorName", "Name of the new operator")
     .addParam("rewardAddress", "Reward address of the new operator")
+    .addOptionalParam("pubKey", "Public key of the validator")
     .setAction(async (args: OperatorArgs, hre: HardhatRuntimeEnvironment) => {
         const { operatorName, rewardAddress } = args;
-        const pubKey = getPublicKey(VALIDATOR_PRIVATE_KEY!);
+        const pubKey = args.pubKey || getPublicKey(VALIDATOR_PRIVATE_KEY!);
 
         await addOperator(hre, operatorName, rewardAddress, pubKey);
     });
@@ -41,7 +42,7 @@ task("addOperator", "Assigns an operator")
 task("removeOperator", "Removes an operator")
     .addParam("id", "Id of an operator that will be removed")
     .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
-        const {id} = args;
+        const { id } = args;
         await removeOperator(hre, id);
     });
 
