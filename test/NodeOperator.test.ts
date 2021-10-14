@@ -755,50 +755,83 @@ describe("NodeOperator", function () {
     });
 
     it("Success remove node operator", async function () {
-        // add a new node operator
-        await newValidator(1, user1Address);
-        await newValidator(2, user2Address);
+        try {
+            // add a new node operator
+            await newValidator(1, user1Address);
+            await newValidator(2, user2Address);
 
-        // get a node operator
-        let no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+            // get a node operator
+            let no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
 
-        // approve token to validator contract
-        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+            // approve token to validator contract
+            await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
 
-        // stake a node operator
-        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+            // stake a node operator
+            await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
 
-        // unstake a node operator
-        await nodeOperatorRegistryContract.connect(user1).unstake();
+            no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+            expect(no[0] === 2, "status not staked").true;
 
-        // unstakeClaim a node operator
-        await nodeOperatorRegistryContract.connect(user1).unstakeClaim();
+            // unstake a node operator
+            await nodeOperatorRegistryContract.connect(user1).unstake();
+            no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+            expect(no[0] === 3, "status not unstaked").true;
 
-        // claim fees
-        await nodeOperatorRegistryContract.connect(user1)
-            .claimFee(1, 1, ethers.utils.randomBytes(64));
+            // unstakeClaim a node operator
+            await nodeOperatorRegistryContract.connect(user1).unstakeClaim();
+            no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+            expect(no[0] === 4, "status not claimed").true;
 
-        // remove node operator.
-        const res = await nodeOperatorRegistryContract.removeOperator(1);
-        expect(res).to.emit(nodeOperatorRegistryContract, "RemoveOperator").withArgs(1);
+            // claim fees
+            await nodeOperatorRegistryContract.connect(user1)
+                .claimFee(1, 1, ethers.utils.randomBytes(64));
 
-        const ops = await nodeOperatorRegistryContract.getOperators();
-        expect(ops.length, "all validators ids").to.equal(1);
-        expect(ops[0].toString(), "validator id 2").to.equal("2");
+            no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+            expect(no[0] === 5, "status not exit").true;
 
-        // check global state
-        const state = await nodeOperatorRegistryContract.getState();
-        expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
-        expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("1");
-        expect(state[2].toString(), "totalStakedNodeOpearator").to.equal("0");
-        expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
-        expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+            // remove node operator.
+            let res = await nodeOperatorRegistryContract.removeOperator(1);
+            expect(res).to.emit(nodeOperatorRegistryContract, "RemoveOperator").withArgs(1);
 
-        const v = await validatorFactoryContract.getValidators();
-        expect(v.length, "validator proxies").to.equal(1);
+            let ops = await nodeOperatorRegistryContract.getOperators();
+            expect(ops.length, "all validators ids").to.equal(1);
+            expect(ops[0].toString(), "validator id 2").to.equal("2");
 
-        no = await nodeOperatorRegistryContract.getNodeOperator(2, false);
-        expect(v[0], "ValidatorContract").to.equal(no[6]);
+            // check global state
+            let state = await nodeOperatorRegistryContract.getState();
+            expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
+            expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("1");
+            expect(state[2].toString(), "totalStakedNodeOpearator").to.equal("0");
+            expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
+            expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+
+            let v = await validatorFactoryContract.getValidators();
+            expect(v.length, "validator proxies").to.equal(1);
+
+            no = await nodeOperatorRegistryContract.getNodeOperator(2, false);
+            expect(no[0] === 1, "status not active");
+            expect(v[0], "ValidatorContract").to.equal(no[6]);
+
+            // remove node operator.
+            res = await nodeOperatorRegistryContract.removeOperator(2);
+            expect(res).to.emit(nodeOperatorRegistryContract, "RemoveOperator").withArgs(2);
+
+            ops = await nodeOperatorRegistryContract.getOperators();
+            expect(ops.length, "all validators ids").to.equal(0);
+
+            // check global state
+            state = await nodeOperatorRegistryContract.getState();
+            expect(state[0].toString(), "totalNodeOpearator").to.equal("0");
+            expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("0");
+            expect(state[2].toString(), "totalStakedNodeOpearator").to.equal("0");
+            expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
+            expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+
+            v = await validatorFactoryContract.getValidators();
+            expect(v.length, "validator proxies").to.equal(0);
+        } catch (e) {
+            console.log(e);
+        }
     });
 
     it("Fail to remove operator", async function () {
@@ -830,7 +863,7 @@ describe("NodeOperator", function () {
 
         // revert remove node operator that not exists.
         await expect(nodeOperatorRegistryContract.removeOperator(2))
-            .to.revertedWith("Node Operator state isn't CLAIMED or EXIT");
+            .to.revertedWith("Node Operator state isn't CLAIMED, ACTIVE or EXIT");
     });
 
     it("Success set stake amount and fees", async function () {
@@ -841,10 +874,10 @@ describe("NodeOperator", function () {
             toEth("30")
         );
         const state = await nodeOperatorRegistryContract.getState();
-        expect(state[9], "maxAmountStake").to.equal(toEth("100"));
-        expect(state[10], "minAmountStake").to.equal(toEth("100"));
-        expect(state[11], "maxHeimdallFees").to.equal(toEth("30"));
-        expect(state[12], "minHeimdallFees").to.equal(toEth("30"));
+        expect(state[10], "maxAmountStake").to.equal(toEth("100"));
+        expect(state[11], "minAmountStake").to.equal(toEth("100"));
+        expect(state[12], "maxHeimdallFees").to.equal(toEth("30"));
+        expect(state[13], "minHeimdallFees").to.equal(toEth("30"));
     });
 
     it("Fail to set stake amount and fees", async function () {
@@ -902,10 +935,10 @@ describe("NodeOperator", function () {
         expect(state[2].toString(), "totalStakedNodeOpearator").to.equal("1");
         expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
         expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
-        expect(state[9], "maxAmountStake").to.equal(toEth("100"));
-        expect(state[10], "minAmountStake").to.equal(toEth("100"));
-        expect(state[11], "maxHeimdallFees").to.equal(toEth("30"));
-        expect(state[12], "minHeimdallFees").to.equal(toEth("30"));
+        expect(state[10], "maxAmountStake").to.equal(toEth("100"));
+        expect(state[11], "minAmountStake").to.equal(toEth("100"));
+        expect(state[12], "maxHeimdallFees").to.equal(toEth("30"));
+        expect(state[13], "minHeimdallFees").to.equal(toEth("30"));
     });
 
     it("Success set lido and validatorFactory addresses", async function () {

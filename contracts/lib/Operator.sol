@@ -35,6 +35,7 @@ library Operator {
         uint256 totalActiveNodeOpearator;
         uint256 totalStakedNodeOpearator;
         uint256 totalUnstakedNodeOpearator;
+        uint256 totalClaimedNodeOpearator;
         uint256 totalExitNodeOpearator;
         address validatorFactory;
         address stakeManager;
