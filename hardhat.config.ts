@@ -9,7 +9,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-gas-reporter";
 
-import { verify, addOperator, removeOperator } from "./scripts/tasks";
+import { verify, addOperator, removeOperator, stakeValidator } from "./scripts/tasks";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperatorArgs } from "./scripts/types";
 import { getPublicKey } from "./scripts/utils";
@@ -44,6 +44,14 @@ task("removeOperator", "Removes an operator")
     .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
         const { id } = args;
         await removeOperator(hre, id);
+    });
+
+task("stakeValidator", "Stakes a validator")
+    .addParam("amount", "Amount that will be staked")
+    .addParam("heimdallFee", "Heimdall fee")
+    .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
+        const { amount, heimdallFee } = args;
+        await stakeValidator(hre, amount, heimdallFee);
     });
 
 const config: HardhatUserConfig = {

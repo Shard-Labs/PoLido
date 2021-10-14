@@ -54,3 +54,16 @@ export const removeOperator = async (
 
     await (await nodeOperatorRegistry.removeOperator(id, GoerliOverrides)).wait();
 };
+
+export const stakeValidator = async (
+    hre: HardhatRuntimeEnvironment,
+    amount: string,
+    heimdallFee: string
+) => {
+    const nodeOperatorRegistryAddress =
+        GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
+
+    const nodeOperatorRegistry = await attachContract(hre, nodeOperatorRegistryAddress, "NodeOperatorRegistry");
+
+    await (await nodeOperatorRegistry.stake(amount, heimdallFee)).wait();
+};
