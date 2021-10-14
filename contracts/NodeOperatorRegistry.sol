@@ -226,12 +226,19 @@ contract NodeOperatorRegistry is
         Operator.NodeOperator storage no = operators[_operatorId];
         require(
             no.status == Operator.NodeOperatorStatus.CLAIMED ||
-                no.status == Operator.NodeOperatorStatus.EXIT,
-            "Node Operator state isn't CLAIMED or EXIT"
+                no.status == Operator.NodeOperatorStatus.EXIT ||
+                no.status == Operator.NodeOperatorStatus.ACTIVE,
+            "Node Operator state isn't CLAIMED, ACTIVE or EXIT"
         );
 
+        if (no.status == Operator.NodeOperatorStatus.CLAIMED) {
+            state.totalClaimedNodeOpearator--;
+        } else if (no.status == Operator.NodeOperatorStatus.EXIT) {
+            state.totalExitNodeOpearator--;
+        } else if (no.status == Operator.NodeOperatorStatus.ACTIVE) {
+            state.totalActiveNodeOpearator--;
+        }
         state.totalNodeOpearator--;
-        state.totalExitNodeOpearator--;
 
         // update the operatorIds array by removing the operator id.
         for (uint256 idx = 0; idx < operatorIds.length - 1; idx++) {
@@ -425,7 +432,7 @@ contract NodeOperatorRegistry is
 
         no.status = Operator.NodeOperatorStatus.CLAIMED;
         state.totalUnstakedNodeOpearator--;
-        state.totalExitNodeOpearator++;
+        state.totalClaimedNodeOpearator++;
 
         emit ClaimUnstake(validatorId, msg.sender, amount);
     }
@@ -444,7 +451,7 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator memory no = operators[operatorId];
+        Operator.NodeOperator storage no = operators[operatorId];
 
         require(
             no.status == Operator.NodeOperatorStatus.CLAIMED,
@@ -455,11 +462,16 @@ contract NodeOperatorRegistry is
         require(_accumFeeAmount != 0, "AccumFeeAmount is ZERO");
         require(_index != 0, "index is ZERO");
 
+
         IValidator(no.validatorContract).claimFee(
             _accumFeeAmount,
             _index,
             _proof
         );
+
+        state.totalClaimedNodeOpearator--;
+        state.totalExitNodeOpearator++;
+        no.status = Operator.NodeOperatorStatus.EXIT;
 
         emit ClaimFee(
             operatorId,
