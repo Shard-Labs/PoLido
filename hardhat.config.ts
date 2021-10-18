@@ -57,7 +57,10 @@ task("stakeValidator", "Stakes a validator")
     .addOptionalParam("privateKey", "Private key of validator owner")
     .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
         const { amount, heimdallFee, privateKey } = args;
-        await stakeValidator(hre, amount, heimdallFee, privateKey);
+        const amountWei = hre.ethers.utils.parseEther(amount);
+        const heimdallFeeWei = hre.ethers.utils.parseEther(heimdallFee);
+
+        await stakeValidator(hre, amountWei, heimdallFeeWei, privateKey);
     });
 
 const config: HardhatUserConfig = {
@@ -78,7 +81,8 @@ const config: HardhatUserConfig = {
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
             accounts: [`0x${GOERLI_PRIVATE_KEY || DEFAULT_PRIVATE_KEY}`],
-            gasPrice: 10000000000
+            gasPrice: 10000000000,
+            gas: 10000000
         },
         mainnet: {
             url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
