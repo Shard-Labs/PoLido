@@ -69,7 +69,8 @@ export const stakeValidator = async (
 
     const token = await attachContract(hre, TokenAddresses.Testv4, "ERC20", privateKey);
     const nodeOperatorRegistry = await attachContract(hre, nodeOperatorRegistryAddress, "NodeOperatorRegistry", privateKey);
+    const operator = await nodeOperatorRegistry.getNodeOperator(1, false);
 
-    await token.approve(nodeOperatorRegistry.address, amount.add(heimdallFee));
+    await token.approve(operator[6], amount.add(heimdallFee));
     await (await nodeOperatorRegistry.stake(amount, heimdallFee)).wait();
 };
