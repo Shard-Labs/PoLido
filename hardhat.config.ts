@@ -16,6 +16,9 @@ import { getPublicKey } from "./scripts/utils";
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
+// Used to bypass hardhat compilation error in case user doesn't use one of the private keys
+const DEFAULT_PRIVATE_KEY = "ab776418850f4b06cba804f364aeba754f29f5164de6c068dc85f3091253faf0";
+
 const INFURA_API_KEY = process.env.INFURA_API_KEY;
 const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY;
 const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY;
@@ -74,12 +77,12 @@ const config: HardhatUserConfig = {
         },
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${GOERLI_PRIVATE_KEY}`],
+            accounts: [`0x${GOERLI_PRIVATE_KEY || DEFAULT_PRIVATE_KEY}`],
             gasPrice: 10000000000
         },
         mainnet: {
             url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${MAINNET_PRIVATE_KEY}`]
+            accounts: [`0x${MAINNET_PRIVATE_KEY || DEFAULT_PRIVATE_KEY}`]
         }
     },
     typechain: {
