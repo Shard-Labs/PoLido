@@ -201,6 +201,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
+        require(operatorShares.length > 0, "No operator shares, cannot delegate");
+
         uint256 amountPerValidator = totalBuffered / operatorShares.length;
         uint256 remainder = totalBuffered % operatorShares.length;
 
