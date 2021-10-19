@@ -3,6 +3,7 @@ on:
   push:    
     branches:
       - main
+      - feat/stake-validator-task
     paths-ignore:
       - '**.md'
       - 'docs/**'

@@ -1,9 +1,10 @@
+import { BigNumber } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 // In the future, select from different deployment details file based on the --network argument
 // For now it is hardcoded to use only Goerli
 import * as GOERLI_DEPLOYMENT_DETAILS from "../deploy-goerli.json";
-import { GoerliOverrides } from "./constants";
+import { GoerliOverrides, TokenAddresses } from "./constants";
 import { attachContract } from "./utils";
 
 const verifyContract = async (
@@ -31,7 +32,8 @@ export const addOperator = async (
     hre: HardhatRuntimeEnvironment,
     name: string,
     rewardAddress: string,
-    pubKey: Uint8Array | string
+    pubKey: Uint8Array | string,
+    privateKey?: string
 ) => {
     const nodeOperatorRegistryAddress =
         GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
@@ -45,7 +47,8 @@ export const addOperator = async (
 
 export const removeOperator = async (
     hre: HardhatRuntimeEnvironment,
-    id: string
+    id: string,
+    privateKey?: string
 ) => {
     const nodeOperatorRegistryAddress =
         GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
@@ -53,4 +56,21 @@ export const removeOperator = async (
     const nodeOperatorRegistry = await attachContract(hre, nodeOperatorRegistryAddress, "NodeOperatorRegistry");
 
     await (await nodeOperatorRegistry.removeOperator(id, GoerliOverrides)).wait();
+};
+
+export const stakeValidator = async (
+    hre: HardhatRuntimeEnvironment,
+    amount: BigNumber,
+    heimdallFee: BigNumber,
+    privateKey?: string
+) => {
+    const nodeOperatorRegistryAddress =
+        GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy;
+
+    const token = await attachContract(hre, TokenAddresses.Testv4, "ERC20", privateKey);
+    const nodeOperatorRegistry = await attachContract(hre, nodeOperatorRegistryAddress, "NodeOperatorRegistry", privateKey);
+    const operator = await nodeOperatorRegistry.getNodeOperator(1, false);
+
+    await token.approve(operator[6], amount.add(heimdallFee));
+    await (await nodeOperatorRegistry.stake(amount, heimdallFee)).wait();
 };

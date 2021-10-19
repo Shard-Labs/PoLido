@@ -9,12 +9,15 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-gas-reporter";
 
-import { verify, addOperator, removeOperator } from "./scripts/tasks";
+import { verify, addOperator, removeOperator, stakeValidator } from "./scripts/tasks";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperatorArgs } from "./scripts/types";
 import { getPublicKey } from "./scripts/utils";
 
 dotenv.config({ path: path.join(__dirname, ".env") });
+
+// Used to bypass hardhat compilation error in case user doesn't use one of the private keys
+const DEFAULT_PRIVATE_KEY = "ab776418850f4b06cba804f364aeba754f29f5164de6c068dc85f3091253faf0";
 
 const INFURA_API_KEY = process.env.INFURA_API_KEY;
 const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY;
@@ -32,18 +35,32 @@ task("addOperator", "Assigns an operator")
     .addParam("operatorName", "Name of the new operator")
     .addParam("rewardAddress", "Reward address of the new operator")
     .addOptionalParam("pubKey", "Public key of the validator")
+    .addOptionalParam("privateKey", "Private key of lido admin")
     .setAction(async (args: OperatorArgs, hre: HardhatRuntimeEnvironment) => {
-        const { operatorName, rewardAddress } = args;
+        const { operatorName, rewardAddress, privateKey } = args;
         const pubKey = args.pubKey || getPublicKey(VALIDATOR_PRIVATE_KEY!);
 
-        await addOperator(hre, operatorName, rewardAddress, pubKey);
+        await addOperator(hre, operatorName, rewardAddress, pubKey, privateKey);
     });
 
 task("removeOperator", "Removes an operator")
     .addParam("id", "Id of an operator that will be removed")
+    .addOptionalParam("privateKey", "Private key of lido admin")
     .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
-        const { id } = args;
-        await removeOperator(hre, id);
+        const { id, privateKey } = args;
+        await removeOperator(hre, id, privateKey);
+    });
+
+task("stakeValidator", "Stakes a validator")
+    .addParam("amount", "Amount that will be staked")
+    .addParam("heimdallFee", "Heimdall fee")
+    .addOptionalParam("privateKey", "Private key of validator owner")
+    .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
+        const { amount, heimdallFee, privateKey } = args;
+        const amountWei = hre.ethers.utils.parseEther(amount);
+        const heimdallFeeWei = hre.ethers.utils.parseEther(heimdallFee);
+
+        await stakeValidator(hre, amountWei, heimdallFeeWei, privateKey);
     });
 
 const config: HardhatUserConfig = {
@@ -63,12 +80,13 @@ const config: HardhatUserConfig = {
         },
         goerli: {
             url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${GOERLI_PRIVATE_KEY}`],
-            gasPrice: 10000000000
+            accounts: [`0x${GOERLI_PRIVATE_KEY || DEFAULT_PRIVATE_KEY}`],
+            gasPrice: 10000000000,
+            gas: 10000000
         },
         mainnet: {
             url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${MAINNET_PRIVATE_KEY}`]
+            accounts: [`0x${MAINNET_PRIVATE_KEY || DEFAULT_PRIVATE_KEY}`]
         }
     },
     typechain: {

@@ -12,9 +12,12 @@ export const getPublicKey = (privateKey: string): Uint8Array => {
 export const attachContract = async (
     hre: HardhatRuntimeEnvironment,
     contractAddress: string,
-    contractName: string
+    contractName: string,
+    privateKey?: string
 ): Promise<Contract> => {
-    const [admin] = await hre.ethers.getSigners();
+    const admin = privateKey
+        ? new ethers.Wallet(privateKey, hre.ethers.provider)
+        : (await hre.ethers.getSigners())[0];
 
     const ContractFactory = await hre.ethers.getContractFactory(
         contractName,
