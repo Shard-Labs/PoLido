@@ -42,6 +42,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
     address public constant stakeManager =
         0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3;
+    
+    uint256 public reservedFunds;
 
     struct RequestWithdraw {
         uint256 amount;
@@ -126,7 +128,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
     /**
      * @dev Stores users request to withdraw into a RequestWithdraw struct
-     * @param _amount - Amount of MATIC that is requested to withdraw
+     * @param _amount - Amount of StMATIC that is requested to withdraw
      */
     function requestWithdraw(uint256 _amount) external notPaused {
         // Add a function that converts MATIC to StMATIC and reverse
@@ -155,7 +157,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 amountInMATIC = getUserBalanceInMATIC();
 
-        if (operatorShares.length > 0) {
+        if (totalDelegated > amountInMATIC) {
             address validatorShare = operatorShares[lastWithdrawnValidatorId]
                 .validatorShare;
 
@@ -179,13 +181,15 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         } else {
             requestWithdraws.push(
                 RequestWithdraw(
-                    amountInMATIC,
+                    _amount,
                     0,
                     block.timestamp,
                     address(0),
                     true
                 )
             );
+
+            reservedFunds += _amount;
         }
     }
 
@@ -201,12 +205,17 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
-        require(operatorShares.length > 0, "No operator shares, cannot delegate");
+        require(
+            operatorShares.length > 0,
+            "No operator shares, cannot delegate"
+        );
 
-        uint256 amountPerValidator = totalBuffered / operatorShares.length;
-        uint256 remainder = totalBuffered % operatorShares.length;
+        uint256 amountToDelegate = totalBuffered - reservedFunds;
 
-        IERC20Upgradeable(token).approve(stakeManager, totalBuffered);
+        uint256 amountPerValidator = amountToDelegate / operatorShares.length;
+        uint256 remainder = amountToDelegate % operatorShares.length;
+
+        IERC20Upgradeable(token).approve(stakeManager, amountToDelegate);
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
             buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
@@ -216,7 +225,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             ] += amountPerValidator;
         }
 
-        totalDelegated += totalBuffered - remainder;
+        totalDelegated += amountToDelegate - remainder;
         totalBuffered = remainder;
     }
 
@@ -239,11 +248,16 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         require(userRequests[requestIndex].active, "No active withdrawals");
 
-        require(
-            block.timestamp >=
-                userRequests[requestIndex].requestTime + WITHDRAWAL_DELAY,
-            "Not able to claim yet"
-        );
+        if (userRequests[requestIndex].validatorAddress != address(0)) {
+            require(
+                block.timestamp >=
+                    userRequests[requestIndex].requestTime + WITHDRAWAL_DELAY,
+                "Not able to claim yet"
+            );
+        }
+        else {
+            reservedFunds -= userRequests[requestIndex].amount;
+        }
 
         uint256 amount = userRequests[requestIndex].amount;
 
