@@ -40,6 +40,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
     bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
 
+    address public constant stakeManager =
+        0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3;
+
     struct RequestWithdraw {
         uint256 amount;
         uint256 validatorNonce;
@@ -201,12 +204,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 amountPerValidator = totalBuffered / operatorShares.length;
         uint256 remainder = totalBuffered % operatorShares.length;
 
-        for (uint256 i = 0; i < operatorShares.length; i++) {
-            IERC20Upgradeable(token).approve(
-                operatorShares[i].validatorShare,
-                amountPerValidator
-            );
+        IERC20Upgradeable(token).approve(stakeManager, totalBuffered);
 
+        for (uint256 i = 0; i < operatorShares.length; i++) {
             buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
 
             validator2DelegatedAmount[
