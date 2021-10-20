@@ -93,4 +93,7 @@ interface IStakeManager {
 
     /// @notice Allows to unjail a validator.
     function unjail(uint256 _validatorId) external;
+
+    /// @notice Returns a withdrawal delay.
+    function withdrawalDelay() external view returns (uint256);
 }

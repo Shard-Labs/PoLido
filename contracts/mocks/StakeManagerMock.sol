@@ -146,4 +146,8 @@ contract StakeManagerMock is IStakeManager {
     function unjail(uint256 _validatorId) external override {
         emit Unjail(_validatorId);
     }
+
+    function withdrawalDelay() external view override returns (uint256) {
+        return 0;
+    }
 }
