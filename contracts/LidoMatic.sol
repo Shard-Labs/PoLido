@@ -149,52 +149,67 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             msg.sender
         ];
 
-        if (lastWithdrawnValidatorId > operatorShares.length - 1) {
-            lastWithdrawnValidatorId = 0;
-        }
-
         uint256 callerBalance = balanceOf(msg.sender);
 
         require(
             callerBalance - totalAmountRequested[msg.sender] >= _amount,
             "Invalid amount"
         );
-
+        
         uint256[] storage amountsRequestedSender = amountsRequested[msg.sender];
 
         amountsRequestedSender.push(_amount);
 
         totalAmountRequested[msg.sender] += _amount;
 
-        uint256 amountInMATIC = convertStMaticToMatic(_amount);
+        uint256 amount2WithdrawInMatic = convertStMaticToMatic(_amount);
 
-        if (totalDelegated > amountInMATIC) {
-            address validatorShare = operatorShares[lastWithdrawnValidatorId]
-                .validatorShare;
+        if (totalDelegated > amount2WithdrawInMatic) {
+            while (amount2WithdrawInMatic != 0) {
+                if (lastWithdrawnValidatorId > operatorShares.length - 1) {
+                    lastWithdrawnValidatorId = 0;
+                }
 
-            sellVoucher_new(validatorShare, amountInMATIC, type(uint256).max);
+                address validatorShare = operatorShares[
+                    lastWithdrawnValidatorId
+                ].validatorShare;
 
-            validator2Nonce[validatorShare]++;
+                uint256 validatorBalance = IValidatorShare(validatorShare)
+                    .activeAmount();
 
-            user2Nonce[msg.sender]++;
+                uint256 amount2WithdrawFromValidator = (validatorBalance >
+                    amount2WithdrawInMatic)
+                    ? amount2WithdrawInMatic
+                    : validatorBalance;
 
-            requestWithdraws.push(
-                RequestWithdraw(
-                    amountInMATIC,
-                    validator2Nonce[validatorShare],
-                    block.timestamp,
+                sellVoucher_new(
                     validatorShare,
-                    true
-                )
-            );
+                    amount2WithdrawFromValidator,
+                    type(uint256).max
+                );
 
-            lastWithdrawnValidatorId++;
+                validator2Nonce[validatorShare]++;
+
+                user2Nonce[msg.sender]++;
+
+                requestWithdraws.push(
+                    RequestWithdraw(
+                        amount2WithdrawFromValidator,
+                        validator2Nonce[validatorShare],
+                        block.timestamp,
+                        validatorShare,
+                        true
+                    )
+                );
+
+                amount2WithdrawInMatic -= amount2WithdrawFromValidator;
+
+                lastWithdrawnValidatorId++;
+            }
         } else {
-            // If delegation did not happen yet then withdraw Matic equal to StMatic balance
-
             requestWithdraws.push(
                 RequestWithdraw(
-                    amountInMATIC,
+                    amount2WithdrawInMatic,
                     0,
                     block.timestamp,
                     address(0),
@@ -202,7 +217,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 )
             );
 
-            reservedFunds += amountInMATIC;
+            reservedFunds += amount2WithdrawInMatic;
         }
     }
 
