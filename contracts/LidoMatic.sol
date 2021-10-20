@@ -42,7 +42,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
     address public constant stakeManager =
         0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3;
-    
+
     uint256 public reservedFunds;
 
     struct RequestWithdraw {
@@ -115,7 +115,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 totalShares = totalSupply();
         uint256 totalPooledMatic = totalBuffered + totalDelegated;
-        uint256 amountToMint = totalShares != 0
+        uint256 amountToMint = totalDelegated != 0
             ? (_amount * totalShares) / totalPooledMatic
             : _amount;
 
@@ -179,9 +179,14 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
             lastWithdrawnValidatorId++;
         } else {
+            // If delegation did not happen yet then withdraw Matic equal to StMatic balance
+            uint256 amountToWithdraw = totalDelegated == 0
+                ? _amount
+                : amountInMATIC;
+
             requestWithdraws.push(
                 RequestWithdraw(
-                    _amount,
+                    amountToWithdraw,
                     0,
                     block.timestamp,
                     address(0),
@@ -189,7 +194,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 )
             );
 
-            reservedFunds += _amount;
+            reservedFunds += amountToWithdraw;
         }
     }
 
@@ -254,8 +259,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     userRequests[requestIndex].requestTime + WITHDRAWAL_DELAY,
                 "Not able to claim yet"
             );
-        }
-        else {
+        } else {
             reservedFunds -= userRequests[requestIndex].amount;
         }
 
