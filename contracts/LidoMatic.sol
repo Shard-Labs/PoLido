@@ -153,7 +153,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 callerBalance = balanceOf(msg.sender);
 
-        require(callerBalance - amountRequested[msg.sender] >= _amount, "Invalid amount");
+        require(
+            callerBalance - amountRequested[msg.sender] >= _amount,
+            "Invalid amount"
+        );
 
         amountRequested[msg.sender] += _amount;
 
@@ -286,15 +289,14 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             validator2DelegatedAmount[
                 userRequests[requestIndex].validatorAddress
             ] -= amount;
-        }
-        else {
+        } else {
             reservedFunds -= userRequests[requestIndex].amount;
             totalBuffered -= userRequests[requestIndex].amount;
         }
 
         _burn(msg.sender, userRequests[requestIndex].amount);
 
-        amountRequested[msg.sender] -= userRequests[requestIndex].amount; 
+        amountRequested[msg.sender] -= userRequests[requestIndex].amount;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
 
@@ -559,5 +561,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 _rewardDistributionLowerBound
     ) external auth(DAO) {
         rewardDistributionLowerBound = _rewardDistributionLowerBound;
+    }
+
+    /**
+     * @dev Used only for testing purposes, will be removed when deploying to mainnet
+     */
+    function resetTotalBuffered() external auth(DEFAULT_ADMIN_ROLE) {
+        totalBuffered = totalSupply();
     }
 }
