@@ -44,8 +44,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3;
 
     uint256 public reservedFunds;
-
+    // delete the first one
     mapping(address => uint256) public amountRequested;
+    mapping(address => uint256) public totalAmountRequested;
+    mapping(address => uint256[]) public amountsRequested;
 
     struct RequestWithdraw {
         uint256 amount;
@@ -154,13 +156,17 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 callerBalance = balanceOf(msg.sender);
 
         require(
-            callerBalance - amountRequested[msg.sender] >= _amount,
+            callerBalance - totalAmountRequested[msg.sender] >= _amount,
             "Invalid amount"
         );
 
-        amountRequested[msg.sender] += _amount;
+        uint256[] storage amountsRequestedSender = amountsRequested[msg.sender];
 
-        uint256 amountInMATIC = getUserBalanceInMATIC();
+        amountsRequestedSender.push(_amount);
+
+        totalAmountRequested[msg.sender] += _amount;
+
+        uint256 amountInMATIC = convertStMaticToMatic(_amount);
 
         if (totalDelegated > amountInMATIC) {
             address validatorShare = operatorShares[lastWithdrawnValidatorId]
@@ -185,13 +191,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             lastWithdrawnValidatorId++;
         } else {
             // If delegation did not happen yet then withdraw Matic equal to StMatic balance
-            uint256 amountToWithdraw = totalDelegated == 0
-                ? _amount
-                : amountInMATIC;
 
             requestWithdraws.push(
                 RequestWithdraw(
-                    amountToWithdraw,
+                    amountInMATIC,
                     0,
                     block.timestamp,
                     address(0),
@@ -199,7 +202,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 )
             );
 
-            reservedFunds += amountToWithdraw;
+            reservedFunds += amountInMATIC;
         }
     }
 
@@ -258,7 +261,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         require(userRequests[requestIndex].active, "No active withdrawals");
 
-        // amount in StMatic requested by user
+        // amount in Matic requested by user
         uint256 amount = userRequests[requestIndex].amount;
 
         if (userRequests[requestIndex].validatorAddress != address(0)) {
@@ -290,13 +293,22 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 userRequests[requestIndex].validatorAddress
             ] -= amount;
         } else {
-            reservedFunds -= userRequests[requestIndex].amount;
-            totalBuffered -= userRequests[requestIndex].amount;
+            reservedFunds -= amount;
+            totalBuffered -= amount;
+        }
+        uint256[] storage amountsRequestedSender = amountsRequested[msg.sender];
+
+        _burn(msg.sender, amountsRequestedSender[0]);
+
+        totalAmountRequested[msg.sender] -= amountsRequestedSender[0];
+
+        if(amountsRequestedSender.length > 1) {
+            for(uint i = 0; i < amountsRequestedSender.length - 1; i++) {
+                amountsRequestedSender[i] = amountsRequestedSender[i + 1];
+            }
         }
 
-        _burn(msg.sender, userRequests[requestIndex].amount);
-
-        amountRequested[msg.sender] -= userRequests[requestIndex].amount;
+        amountsRequestedSender.pop();
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
 
@@ -466,18 +478,23 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     }
 
     /**
-     * @dev Function that converts users StMATIC to MATIC
-     * @return Users balance in MATIC
+     * @dev Function that converts arbitrary StMATIC to MATIC
+     * @param _balance - Balance in StMatic
+     * @return Users balance in Matic
      */
-    function getUserBalanceInMATIC() public view returns (uint256) {
-        uint256 userShares = balanceOf(msg.sender);
+    function convertStMaticToMatic(uint256 _balance)
+        public
+        view
+        returns (uint256)
+    {
+        if (totalDelegated == 0) return _balance;
+
         uint256 totalShares = totalSupply();
         uint256 totalPooledMATIC = getTotalStakeAcrossAllValidators();
 
-        uint256 userBalanceInMATIC = (userShares * totalPooledMATIC) /
-            totalShares;
+        uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
 
-        return userBalanceInMATIC;
+        return balanceInMATIC;
     }
 
     ////////////////////////////////////////////////////////////
@@ -568,5 +585,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      */
     function resetTotalBuffered() external auth(DEFAULT_ADMIN_ROLE) {
         totalBuffered = totalSupply();
+    }
+
+    /**
+     * @dev Used only for testing purposes, will be removed when deploying to mainnet
+     */
+    function resetReservedFunds() external auth(DEFAULT_ADMIN_ROLE) {
+        reservedFunds = 0;
     }
 }
