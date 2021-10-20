@@ -45,6 +45,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
     uint256 public reservedFunds;
 
+    mapping(address => uint256) public amountRequested;
+
     struct RequestWithdraw {
         uint256 amount;
         uint256 validatorNonce;
@@ -151,9 +153,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 callerBalance = balanceOf(msg.sender);
 
-        require(callerBalance >= _amount, "Invalid amount");
+        require(callerBalance - amountRequested[msg.sender] >= _amount, "Invalid amount");
 
-        _burn(msg.sender, _amount);
+        amountRequested[msg.sender] += _amount;
 
         uint256 amountInMATIC = getUserBalanceInMATIC();
 
@@ -253,19 +255,15 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         require(userRequests[requestIndex].active, "No active withdrawals");
 
+        // amount in StMatic requested by user
+        uint256 amount = userRequests[requestIndex].amount;
+
         if (userRequests[requestIndex].validatorAddress != address(0)) {
             require(
                 block.timestamp >=
                     userRequests[requestIndex].requestTime + WITHDRAWAL_DELAY,
                 "Not able to claim yet"
             );
-        } else {
-            reservedFunds -= userRequests[requestIndex].amount;
-        }
-
-        uint256 amount = userRequests[requestIndex].amount;
-
-        if (userRequests[requestIndex].validatorAddress != address(0)) {
             // Using balanceAfterClaim - balanceBeforeClaim instead of amount from userRequests
             // just in case slashing happened
 
@@ -289,6 +287,14 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 userRequests[requestIndex].validatorAddress
             ] -= amount;
         }
+        else {
+            reservedFunds -= userRequests[requestIndex].amount;
+            totalBuffered -= userRequests[requestIndex].amount;
+        }
+
+        _burn(msg.sender, userRequests[requestIndex].amount);
+
+        amountRequested[msg.sender] -= userRequests[requestIndex].amount; 
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
 
