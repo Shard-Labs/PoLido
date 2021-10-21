@@ -148,6 +148,14 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function withdrawalDelay() external view override returns (uint256) {
-        return 0;
+        return (2**13);
+    }
+
+    function delegationDeposit(
+        uint256 validatorId,
+        uint256 amount,
+        address delegator
+    ) external override returns (bool) {
+        return IERC20(state.token).transferFrom(delegator, address(this), amount);
     }
 }

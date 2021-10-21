@@ -14,10 +14,11 @@ import {
     MockInsurance__factory,
     MockInsurance,
     MockOperator__factory,
-    MockOperator
+    MockOperator,
+    StakeManagerMock__factory,
+    StakeManagerMock
 } from "../typechain";
 import { expect } from "chai";
-import { BigNumber } from "@ethersproject/bignumber";
 import { keccak256, toUtf8Bytes } from "ethers/lib/utils";
 
 describe("LidoMatic", () => {
@@ -30,6 +31,7 @@ describe("LidoMatic", () => {
     let mockNodeOperatorRegistry: MockNodeOperatorRegistry;
     let mockInsurance: MockInsurance;
     let mockOperator: MockOperator;
+    let mockStakeManager: StakeManagerMock;
 
     before(async () => {
         [deployer, dao] = await ethers.getSigners();
@@ -58,6 +60,10 @@ describe("LidoMatic", () => {
             "MockOperator"
         )) as MockOperator__factory;
 
+        const MockStakeManager = (await ethers.getContractFactory(
+            "StakeManagerMock"
+        )) as StakeManagerMock__factory;
+
         mockOperator = await MockOperator.deploy();
         await mockOperator.deployed();
 
@@ -67,7 +73,10 @@ describe("LidoMatic", () => {
         mockToken = await MockToken.deploy();
         await mockToken.deployed();
 
-        mockValidatorShare = await MockValidatorShare.deploy(mockToken.address);
+        mockStakeManager = await MockStakeManager.deploy(mockToken.address);
+        await mockStakeManager.deployed();
+
+        mockValidatorShare = await MockValidatorShare.deploy(mockToken.address, mockStakeManager.address);
         await mockValidatorShare.deployed();
 
         mockNodeOperatorRegistry = await MockNodeOperatorRegistry.deploy(
@@ -80,7 +89,8 @@ describe("LidoMatic", () => {
             mockNodeOperatorRegistry.address,
             mockToken.address,
             dao.address,
-            mockInsurance.address
+            mockInsurance.address,
+            mockStakeManager.address
         ])) as LidoMatic;
         await lidoMatic.deployed();
     });
@@ -179,11 +189,11 @@ describe("LidoMatic", () => {
 
             await upgradedLidoAsDao.delegate();
 
-            const validatorShareBalance = await mockToken.balanceOf(
-                mockValidatorShare.address
+            const stakeManagerBalance = await mockToken.balanceOf(
+                mockStakeManager.address
             );
 
-            expect(validatorShareBalance.gt(0)).to.be.true;
+            expect(stakeManagerBalance.gt(0)).to.be.true;
         });
 
         it("should successfully request withdraw", async () => {
@@ -287,7 +297,7 @@ describe("LidoMatic", () => {
                 mockValidatorShare.address
             );
 
-            expect(totalStake).to.eql([BigNumber.from(1), BigNumber.from(1)]);
+            expect(totalStake[0].gt(0)).to.be.true;
         });
     });
 });

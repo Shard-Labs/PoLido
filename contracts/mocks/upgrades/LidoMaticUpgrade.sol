@@ -8,14 +8,17 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 
 import "../../interfaces/IValidatorShare.sol";
 import "../../interfaces/INodeOperatorRegistry.sol";
+import "../../interfaces/IStakeManager.sol";
+
+import "hardhat/console.sol";
 
 contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint256 constant WITHDRAWAL_DELAY = 2**13;
-
     INodeOperatorRegistry public nodeOperator;
     FeeDistribution public entityFees;
+    IStakeManager public stakeManager;
+
     address public dao;
     address public insurance;
     address public token;
@@ -24,15 +27,16 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public totalBuffered;
     uint256 public delegationLowerBound;
     uint256 public rewardDistributionLowerBound;
+    uint256 public reservedFunds;
     bool public paused;
-
-    IValidatorShare[] validatorShares;
 
     mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
     mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
     mapping(address => uint256) public validator2Nonce;
     mapping(address => uint256) public user2Nonce;
+    mapping(address => uint256) public totalAmountRequested;
+    mapping(address => uint256) public validator2Index;
 
     bytes32 public constant DAO = keccak256("DAO");
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
@@ -43,7 +47,8 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     bool public constant upgraded = true;
 
     struct RequestWithdraw {
-        uint256 amount;
+        uint256 amountToClaim; // Matic
+        uint256 amountToBurn; // StMatic
         uint256 validatorNonce;
         uint256 requestTime;
         address validatorAddress;
@@ -75,9 +80,11 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         address _nodeOperator,
         address _token,
         address _dao,
-        address _insurance
+        address _insurance,
+        address _stakeManager
     ) public initializer {
         __ERC20_init("Staked MATIC", "StMATIC");
+        __AccessControl_init();
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(PAUSE_ROLE, msg.sender);
@@ -87,9 +94,10 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         _setupRole(SET_TREASURY, _dao);
 
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
+        stakeManager = IStakeManager(_stakeManager);
         dao = _dao;
-        insurance = _insurance;
         token = _token;
+        insurance = _insurance;
 
         entityFees = FeeDistribution(5, 5, 90);
     }
@@ -111,7 +119,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 totalShares = totalSupply();
         uint256 totalPooledMatic = totalBuffered + totalDelegated;
-        uint256 amountToMint = totalShares != 0
+        uint256 amountToMint = totalDelegated != 0
             ? (_amount * totalShares) / totalPooledMatic
             : _amount;
 
@@ -123,67 +131,105 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     }
 
     /**
-     * How to select a validator that we are going to withdraw from?
-     *
      * @dev Stores users request to withdraw into a RequestWithdraw struct
-     * @param _amount - Amount of MATIC that is requested to withdraw
+     * @param _amount - Amount of StMATIC that is requested to withdraw
      */
     function requestWithdraw(uint256 _amount) external notPaused {
-        // Add a function that converts MATIC to StMATIC and reverse
-        // Check how many StMATIC does a caller have
-        // Add a mapping between a validator address and a nonce (starts at 1)
-        // Increment nonce by 1 everytime a user calls a withdrawal function
-        // Burn StMATIC after checking if _amount satisfies user's balance
-        // A nonce is dependent on a validator
-        // Add a nonce per user
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
-
-        if (lastWithdrawnValidatorId > operatorShares.length - 1) {
-            lastWithdrawnValidatorId = 0;
-        }
-
-        address validatorShare = operatorShares[lastWithdrawnValidatorId]
-            .validatorShare;
-
-        uint256 callerBalance = balanceOf(msg.sender);
-
-        require(callerBalance >= _amount, "Invalid amount");
-
-        _burn(msg.sender, _amount);
-
-        uint256 amountInMATIC = getUserBalanceInMATIC();
-
-        sellVoucher_new(validatorShare, amountInMATIC, type(uint256).max);
-
-        if (validator2Nonce[validatorShare] == 0) {
-            validator2Nonce[validatorShare] = 1;
-        } else {
-            validator2Nonce[validatorShare]++;
-        }
-
-        if (user2Nonce[msg.sender] == 0) user2Nonce[msg.sender] = 1;
-
-        user2Nonce[msg.sender]++;
 
         RequestWithdraw[] storage requestWithdraws = user2WithdrawRequest[
             msg.sender
         ];
 
-        requestWithdraws.push(
-            RequestWithdraw(
-                amountInMATIC,
-                validator2Nonce[validatorShare],
-                block.timestamp,
-                validatorShare,
-                true
-            )
+        uint256 callerBalance = balanceOf(msg.sender);
+
+        require(
+            callerBalance - totalAmountRequested[msg.sender] >= _amount,
+            "Invalid amount"
         );
 
-        lastWithdrawnValidatorId++;
+        totalAmountRequested[msg.sender] += _amount;
+
+        uint256 totalBurned;
+        uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
+        uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
+
+        if (totalDelegated > currentAmount2WithdrawInMatic) {
+            while (currentAmount2WithdrawInMatic != 0) {
+                if (lastWithdrawnValidatorId > operatorShares.length - 1) {
+                    lastWithdrawnValidatorId = 0;
+                }
+
+                address validatorShare = operatorShares[
+                    lastWithdrawnValidatorId
+                ].validatorShare;
+
+                uint256 validatorBalance = IValidatorShare(validatorShare)
+                    .activeAmount();
+
+                uint256 amount2WithdrawFromValidator = (validatorBalance >
+                    currentAmount2WithdrawInMatic)
+                    ? currentAmount2WithdrawInMatic
+                    : validatorBalance;
+
+                uint256 amount2Burn = (_amount * amount2WithdrawFromValidator) /
+                    totalAmount2WithdrawInMatic;
+
+                sellVoucher_new(
+                    validatorShare,
+                    amount2WithdrawFromValidator,
+                    type(uint256).max
+                );
+
+                validator2Nonce[validatorShare]++;
+
+                user2Nonce[msg.sender]++;
+
+                totalBurned += amount2Burn;
+
+                // Burn the remainder, if any, in the last step
+                if (
+                    currentAmount2WithdrawInMatic -
+                        amount2WithdrawFromValidator ==
+                    0
+                ) {
+                    amount2Burn += (_amount - totalBurned);
+                }
+
+                requestWithdraws.push(
+                    RequestWithdraw(
+                        amount2WithdrawFromValidator,
+                        amount2Burn,
+                        validator2Nonce[validatorShare],
+                        block.timestamp,
+                        validatorShare,
+                        true
+                    )
+                );
+
+                currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
+
+                lastWithdrawnValidatorId++;
+            }
+        } else {
+            requestWithdraws.push(
+                RequestWithdraw(
+                    currentAmount2WithdrawInMatic,
+                    _amount,
+                    0,
+                    block.timestamp,
+                    address(0),
+                    true
+                )
+            );
+
+            reservedFunds += currentAmount2WithdrawInMatic;
+        }
     }
 
     /**
+     * @notice This will be included in the cron job
      * @dev Delegates tokens to validator share contract
      */
     function delegate() external {
@@ -195,15 +241,22 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
-        uint256 amountPerValidator = totalBuffered / operatorShares.length;
-        uint256 remainder = totalBuffered % operatorShares.length;
+        require(
+            operatorShares.length > 0,
+            "No operator shares, cannot delegate"
+        );
+
+        uint256 amountToDelegate = totalBuffered - reservedFunds;
+
+        uint256 amountPerValidator = amountToDelegate / operatorShares.length;
+        uint256 remainder = amountToDelegate % operatorShares.length;
+
+        IERC20Upgradeable(token).approve(
+            address(stakeManager),
+            amountToDelegate
+        );
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
-            IERC20Upgradeable(token).approve(
-                operatorShares[i].validatorShare,
-                amountPerValidator
-            );
-
             buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
 
             validator2DelegatedAmount[
@@ -211,8 +264,8 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
             ] += amountPerValidator;
         }
 
-        totalDelegated += totalBuffered - remainder;
-        totalBuffered = remainder;
+        totalDelegated += amountToDelegate - remainder;
+        totalBuffered = remainder + reservedFunds;
     }
 
     /**
@@ -236,29 +289,51 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
         require(
             block.timestamp >=
-                userRequests[requestIndex].requestTime + WITHDRAWAL_DELAY,
+                userRequests[requestIndex].requestTime +
+                    stakeManager.withdrawalDelay(),
             "Not able to claim yet"
         );
 
-        uint256 balanceBeforeClaim = IERC20Upgradeable(token).balanceOf(
-            address(this)
-        );
+        // Amount in Matic requested by the user
+        uint256 amount = userRequests[requestIndex].amountToClaim;
 
-        unstakeClaimTokens_new(
-            userRequests[requestIndex].validatorAddress,
-            userRequests[requestIndex].validatorNonce
-        );
+        if (userRequests[requestIndex].validatorAddress != address(0)) {
+            // Using balanceAfterClaim - balanceBeforeClaim instead of amount from userRequests
+            // just in case slashing or rewarding happened
 
-        uint256 balanceAfterClaim = IERC20Upgradeable(token).balanceOf(
-            address(this)
-        );
-        uint256 amount = balanceAfterClaim - balanceBeforeClaim;
+            uint256 balanceBeforeClaim = IERC20Upgradeable(token).balanceOf(
+                address(this)
+            );
+
+            unstakeClaimTokens_new(
+                userRequests[requestIndex].validatorAddress,
+                userRequests[requestIndex].validatorNonce
+            );
+
+            uint256 balanceAfterClaim = IERC20Upgradeable(token).balanceOf(
+                address(this)
+            );
+            amount = balanceAfterClaim - balanceBeforeClaim;
+
+            totalDelegated -= amount;
+
+            validator2DelegatedAmount[
+                userRequests[requestIndex].validatorAddress
+            ] -= amount;
+        } else {
+            reservedFunds -= amount;
+            totalBuffered -= amount;
+        }
+
+        uint256 amountToBurn = userRequests[requestIndex].amountToBurn;
+
+        _burn(msg.sender, amountToBurn);
+
+        totalAmountRequested[msg.sender] -= amountToBurn;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
 
         userRequests[requestIndex].active = false;
-
-        totalDelegated -= amount;
     }
 
     /**
@@ -302,6 +377,103 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 remainder = IERC20Upgradeable(token).balanceOf(address(this)) -
             totalBuffered;
         totalBuffered += remainder;
+    }
+
+    /**
+     * @notice Only NodeOperator can call this function
+     * @dev Withdraws funds from unstaked validator
+     * @param _validatorShare - Address of the validator share that will be withdrawn
+     */
+    function withdrawTotalDelegated(address _validatorShare) external {
+        require(msg.sender == address(nodeOperator), "Not a node operator");
+
+        RequestWithdraw[] storage requestWithdraws = user2WithdrawRequest[
+            address(this)
+        ];
+
+        (uint256 stakedAmount, ) = IValidatorShare(_validatorShare)
+            .getTotalStake(address(this));
+
+        sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
+
+        validator2Nonce[_validatorShare]++;
+
+        user2Nonce[address(this)]++;
+
+        requestWithdraws.push(
+            RequestWithdraw(
+                stakedAmount,
+                uint256(0),
+                validator2Nonce[_validatorShare],
+                block.timestamp,
+                _validatorShare,
+                true
+            )
+        );
+    }
+
+    /**
+     * @notice This will be included in the cron job
+     * @dev Claims tokens from validator share and sends them to the
+     * LidoMatic contract
+     */
+    function claimTokens2LidoMatic() public {
+        RequestWithdraw[] storage lidoRequests = user2WithdrawRequest[
+            address(this)
+        ];
+
+        uint256 requestIndex;
+
+        // Locate the oldest active request
+        // Start from the end to save gas
+        for (uint256 i = lidoRequests.length - 1; i >= 0; i--) {
+            if (i > 0 && lidoRequests[i - 1].active) continue;
+            requestIndex = i;
+            break;
+        }
+
+        // Return from function if request has already been processed or withdrawal delay isnt fulfilled
+        require(lidoRequests[requestIndex].active, "No active withdrawals");
+
+        require(
+            block.timestamp >=
+                lidoRequests[requestIndex].requestTime +
+                    stakeManager.withdrawalDelay(),
+            "Not able to claim yet"
+        );
+
+        unstakeClaimTokens_new(
+            lidoRequests[requestIndex].validatorAddress,
+            lidoRequests[requestIndex].validatorNonce
+        );
+
+        // Update totalBuffered after claiming the amount
+        totalBuffered += lidoRequests[requestIndex].amountToClaim;
+
+        // Update delegated amount for a validator
+        // Not sure if this part is necessary because the validator is unstaked
+        validator2DelegatedAmount[
+            lidoRequests[requestIndex].validatorAddress
+        ] -= lidoRequests[requestIndex].amountToClaim;
+
+        // Wrap up the request
+        lidoRequests[requestIndex].active = false;
+    }
+
+    /**
+     * @dev Used for testing purposes only
+     */
+    function simulateSlashing() external {
+        totalDelegated = totalSupply() / 2;
+        totalBuffered = 0;
+    }
+
+    /**
+     * @dev Used for testing purposes only
+     */
+    function simulateRewarding() external {
+        totalDelegated = totalSupply() * 2;
+        totalBuffered = 0;
     }
 
     /**
@@ -414,8 +586,13 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     function getTotalStakeAcrossAllValidators() public view returns (uint256) {
         uint256 totalStake;
 
-        for (uint256 i = 0; i < validatorShares.length; i++) {
-            (uint256 currValidatorShare, ) = getTotalStake(validatorShares[i]);
+        Operator.OperatorShare[] memory operatorShares = nodeOperator
+            .getOperatorShares();
+
+        for (uint256 i = 0; i < operatorShares.length; i++) {
+            (uint256 currValidatorShare, ) = getTotalStake(
+                IValidatorShare(operatorShares[i].validatorShare)
+            );
 
             totalStake += currValidatorShare;
         }
@@ -424,18 +601,23 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     }
 
     /**
-     * @dev Function that converts users StMATIC to MATIC
-     * @return Users balance in MATIC
+     * @dev Function that converts arbitrary StMatic to Matic
+     * @param _balance - Balance in StMatic
+     * @return Balance in Matic
      */
-    function getUserBalanceInMATIC() public view returns (uint256) {
-        uint256 userShares = balanceOf(msg.sender);
+    function convertStMaticToMatic(uint256 _balance)
+        public
+        view
+        returns (uint256)
+    {
+        if (totalDelegated == 0) return _balance;
+
         uint256 totalShares = totalSupply();
         uint256 totalPooledMATIC = getTotalStakeAcrossAllValidators();
 
-        uint256 userBalanceInMATIC = (userShares * totalPooledMATIC) /
-            totalShares;
+        uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
 
-        return userBalanceInMATIC;
+        return balanceInMATIC;
     }
 
     ////////////////////////////////////////////////////////////
@@ -496,22 +678,6 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
      */
     function setNodeOperatorAddress(address _address) external auth(DAO) {
         nodeOperator = INodeOperatorRegistry(_address);
-    }
-
-    /**
-     * @dev Used for testing purposes only
-     */
-    function simulateSlashing() external {
-        totalDelegated = totalSupply() / 2;
-        totalBuffered = 0;
-    }
-
-    /**
-     * @dev Used for testing purposes only
-     */
-    function simulateRewarding() external {
-        totalDelegated = totalSupply() * 2;
-        totalBuffered = 0;
     }
 
     /**
