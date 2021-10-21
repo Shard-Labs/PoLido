@@ -28,14 +28,13 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public reservedFunds;
     bool public paused;
 
-    IValidatorShare[] validatorShares;
-
     mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
     mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
     mapping(address => uint256) public validator2Nonce;
     mapping(address => uint256) public user2Nonce;
     mapping(address => uint256) public totalAmountRequested;
+    mapping(address => uint256) public validator2Index;
 
     bytes32 public constant DAO = keccak256("DAO");
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
@@ -191,7 +190,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                         amount2WithdrawFromValidator ==
                     0
                 ) {
-                    amount2Burn += _amount - totalburned;
+                    amount2Burn += (_amount - totalBurned);
                 }
 
                 requestWithdraws.push(
@@ -226,6 +225,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     }
 
     /**
+     * @notice This will be included in the cron job
      * @dev Delegates tokens to validator share contract
      */
     function delegate() external {
@@ -376,6 +376,87 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     }
 
     /**
+     * @notice Only NodeOperator can call this function
+     * @dev Withdraws funds from unstaked validator
+     * @param _validatorShare - Address of the validator share that will be withdrawn
+     */
+    function withdrawTotalDelegated(address _validatorShare) external {
+        require(msg.sender == address(nodeOperator), "Not a node operator");
+
+        RequestWithdraw[] storage requestWithdraws = user2WithdrawRequest[
+            address(this)
+        ];
+
+        (uint256 stakedAmount, ) = IValidatorShare(_validatorShare)
+            .getTotalStake(address(this));
+
+        sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
+
+        validator2Nonce[_validatorShare]++;
+
+        user2Nonce[address(this)]++;
+
+        requestWithdraws.push(
+            RequestWithdraw(
+                stakedAmount,
+                uint256(0),
+                validator2Nonce[_validatorShare],
+                block.timestamp,
+                _validatorShare,
+                true
+            )
+        );
+    }
+
+    /**
+     * @notice This will be included in the cron job
+     * @dev Claims tokens from validator share and sends them to the
+     * LidoMatic contract
+     */
+    function claimTokens2LidoMatic() public {
+        RequestWithdraw[] storage lidoRequests = user2WithdrawRequest[
+            address(this)
+        ];
+
+        uint256 requestIndex;
+
+        // Locate the oldest active request
+        // Start from the end to save gas
+        for (uint256 i = lidoRequests.length - 1; i >= 0; i--) {
+            if (i > 0 && lidoRequests[i - 1].active) continue;
+            requestIndex = i;
+            break;
+        }
+
+        // Return from function if request has already been processed or withdrawal delay isnt fulfilled
+        require(lidoRequests[requestIndex].active, "No active withdrawals");
+
+        require(
+            block.timestamp >=
+                lidoRequests[requestIndex].requestTime +
+                    stakeManager.withdrawalDelay(),
+            "Not able to claim yet"
+        );
+
+        unstakeClaimTokens_new(
+            lidoRequests[requestIndex].validatorAddress,
+            lidoRequests[requestIndex].validatorNonce
+        );
+
+        // Update totalBuffered after claiming the amount
+        totalBuffered += lidoRequests[requestIndex].amountToClaim;
+
+        // Update delegated amount for a validator
+        // Not sure if this part is necessary because the validator is unstaked
+        validator2DelegatedAmount[
+            lidoRequests[requestIndex].validatorAddress
+        ] -= lidoRequests[requestIndex].amountToClaim;
+
+        // Wrap up the request
+        lidoRequests[requestIndex].active = false;
+    }
+
+    /**
      * @notice Only PAUSE_ROLE can call this function. This function puts certain functionalities on pause.
      * @param _pause - Determines if the contract will be paused (true) or unpaused (false)
      */
@@ -485,8 +566,13 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     function getTotalStakeAcrossAllValidators() public view returns (uint256) {
         uint256 totalStake;
 
-        for (uint256 i = 0; i < validatorShares.length; i++) {
-            (uint256 currValidatorShare, ) = getTotalStake(validatorShares[i]);
+        Operator.OperatorShare[] memory operatorShares = nodeOperator
+            .getOperatorShares();
+
+        for (uint256 i = 0; i < operatorShares.length; i++) {
+            (uint256 currValidatorShare, ) = getTotalStake(
+                IValidatorShare(operatorShares[i].validatorShare)
+            );
 
             totalStake += currValidatorShare;
         }
