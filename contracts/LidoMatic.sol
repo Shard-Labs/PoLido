@@ -283,18 +283,19 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         require(userRequests[requestIndex].active, "No active withdrawals");
 
+        require(
+            block.timestamp >=
+                userRequests[requestIndex].requestTime +
+                    stakeManager.withdrawalDelay(),
+            "Not able to claim yet"
+        );
+
         // Amount in Matic requested by the user
         uint256 amount = userRequests[requestIndex].amountToClaim;
 
         if (userRequests[requestIndex].validatorAddress != address(0)) {
-            require(
-                block.timestamp >=
-                    userRequests[requestIndex].requestTime +
-                        stakeManager.withdrawalDelay(),
-                "Not able to claim yet"
-            );
             // Using balanceAfterClaim - balanceBeforeClaim instead of amount from userRequests
-            // just in case slashing happened
+            // just in case slashing or rewarding happened
 
             uint256 balanceBeforeClaim = IERC20Upgradeable(token).balanceOf(
                 address(this)
