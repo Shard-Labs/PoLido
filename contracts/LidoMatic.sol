@@ -44,8 +44,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
 
     struct RequestWithdraw {
-        uint256 amount;
-        uint256 amountToBurn;
+        uint256 amountToClaim; // in Matic
+        uint256 amountToBurn; // in StMatic
         uint256 validatorNonce;
         uint256 requestTime;
         address validatorAddress;
@@ -275,7 +275,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         require(userRequests[requestIndex].active, "No active withdrawals");
 
         // amount in Matic requested by user
-        uint256 amount = userRequests[requestIndex].amount;
+        uint256 amount = userRequests[requestIndex].amountToClaim;
 
         if (userRequests[requestIndex].validatorAddress != address(0)) {
             require(
