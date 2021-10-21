@@ -4,8 +4,8 @@ pragma solidity 0.8.7;
 
 import "hardhat/console.sol";
 import "./ValidatorProxy.sol";
-import "./storages/ValidatorFactoryStorage.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
+import "./lib/Operator.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title ValidatorFactory
@@ -14,9 +14,24 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 // owner on Polygon StakeManager
 contract ValidatorFactory is
     Initializable,
-    OwnableUpgradeable,
-    ValidatorFactoryStorage
+    OwnableUpgradeable
 {
+    // ====================================================================
+    // =========================== Global Vars ============================
+    // ====================================================================
+
+    address[] internal validators;
+
+    Operator.ValidatorFactoryState internal state;
+
+    // ====================================================================
+    // ============================== EVENTS ==============================
+    // ====================================================================
+
+    event CreateValidator(address validator);
+    event SetOperatorContract(address operator);
+    event SetValidatorImplementation(address validatorImplementation);
+
     // ====================================================================
     // =========================== MODIFIERS ==============================
     // ====================================================================

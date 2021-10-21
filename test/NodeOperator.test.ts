@@ -873,11 +873,11 @@ describe("NodeOperator", function () {
             toEth("30"),
             toEth("30")
         );
-        const state = await nodeOperatorRegistryContract.getState();
-        expect(state[10], "maxAmountStake").to.equal(toEth("100"));
-        expect(state[11], "minAmountStake").to.equal(toEth("100"));
-        expect(state[12], "maxHeimdallFees").to.equal(toEth("30"));
-        expect(state[13], "minHeimdallFees").to.equal(toEth("30"));
+        const state = await nodeOperatorRegistryContract.getStakeAndHeimdallFees();
+        expect(state[0], "maxAmountStake").to.equal(toEth("100"));
+        expect(state[1], "minAmountStake").to.equal(toEth("100"));
+        expect(state[2], "maxHeimdallFees").to.equal(toEth("30"));
+        expect(state[3], "minHeimdallFees").to.equal(toEth("30"));
     });
 
     it("Fail to set stake amount and fees", async function () {
@@ -929,16 +929,19 @@ describe("NodeOperator", function () {
         expect(await nodeOperatorRegistryContract.version() === "2.0.0");
 
         // check node operator state v1.0.0 is maintained
-        const state = await nodeOperatorRegistryContract.getState();
+        let state = await nodeOperatorRegistryContract.getState();
         expect(state[0].toString(), "totalNodeOpearator").to.equal("2");
         expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("1");
         expect(state[2].toString(), "totalStakedNodeOpearator").to.equal("1");
         expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
         expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
-        expect(state[10], "maxAmountStake").to.equal(toEth("100"));
-        expect(state[11], "minAmountStake").to.equal(toEth("100"));
-        expect(state[12], "maxHeimdallFees").to.equal(toEth("30"));
-        expect(state[13], "minHeimdallFees").to.equal(toEth("30"));
+
+        state = await nodeOperatorRegistryContract.getStakeAndHeimdallFees();
+
+        expect(state[0], "maxAmountStake").to.equal(toEth("100"));
+        expect(state[1], "minAmountStake").to.equal(toEth("100"));
+        expect(state[2], "maxHeimdallFees").to.equal(toEth("30"));
+        expect(state[3], "minHeimdallFees").to.equal(toEth("30"));
     });
 
     it("Success set lido and validatorFactory addresses", async function () {

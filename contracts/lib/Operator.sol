@@ -1,4 +1,5 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 library Operator {
@@ -27,27 +28,6 @@ library Operator {
         address validatorShare;
         address validatorContract;
         uint256 commissionRate;
-    }
-
-    /// @notice Node operator registry state.
-    struct NodeOperatorState {
-        uint256 totalNodeOpearator;
-        uint256 totalActiveNodeOpearator;
-        uint256 totalStakedNodeOpearator;
-        uint256 totalUnstakedNodeOpearator;
-        uint256 totalClaimedNodeOpearator;
-        uint256 totalExitNodeOpearator;
-        address validatorFactory;
-        address stakeManager;
-        address polygonERC20;
-        address lido;
-        uint256 maxAmountStake;
-        uint256 minAmountStake;
-        uint256 maxHeimdallFees;
-        uint256 minHeimdallFees;
-        uint256 commissionRate;
-        bool restake;
-        bool unjail;
     }
 
     /// @notice State struct
