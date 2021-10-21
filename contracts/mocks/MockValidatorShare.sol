@@ -4,15 +4,21 @@ pragma solidity 0.8.7;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IValidatorShare.sol";
+import "../interfaces/IStakeManager.sol";
 
 contract MockValidatorShare is IValidatorShare {
     address public token;
 
-    constructor(address _token) {
+    uint256 public totalStaked;
+
+    IStakeManager stakeManager;
+
+    constructor(address _token, address _stakeManager) {
         token = _token;
+        stakeManager = IStakeManager(_stakeManager);
     }
 
-    function validatorId() external pure override returns (uint256) {
+    function validatorId() public pure override returns (uint256) {
         return 1;
     }
 
@@ -41,13 +47,12 @@ contract MockValidatorShare is IValidatorShare {
         override
         returns (uint256)
     {
-        bool res = IERC20(token).transferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        );
+        totalStaked += _amount;
 
-        require(res, "token transfer wasn't successful");
+        require(
+            stakeManager.delegationDeposit(validatorId(), _amount, msg.sender),
+            "deposit failed"
+        );
 
         return 1;
     }
@@ -61,19 +66,20 @@ contract MockValidatorShare is IValidatorShare {
     }
 
     function unstakeClaimTokens_new(uint256 unbondNonce) external override {
+        stakeManager.unstakeClaim(validatorId());
         IERC20(token).transfer(
             msg.sender,
-            IERC20(token).balanceOf(address(this)) / 2
+            IERC20(token).balanceOf(address(this))
         );
     }
 
     function getTotalStake(address user)
         external
-        pure
+        view
         override
         returns (uint256, uint256)
     {
-        return (1, 1);
+        return (totalStaked, 1);
     }
 
     function owner() external pure override returns (address) {
@@ -121,6 +127,6 @@ contract MockValidatorShare is IValidatorShare {
     }
 
     function activeAmount() external view override returns (uint256) {
-        return 0;
+        return totalStaked;
     }
 }
