@@ -96,4 +96,11 @@ interface IStakeManager {
 
     /// @notice Returns a withdrawal delay.
     function withdrawalDelay() external view returns (uint256);
+
+    /// @notice Transfers amount from delegator
+    function delegationDeposit(
+        uint256 validatorId,
+        uint256 amount,
+        address delegator
+    ) external returns (bool);
 }
