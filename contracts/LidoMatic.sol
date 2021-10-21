@@ -44,8 +44,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
 
     struct RequestWithdraw {
-        uint256 amountToClaim; // in Matic
-        uint256 amountToBurn; // in StMatic
+        uint256 amountToClaim; // Matic
+        uint256 amountToBurn; // StMatic
         uint256 validatorNonce;
         uint256 requestTime;
         address validatorAddress;
@@ -132,13 +132,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @param _amount - Amount of StMATIC that is requested to withdraw
      */
     function requestWithdraw(uint256 _amount) external notPaused {
-        // Add a function that converts MATIC to StMATIC and reverse
-        // Check how many StMATIC does a caller have
-        // Add a mapping between a validator address and a nonce (starts at 1)
-        // Increment nonce by 1 everytime a user calls a withdrawal function
-        // Burn StMATIC after checking if _amount satisfies user's balance
-        // A nonce is dependent on a validator
-        // Add a nonce per user
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
@@ -155,10 +148,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         totalAmountRequested[msg.sender] += _amount;
 
-        uint256 amount2WithdrawInMatic = convertStMaticToMatic(_amount);
+        uint256 totalBurned;
+        uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
+        uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
 
-        if (totalDelegated > amount2WithdrawInMatic) {
-            while (amount2WithdrawInMatic != 0) {
+        if (totalDelegated > currentAmount2WithdrawInMatic) {
+            while (currentAmount2WithdrawInMatic != 0) {
                 if (lastWithdrawnValidatorId > operatorShares.length - 1) {
                     lastWithdrawnValidatorId = 0;
                 }
@@ -171,9 +166,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     .activeAmount();
 
                 uint256 amount2WithdrawFromValidator = (validatorBalance >
-                    amount2WithdrawInMatic)
-                    ? amount2WithdrawInMatic
+                    currentAmount2WithdrawInMatic)
+                    ? currentAmount2WithdrawInMatic
                     : validatorBalance;
+
+                uint256 amount2Burn = (_amount * amount2WithdrawFromValidator) /
+                    totalAmount2WithdrawInMatic;
 
                 sellVoucher_new(
                     validatorShare,
@@ -185,10 +183,21 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
                 user2Nonce[msg.sender]++;
 
+                totalBurned += amount2Burn;
+
+                // Burn the remainder, if any, in the last step
+                if (
+                    currentAmount2WithdrawInMatic -
+                        amount2WithdrawFromValidator ==
+                    0
+                ) {
+                    amount2Burn += _amount - totalburned;
+                }
+
                 requestWithdraws.push(
                     RequestWithdraw(
                         amount2WithdrawFromValidator,
-                        _amount,
+                        amount2Burn,
                         validator2Nonce[validatorShare],
                         block.timestamp,
                         validatorShare,
@@ -196,14 +205,14 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     )
                 );
 
-                amount2WithdrawInMatic -= amount2WithdrawFromValidator;
+                currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
 
                 lastWithdrawnValidatorId++;
             }
         } else {
             requestWithdraws.push(
                 RequestWithdraw(
-                    amount2WithdrawInMatic,
+                    currentAmount2WithdrawInMatic,
                     _amount,
                     0,
                     block.timestamp,
@@ -212,7 +221,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 )
             );
 
-            reservedFunds += amount2WithdrawInMatic;
+            reservedFunds += currentAmount2WithdrawInMatic;
         }
     }
 
@@ -274,7 +283,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         require(userRequests[requestIndex].active, "No active withdrawals");
 
-        // amount in Matic requested by user
+        // Amount in Matic requested by the user
         uint256 amount = userRequests[requestIndex].amountToClaim;
 
         if (userRequests[requestIndex].validatorAddress != address(0)) {
@@ -485,9 +494,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     }
 
     /**
-     * @dev Function that converts arbitrary StMATIC to MATIC
+     * @dev Function that converts arbitrary StMatic to Matic
      * @param _balance - Balance in StMatic
-     * @return Users balance in Matic
+     * @return Balance in Matic
      */
     function convertStMaticToMatic(uint256 _balance)
         public
@@ -585,19 +594,5 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 _rewardDistributionLowerBound
     ) external auth(DAO) {
         rewardDistributionLowerBound = _rewardDistributionLowerBound;
-    }
-
-    /**
-     * @dev Used only for testing purposes, will be removed when deploying to mainnet
-     */
-    function resetTotalBuffered() external auth(DEFAULT_ADMIN_ROLE) {
-        totalBuffered = totalSupply();
-    }
-
-    /**
-     * @dev Used only for testing purposes, will be removed when deploying to mainnet
-     */
-    function resetReservedFunds() external auth(DEFAULT_ADMIN_ROLE) {
-        reservedFunds = 0;
     }
 }
