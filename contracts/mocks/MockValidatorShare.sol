@@ -119,4 +119,8 @@ contract MockValidatorShare is IValidatorShare {
     function migrateIn(address user, uint256 amount) external pure override {
         return;
     }
+
+    function activeAmount() external view override returns (uint256) {
+        return 0;
+    }
 }

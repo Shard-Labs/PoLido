@@ -133,6 +133,7 @@ interface INodeOperatorRegistry {
     /// @notice Allows to list all the staked operator validatorShare address and id.
     function getOperatorShares()
         external
+        view
         returns (Operator.OperatorShare[] memory);
 
     /// @notice get the operator reward addresses.
