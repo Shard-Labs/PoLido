@@ -19,6 +19,10 @@ contract LidoMock {
         }
     }
 
+    function withdrawTotalDelegated(address _validatorShare) pure external{
+        require(_validatorShare != address(0), "ILido error");
+    }
+
     function setOperator(address _operator) public {
         operator = _operator;
     }
