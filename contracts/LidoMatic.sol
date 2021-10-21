@@ -8,14 +8,15 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 
 import "./interfaces/IValidatorShare.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
+import "./interfaces/IStakeManager.sol";
 
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint256 constant WITHDRAWAL_DELAY = 2**13;
-
     INodeOperatorRegistry public nodeOperator;
     FeeDistribution public entityFees;
+    IStakeManager public stakeManager;
+
     address public dao;
     address public insurance;
     address public token;
@@ -24,6 +25,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public totalBuffered;
     uint256 public delegationLowerBound;
     uint256 public rewardDistributionLowerBound;
+    uint256 public reservedFunds;
     bool public paused;
 
     IValidatorShare[] validatorShares;
@@ -33,6 +35,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     mapping(address => uint256) public user2Shares;
     mapping(address => uint256) public validator2Nonce;
     mapping(address => uint256) public user2Nonce;
+    mapping(address => uint256) public totalAmountRequested;
 
     bytes32 public constant DAO = keccak256("DAO");
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
@@ -40,17 +43,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     bytes32 public constant BURN_ROLE = keccak256("BURN_ROLE");
     bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
 
-    address public constant stakeManager =
-        0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3;
-
-    uint256 public reservedFunds;
-    // delete the first one
-    mapping(address => uint256) public amountRequested;
-    mapping(address => uint256) public totalAmountRequested;
-    mapping(address => uint256[]) public amountsRequested;
-
     struct RequestWithdraw {
         uint256 amount;
+        uint256 amountToBurn;
         uint256 validatorNonce;
         uint256 requestTime;
         address validatorAddress;
@@ -82,7 +77,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         address _nodeOperator,
         address _token,
         address _dao,
-        address _insurance
+        address _insurance,
+        address _stakeManager
     ) public initializer {
         __ERC20_init("Staked MATIC", "StMATIC");
         __AccessControl_init();
@@ -95,6 +91,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         _setupRole(SET_TREASURY, _dao);
 
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
+        stakeManager = IStakeManager(_stakeManager);
         dao = _dao;
         token = _token;
         insurance = _insurance;
@@ -155,10 +152,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             callerBalance - totalAmountRequested[msg.sender] >= _amount,
             "Invalid amount"
         );
-        
-        uint256[] storage amountsRequestedSender = amountsRequested[msg.sender];
-
-        amountsRequestedSender.push(_amount);
 
         totalAmountRequested[msg.sender] += _amount;
 
@@ -195,6 +188,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 requestWithdraws.push(
                     RequestWithdraw(
                         amount2WithdrawFromValidator,
+                        _amount,
                         validator2Nonce[validatorShare],
                         block.timestamp,
                         validatorShare,
@@ -210,6 +204,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             requestWithdraws.push(
                 RequestWithdraw(
                     amount2WithdrawInMatic,
+                    _amount,
                     0,
                     block.timestamp,
                     address(0),
@@ -243,7 +238,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 amountPerValidator = amountToDelegate / operatorShares.length;
         uint256 remainder = amountToDelegate % operatorShares.length;
 
-        IERC20Upgradeable(token).approve(stakeManager, amountToDelegate);
+        IERC20Upgradeable(token).approve(
+            address(stakeManager),
+            amountToDelegate
+        );
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
             buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
@@ -282,7 +280,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         if (userRequests[requestIndex].validatorAddress != address(0)) {
             require(
                 block.timestamp >=
-                    userRequests[requestIndex].requestTime + WITHDRAWAL_DELAY,
+                    userRequests[requestIndex].requestTime +
+                        stakeManager.withdrawalDelay(),
                 "Not able to claim yet"
             );
             // Using balanceAfterClaim - balanceBeforeClaim instead of amount from userRequests
@@ -311,19 +310,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             reservedFunds -= amount;
             totalBuffered -= amount;
         }
-        uint256[] storage amountsRequestedSender = amountsRequested[msg.sender];
 
-        _burn(msg.sender, amountsRequestedSender[0]);
+        uint256 amountToBurn = userRequests[requestIndex].amountToBurn;
 
-        totalAmountRequested[msg.sender] -= amountsRequestedSender[0];
+        _burn(msg.sender, amountToBurn);
 
-        if(amountsRequestedSender.length > 1) {
-            for(uint i = 0; i < amountsRequestedSender.length - 1; i++) {
-                amountsRequestedSender[i] = amountsRequestedSender[i + 1];
-            }
-        }
-
-        amountsRequestedSender.pop();
+        totalAmountRequested[msg.sender] -= amountToBurn;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
 
