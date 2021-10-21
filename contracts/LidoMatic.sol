@@ -252,7 +252,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         }
 
         totalDelegated += amountToDelegate - remainder;
-        totalBuffered = remainder;
+        totalBuffered = remainder + reservedFunds;
     }
 
     /**
