@@ -28,6 +28,8 @@ library Operator {
         address validatorShare;
         address validatorContract;
         uint256 commissionRate;
+        uint256 slashed;
+        uint256 statusTimestamp;
     }
 
     /// @notice State struct

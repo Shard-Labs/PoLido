@@ -90,23 +90,44 @@ contract NodeOperatorRegistry is
     PausableUpgradeable,
     AccessControlUpgradeable
 {
-    /// @notice Node operator registry
+    /// @notice Total Node Operators
     uint256 totalNodeOpearator;
+    /// @notice Total Active Node Operators
     uint256 totalActiveNodeOpearator;
+    /// @notice Total Staked Node Operators
     uint256 totalStakedNodeOpearator;
+    /// @notice Total Unstaked Node Operators
     uint256 totalUnstakedNodeOpearator;
+    /// @notice Total Claimed Node Operators
     uint256 totalClaimedNodeOpearator;
+    /// @notice Total Exited Node Operators
     uint256 totalExitNodeOpearator;
+
+    /// @notice validatorFactory address
     address validatorFactory;
+    /// @notice stakeManager address
     address stakeManager;
+    /// @notice polygonERC20 address (Matic)
     address polygonERC20;
+    /// @notice lido address
     address lido;
+
+    /// @notice max amount allowed to stake per validator
     uint256 maxAmountStake;
+    /// @notice min amount allowed to stake per validator
     uint256 minAmountStake;
+    /// @notice max HeimdallFees allowed to stake per validator
     uint256 maxHeimdallFees;
+    /// @notice min HeimdallFees allowed to stake per validator
     uint256 minHeimdallFees;
+
+    /// @notice commision rate applied to all the validators.
     uint256 public commissionRate;
+    /// @notice total times the validators was slashed.
+    uint256 totalTimesValidatorsSlashed;
+    /// @notice allows restake.
     bool public allowsRestake;
+    /// @notice allows unjail a validator.
     bool public allowsUnjail;
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
@@ -125,6 +146,7 @@ contract NodeOperatorRegistry is
         keccak256("UPDATE_COMMISSION_RATE");
     bytes32 public constant UPDATE_STAKE_HEIMDALL_FEES_ROLE =
         keccak256("UPDATE_STAKE_HEIMDALL_FEES");
+    bytes32 public constant CRON_JOB_ROLE = keccak256("CRON_JOB");
 
     // ====================================================================
     // =========================== MODIFIERS ==============================
@@ -164,7 +186,6 @@ contract NodeOperatorRegistry is
     /// @notice Initialize the NodeOperator contract.
     function initialize(
         address _validatorFactory,
-        // address _lido,
         address _stakeManager,
         address _polygonERC20
     ) public initializer {
@@ -173,7 +194,6 @@ contract NodeOperatorRegistry is
 
         // set default state
         validatorFactory = _validatorFactory;
-        // lido = _lido;
         stakeManager = _stakeManager;
         polygonERC20 = _polygonERC20;
         commissionRate = 0;
@@ -183,7 +203,7 @@ contract NodeOperatorRegistry is
         minAmountStake = 10 * 10**18;
         maxHeimdallFees = 20 * 10**18;
         minHeimdallFees = 20 * 10**18;
-
+        totalTimesValidatorsSlashed = 0;
         // Set ACL roles
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
@@ -226,7 +246,9 @@ contract NodeOperatorRegistry is
             signerPubkey: _signerPubkey,
             validatorShare: address(0),
             validatorContract: validatorContract,
-            commissionRate: commissionRate
+            commissionRate: commissionRate,
+            slashed: 0,
+            statusTimestamp: block.timestamp
         });
 
         // update global
@@ -286,6 +308,9 @@ contract NodeOperatorRegistry is
         // remove validator proxy from the validatorFactory.
         IValidatorFactory(validatorFactory).remove(no.validatorContract);
 
+        // update the totalTimesValidatorsSlashed.
+        totalTimesValidatorsSlashed -= no.slashed;
+
         // delete operator and owner mappings from operators and operatorOwners.
         delete operatorOwners[no.rewardAddress];
         delete operators[_operatorId];
@@ -332,6 +357,7 @@ contract NodeOperatorRegistry is
 
         // update the operator status to STAKED.
         no.status = Operator.NodeOperatorStatus.STAKED;
+        no.statusTimestamp = block.timestamp;
         no.commissionRate = commissionRate;
 
         // update global
@@ -392,6 +418,7 @@ contract NodeOperatorRegistry is
         ILido(lido).withdrawTotalDelegated(no.validatorShare);
 
         no.status = Operator.NodeOperatorStatus.UNSTAKED;
+        no.statusTimestamp = block.timestamp;
         totalStakedNodeOpearator--;
         totalUnstakedNodeOpearator++;
 
@@ -418,6 +445,7 @@ contract NodeOperatorRegistry is
         IValidator(no.validatorContract).unjail(no.validatorId);
 
         no.status = Operator.NodeOperatorStatus.STAKED;
+        no.statusTimestamp = block.timestamp;
         totalStakedNodeOpearator++;
         totalUnstakedNodeOpearator--;
 
@@ -468,6 +496,7 @@ contract NodeOperatorRegistry is
         );
 
         no.status = Operator.NodeOperatorStatus.CLAIMED;
+        no.statusTimestamp = block.timestamp;
         totalUnstakedNodeOpearator--;
         totalClaimedNodeOpearator++;
 
@@ -508,6 +537,7 @@ contract NodeOperatorRegistry is
         totalClaimedNodeOpearator--;
         totalExitNodeOpearator++;
         no.status = Operator.NodeOperatorStatus.EXIT;
+        no.statusTimestamp = block.timestamp;
 
         emit ClaimFee(
             operatorId,
@@ -694,6 +724,16 @@ contract NodeOperatorRegistry is
         stakeManager = _stakeManager;
     }
 
+    /// @notice Check if a validators was slashed and update stats.
+    /// This should be called by a cron job.
+    function checkIfValidatorsWasSlashed()
+        external
+        whenNotPaused
+        userHasRole(CRON_JOB_ROLE)
+    {
+        revert("Not Implemented until Polygon implement slashing");
+    }
+
     // ====================================================================
     // ============================ GETTERS ===============================
     // ====================================================================
@@ -758,13 +798,6 @@ contract NodeOperatorRegistry is
             uint256 _totalClaimedNodeOpearator,
             uint256 _totalExitNodeOpearator
         )
-    // uint256 _maxAmountStake,
-    // uint256 _minAmountStake,
-    // uint256 _maxHeimdallFees,
-    // uint256 _minHeimdallFees,
-    // uint256 _commissionRate,
-    // bool _allowsRestake,
-    // bool _allowsUnjail
     {
         _totalNodeOpearator = totalNodeOpearator;
         _totalActiveNodeOpearator = totalActiveNodeOpearator;
@@ -772,13 +805,6 @@ contract NodeOperatorRegistry is
         _totalUnstakedNodeOpearator = totalUnstakedNodeOpearator;
         _totalClaimedNodeOpearator = totalClaimedNodeOpearator;
         _totalExitNodeOpearator = totalExitNodeOpearator;
-        // _maxAmountStake = maxAmountStake;
-        // _minAmountStake = minAmountStake;
-        // _maxHeimdallFees = maxHeimdallFees;
-        // _minHeimdallFees = minHeimdallFees;
-        // _commissionRate = commissionRate;
-        // _allowsRestake = allowsRestake;
-        // _allowsUnjail = allowsUnjail;
     }
 
     /// @notice Get validator total stake.

@@ -143,6 +143,9 @@ describe("NodeOperator", function () {
         expect(res[4], "operator signer public key").to.equal(signerPubkey);
         expect(res[5], "operator validator share address").to.equal(ethers.constants.AddressZero);
         expect(res[6], "operator validator contract address").to.equal(validators[0]);
+        expect(res[7].toString(), "commision rate").to.equal("0");
+        expect(res[8].toString(), "times slashed").to.equal("0");
+        expect(res[9].toString(), "timestamp").not.equal("0");
     });
 
     it("Fails to add new operator", async function () {
@@ -208,6 +211,7 @@ describe("NodeOperator", function () {
         expect(res[0], "operator status not staked").to.equal(2);
         expect(res[3].toString(), "operator validator id").to.equal("1");
         expect(res[5].toString(), "operator validator share contract").not.equal(ethers.constants.AddressZero.toString());
+        expect(res[9], "timestamp").not.equal(no[9]);
 
         // check global state
         const state = await nodeOperatorRegistryContract.getState();
@@ -363,6 +367,7 @@ describe("NodeOperator", function () {
         // chez=ck if the status is unstaked === 3
         const res = await nodeOperatorRegistryContract.getNodeOperator(1, false);
         expect(res[0], "operator status").to.equal(3);
+        expect(res[9], "timestamp").not.equal(no[9]);
 
         // check global state
         const state = await nodeOperatorRegistryContract.getState();
@@ -504,7 +509,7 @@ describe("NodeOperator", function () {
         await newValidator(1, user1Address);
 
         // get a node operator
-        let no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
 
         // approve token to validator contract
         await polygonERC20Contract.connect(user1).approve(no1[6], toEth("30"));
@@ -531,8 +536,9 @@ describe("NodeOperator", function () {
         expect(beforeBalanceLido.toString()).not.equal(afterBalanceLido.toString());
 
         // check global state
-        no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
-        expect(no1[0], "operator status").to.equal(4);
+        const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no1a[0], "operator status").to.equal(4);
+        expect(no1a[9], "timestamp").not.equal(no1[9]);
 
         const state = await nodeOperatorRegistryContract.getState();
         expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
@@ -561,9 +567,16 @@ describe("NodeOperator", function () {
         // set unjail to true
         await nodeOperatorRegistryContract.setUnjail(true);
 
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
         // unjail a node operator
         expect(await nodeOperatorRegistryContract.connect(user1).unjail())
             .to.emit(nodeOperatorRegistryContract, "Unjail").withArgs(1, 1);
+
+        // check global state
+        const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no1a[0], "operator status").to.equal(2);
+        expect(no1a[9], "timestamp").not.equal(no1[9]);
 
         const state = await nodeOperatorRegistryContract.getState();
         expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
@@ -621,9 +634,17 @@ describe("NodeOperator", function () {
         // unstakeClaim a node operator
         await nodeOperatorRegistryContract.connect(user1).unstakeClaim();
 
+        // check global state
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
         // claim fees
         await nodeOperatorRegistryContract.connect(user1)
             .claimFee(1, 1, ethers.utils.randomBytes(64));
+
+        // check global state
+        const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no1a[0], "operator status").to.equal(5);
+        expect(no1a[9], "timestamp").not.equal(no1[9]);
     });
 
     it("Fail claim heimdall fees", async function () {
