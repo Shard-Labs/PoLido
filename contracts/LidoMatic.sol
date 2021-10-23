@@ -26,6 +26,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public delegationLowerBound;
     uint256 public rewardDistributionLowerBound;
     uint256 public reservedFunds;
+    uint256 public lockedAmount;
     bool public paused;
 
     mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
@@ -113,7 +114,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             _amount
         );
 
-        uint256 totalShares = totalSupply();
+        // Reduce totalShares by amount of StMatic locked in the LidoMatic contract
+        // This StMatic shouldn't be considered in minting new tokens 
+        // because it is about to be burned after the WITHDRAWAL_DELAY expires
+        uint256 totalShares = totalSupply() - lockedAmount;
         uint256 totalPooledMatic = totalBuffered + totalDelegated;
         uint256 amountToMint = totalDelegated != 0
             ? (_amount * totalShares) / totalPooledMatic
@@ -146,6 +150,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         totalAmountRequested[msg.sender] += _amount;
+        lockedAmount += _amount;
+
+        transferFrom(msg.sender, address(this), _amount);
 
         uint256 totalBurned;
         uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
@@ -323,9 +330,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 amountToBurn = userRequests[requestIndex].amountToBurn;
 
-        _burn(msg.sender, amountToBurn);
+        _burn(address(this), amountToBurn);
 
         totalAmountRequested[msg.sender] -= amountToBurn;
+        lockedAmount -= amountToBurn;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
 
