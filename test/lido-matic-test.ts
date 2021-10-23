@@ -201,6 +201,8 @@ describe("LidoMatic", () => {
                 deployer.address
             );
 
+            await upgradedLido.approve(upgradedLido.address, senderBalance.div(2));
+
             // If we withdraw all tokens and totalAmount() is equal to users balance
             // we get an error "reverted with panic code 0x12 (Division or modulo division by zero)"
             await upgradedLido.requestWithdraw(senderBalance.div(2));

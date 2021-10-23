@@ -9,6 +9,7 @@ on:
   pull_request:    
     branches:
       - main
+      - fix/lido-brainstorming
 jobs:
   build:
     runs-on: ubuntu-latest
