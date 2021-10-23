@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "./interfaces/IValidatorShare.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IStakeManager.sol";
+import "./interfaces/ILidoNFT.sol";
 
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -17,6 +18,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     FeeDistribution public entityFees;
     IStakeManager public stakeManager;
 
+    address public lidoNFT;
     address public dao;
     address public insurance;
     address public token;
@@ -31,7 +33,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public minValidatorBalance;
     bool public paused;
 
-    mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
+    // mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
+    mapping(uint256 => RequestWithdraw[]) public token2WithdrawRequest;
+
     mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
     mapping(address => uint256) public validator2Nonce;
@@ -78,7 +82,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         address _token,
         address _dao,
         address _insurance,
-        address _stakeManager
+        address _stakeManager,
+        address _lidoNFT
     ) public initializer {
         __ERC20_init("Staked MATIC", "StMATIC");
         __AccessControl_init();
@@ -95,6 +100,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         dao = _dao;
         token = _token;
         insurance = _insurance;
+        lidoNFT = _lidoNFT;
 
         minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(5, 5, 90);
@@ -140,9 +146,11 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     function requestWithdraw(uint256 _amount) external notPaused {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
+        
+        uint256 tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
 
-        RequestWithdraw[] storage requestWithdraws = user2WithdrawRequest[
-            msg.sender
+        RequestWithdraw[] storage requestWithdraws = token2WithdrawRequest[
+            tokenId
         ];
 
         require(
@@ -297,9 +305,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @dev Claims tokens from validator share and sends them to the
      * user if his request is in the userToWithdrawRequest
      */
-    function claimTokens() external {
-        RequestWithdraw[] storage userRequests = user2WithdrawRequest[
-            msg.sender
+    function claimTokens(uint256 _tokenId) external {
+        // check if the token is owner by the msg.sender.
+        require(ILidoNFT(lidoNFT).isApprovedOrOwner(msg.sender, _tokenId), "Not owner");
+
+        RequestWithdraw[] storage userRequests = token2WithdrawRequest[
+            _tokenId
         ];
 
         uint256 requestIndex;
@@ -401,9 +412,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      */
     function withdrawTotalDelegated(address _validatorShare) external {
         require(msg.sender == address(nodeOperator), "Not a node operator");
-
-        RequestWithdraw[] storage requestWithdraws = user2WithdrawRequest[
-            address(this)
+        
+        uint256 tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
+        RequestWithdraw[] storage requestWithdraws = token2WithdrawRequest[
+            tokenId
         ];
 
         (uint256 stakedAmount, ) = IValidatorShare(_validatorShare)
@@ -432,9 +444,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @dev Claims tokens from validator share and sends them to the
      * LidoMatic contract
      */
-    function claimTokens2LidoMatic() public {
-        RequestWithdraw[] storage lidoRequests = user2WithdrawRequest[
-            address(this)
+    function claimTokens2LidoMatic(uint256 _tokenId) public {
+        RequestWithdraw[] storage lidoRequests = token2WithdrawRequest[
+            _tokenId
         ];
 
         uint256 requestIndex;

@@ -11,7 +11,8 @@ contract LidoNFT is
     PausableUpgradeable
 {
     // lido contract
-    address lido;
+    address public lido;
+    uint256 public tokenIdIndex;
 
     // check if lido contract is the caller
     modifier isLido() {
@@ -28,12 +29,14 @@ contract LidoNFT is
     }
 
     /// @notice Mint token.
-    function mint(address _to, uint256 _tokenId) public isLido {
-        _mint(_to, _tokenId);
+    function mint(address _to) external isLido returns (uint256) {
+        tokenIdIndex++;
+        _mint(_to, tokenIdIndex);
+        return tokenIdIndex;
     }
 
     /// @notice Burn token.
-    function burn(uint256 _tokenId) public isLido {
+    function burn(uint256 _tokenId) external isLido {
         _burn(_tokenId);
     }
 
@@ -47,8 +50,17 @@ contract LidoNFT is
         require(!paused(), "ERC721Pausable: token transfer while paused");
     }
 
+    // isApprovedOrOwner check if the spender is owner or an approved.
+    function isApprovedOrOwner(address _spender, uint256 _tokenId)
+        external
+        view
+        returns (bool)
+    {
+        return _isApprovedOrOwner(_spender, _tokenId);
+    }
+
     /// @notice Set LidoMatic contract
-    function setLido(address _lido) public onlyOwner {
+    function setLido(address _lido) public {
         lido = _lido;
     }
 }
