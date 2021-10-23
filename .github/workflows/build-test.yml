@@ -9,7 +9,7 @@ on:
   pull_request:    
     branches:
       - main
-      - fix/lido-brainstorming
+      - fix/token-submission
 jobs:
   build:
     runs-on: ubuntu-latest
