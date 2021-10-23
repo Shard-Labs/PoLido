@@ -16,7 +16,9 @@ import {
     MockOperator__factory,
     MockOperator,
     StakeManagerMock__factory,
-    StakeManagerMock
+    StakeManagerMock,
+    LidoNFT__factory,
+    LidoNFT
 } from "../typechain";
 import { expect } from "chai";
 import { keccak256, toUtf8Bytes } from "ethers/lib/utils";
@@ -25,6 +27,7 @@ describe("LidoMatic", () => {
     let dao: SignerWithAddress;
     let deployer: SignerWithAddress;
     let lidoMatic: LidoMatic;
+    let lidoNFT: LidoNFT;
     let upgradedLido: LidoMaticUpgrade;
     let mockToken: IERC20;
     let mockValidatorShare: MockValidatorShare;
@@ -64,6 +67,10 @@ describe("LidoMatic", () => {
             "StakeManagerMock"
         )) as StakeManagerMock__factory;
 
+        const LidoNFT = (await ethers.getContractFactory(
+            "LidoNFT", deployer
+        )) as LidoNFT__factory;
+
         mockOperator = await MockOperator.deploy();
         await mockOperator.deployed();
 
@@ -85,16 +92,24 @@ describe("LidoMatic", () => {
         );
         await mockNodeOperatorRegistry.deployed();
 
+        lidoNFT = (await upgrades.deployProxy(LidoNFT, [
+            "stMATIC_NFT",
+            "STM_NFT"
+        ])) as LidoNFT;
+        await lidoNFT.deployed();
+
         lidoMatic = (await upgrades.deployProxy(LidoMatic, [
             mockNodeOperatorRegistry.address,
             mockToken.address,
             dao.address,
             mockInsurance.address,
-            mockStakeManager.address
+            mockStakeManager.address,
+            lidoNFT.address
         ])) as LidoMatic;
         await lidoMatic.deployed();
-    });
 
+        await lidoNFT.setLido(lidoMatic.address);
+    });
     describe("Testing initialization and upgradeability...", () => {
         it("should successfully assign roles", async () => {
             const admin = ethers.utils.hexZeroPad("0x00", 32);
@@ -207,16 +222,15 @@ describe("LidoMatic", () => {
             // we get an error "reverted with panic code 0x12 (Division or modulo division by zero)"
             await upgradedLido.requestWithdraw(senderBalance.div(2));
 
-            const withdrawRequest = await upgradedLido.user2WithdrawRequest(
-                deployer.address,
+            const withdrawRequest = await upgradedLido.token2WithdrawRequest(
+                ethers.BigNumber.from(1),
                 0
             );
-
             expect(withdrawRequest.validatorNonce.eq(1)).to.be.true;
         });
 
         it("shouldn't allow claiming tokens before required time has passed", async () => {
-            await expect(upgradedLido.claimTokens()).to.be.revertedWith(
+            await expect(upgradedLido.claimTokens(ethers.BigNumber.from(1))).to.be.revertedWith(
                 "Not able to claim yet"
             );
         });
@@ -228,7 +242,7 @@ describe("LidoMatic", () => {
 
             await ethers.provider.send("evm_mine", [1625097606000]);
 
-            await upgradedLido.claimTokens();
+            await upgradedLido.claimTokens(ethers.BigNumber.from(1));
 
             const userBalanceAfter = await mockToken.balanceOf(
                 deployer.address
