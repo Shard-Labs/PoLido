@@ -27,6 +27,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public rewardDistributionLowerBound;
     uint256 public reservedFunds;
     uint256 public lockedAmount;
+    uint256 public minValidatorBalance;
     bool public paused;
 
     mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
@@ -94,6 +95,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         token = _token;
         insurance = _insurance;
 
+        minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(5, 5, 90);
     }
 
@@ -164,10 +166,17 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 uint256 validatorBalance = IValidatorShare(validatorShare)
                     .activeAmount();
 
-                uint256 amount2WithdrawFromValidator = (validatorBalance >
+                uint256 allowedAmount2Withdraw = validatorBalance -
+                    minValidatorBalance;
+
+                uint256 amount2WithdrawFromValidator = (allowedAmount2Withdraw >
                     currentAmount2WithdrawInMatic)
                     ? currentAmount2WithdrawInMatic
-                    : validatorBalance;
+                    : allowedAmount2Withdraw;
+
+                if (amount2WithdrawFromValidator == 0) {
+                    continue;
+                }
 
                 uint256 amount2Burn = (_amount * amount2WithdrawFromValidator) /
                     totalAmount2WithdrawInMatic;
@@ -254,6 +263,18 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
             buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
+
+            // Take the 10% of current validator balance
+            uint256 minValidatorBalanceCurrent = (IValidatorShare(
+                operatorShares[i].validatorShare
+            ).activeAmount() * 10) / 100;
+
+            if (
+                minValidatorBalanceCurrent != 0 &&
+                minValidatorBalanceCurrent < minValidatorBalance
+            ) {
+                minValidatorBalance = minValidatorBalanceCurrent;
+            }
 
             validator2DelegatedAmount[
                 operatorShares[i].validatorShare
