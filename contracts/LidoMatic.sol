@@ -145,7 +145,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         lockedAmount += _amount;
 
         require(
-            transferFrom(msg.sender, address(this), _amount),
+            IERC20Upgradeable(address(this)).transferFrom(msg.sender, address(this), _amount),
             "Transferring StMatic failed"
         );
 

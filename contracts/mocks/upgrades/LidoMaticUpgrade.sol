@@ -28,6 +28,8 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public delegationLowerBound;
     uint256 public rewardDistributionLowerBound;
     uint256 public reservedFunds;
+    uint256 public lockedAmount;
+    uint256 public minValidatorBalance;
     bool public paused;
 
     mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
@@ -35,8 +37,6 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
     mapping(address => uint256) public user2Shares;
     mapping(address => uint256) public validator2Nonce;
     mapping(address => uint256) public user2Nonce;
-    mapping(address => uint256) public totalAmountRequested;
-    mapping(address => uint256) public validator2Index;
 
     bytes32 public constant DAO = keccak256("DAO");
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
@@ -99,6 +99,7 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         token = _token;
         insurance = _insurance;
 
+        minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(5, 5, 90);
     }
 
@@ -117,7 +118,10 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
             _amount
         );
 
-        uint256 totalShares = totalSupply();
+        // Reduce totalShares by amount of StMatic locked in the LidoMatic contract
+        // This StMatic shouldn't be considered in minting new tokens
+        // because it is about to be burned after the WITHDRAWAL_DELAY expires
+        uint256 totalShares = totalSupply() - lockedAmount;
         uint256 totalPooledMatic = totalBuffered + totalDelegated;
         uint256 amountToMint = totalDelegated != 0
             ? (_amount * totalShares) / totalPooledMatic
@@ -142,14 +146,14 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
             msg.sender
         ];
 
-        uint256 callerBalance = balanceOf(msg.sender);
+        lockedAmount += _amount;
+
+        console.log("Amount: %s", _amount);
 
         require(
-            callerBalance - totalAmountRequested[msg.sender] >= _amount,
-            "Invalid amount"
+            IERC20Upgradeable(address(this)).transferFrom(msg.sender, address(this), _amount),
+            "Transferring StMatic failed"
         );
-
-        totalAmountRequested[msg.sender] += _amount;
 
         uint256 totalBurned;
         uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
@@ -168,10 +172,17 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
                 uint256 validatorBalance = IValidatorShare(validatorShare)
                     .activeAmount();
 
-                uint256 amount2WithdrawFromValidator = (validatorBalance >
+                uint256 allowedAmount2Withdraw = validatorBalance -
+                    minValidatorBalance;
+
+                uint256 amount2WithdrawFromValidator = (allowedAmount2Withdraw >
                     currentAmount2WithdrawInMatic)
                     ? currentAmount2WithdrawInMatic
-                    : validatorBalance;
+                    : allowedAmount2Withdraw;
+
+                if (amount2WithdrawFromValidator == 0) {
+                    continue;
+                }
 
                 uint256 amount2Burn = (_amount * amount2WithdrawFromValidator) /
                     totalAmount2WithdrawInMatic;
@@ -259,6 +270,18 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         for (uint256 i = 0; i < operatorShares.length; i++) {
             buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
 
+            // Take the 10% of current validator balance
+            uint256 minValidatorBalanceCurrent = (IValidatorShare(
+                operatorShares[i].validatorShare
+            ).activeAmount() * 10) / 100;
+
+            if (
+                minValidatorBalanceCurrent != 0 &&
+                minValidatorBalanceCurrent < minValidatorBalance
+            ) {
+                minValidatorBalance = minValidatorBalanceCurrent;
+            }
+
             validator2DelegatedAmount[
                 operatorShares[i].validatorShare
             ] += amountPerValidator;
@@ -327,9 +350,9 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 amountToBurn = userRequests[requestIndex].amountToBurn;
 
-        _burn(msg.sender, amountToBurn);
+        _burn(address(this), amountToBurn);
 
-        totalAmountRequested[msg.sender] -= amountToBurn;
+        lockedAmount -= amountToBurn;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
 
@@ -458,22 +481,6 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
 
         // Wrap up the request
         lidoRequests[requestIndex].active = false;
-    }
-
-    /**
-     * @dev Used for testing purposes only
-     */
-    function simulateSlashing() external {
-        totalDelegated = totalSupply() / 2;
-        totalBuffered = 0;
-    }
-
-    /**
-     * @dev Used for testing purposes only
-     */
-    function simulateRewarding() external {
-        totalDelegated = totalSupply() * 2;
-        totalBuffered = 0;
     }
 
     /**
@@ -701,5 +708,27 @@ contract LidoMaticUpgrade is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 _rewardDistributionLowerBound
     ) external auth(DAO) {
         rewardDistributionLowerBound = _rewardDistributionLowerBound;
+    }
+
+    ////////////////////////////////////////////////////////////
+    /////                                                    ///
+    /////                 ***Testing***                      ///
+    /////                                                    ///
+    ////////////////////////////////////////////////////////////
+
+    /**
+     * @dev Used for testing purposes only
+     */
+    function simulateSlashing() external {
+        totalDelegated = totalSupply() / 2;
+        totalBuffered = 0;
+    }
+
+    /**
+     * @dev Used for testing purposes only
+     */
+    function simulateRewarding() external {
+        totalDelegated = totalSupply() * 2;
+        totalBuffered = 0;
     }
 }
