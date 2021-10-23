@@ -34,8 +34,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     mapping(address => uint256) public user2Shares;
     mapping(address => uint256) public validator2Nonce;
     mapping(address => uint256) public user2Nonce;
-    mapping(address => uint256) public totalAmountRequested;
-    mapping(address => uint256) public validator2Index;
 
     bytes32 public constant DAO = keccak256("DAO");
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
@@ -115,7 +113,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         // Reduce totalShares by amount of StMatic locked in the LidoMatic contract
-        // This StMatic shouldn't be considered in minting new tokens 
+        // This StMatic shouldn't be considered in minting new tokens
         // because it is about to be burned after the WITHDRAWAL_DELAY expires
         uint256 totalShares = totalSupply() - lockedAmount;
         uint256 totalPooledMatic = totalBuffered + totalDelegated;
@@ -142,17 +140,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             msg.sender
         ];
 
-        uint256 callerBalance = balanceOf(msg.sender);
-
-        require(
-            callerBalance - totalAmountRequested[msg.sender] >= _amount,
-            "Invalid amount"
-        );
-
-        totalAmountRequested[msg.sender] += _amount;
         lockedAmount += _amount;
 
-        transferFrom(msg.sender, address(this), _amount);
+        require(
+            transferFrom(msg.sender, address(this), _amount),
+            "Transferring StMatic failed"
+        );
 
         uint256 totalBurned;
         uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
@@ -332,7 +325,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         _burn(address(this), amountToBurn);
 
-        totalAmountRequested[msg.sender] -= amountToBurn;
         lockedAmount -= amountToBurn;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
