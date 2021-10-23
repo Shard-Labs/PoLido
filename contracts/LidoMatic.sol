@@ -26,7 +26,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public delegationLowerBound;
     uint256 public rewardDistributionLowerBound;
     uint256 public reservedFunds;
-    uint256 public lockedAmount;
+    uint256 public lockedAmountStMatic;
+    uint256 public lockedAmountMatic;
     uint256 public minValidatorBalance;
     bool public paused;
 
@@ -117,8 +118,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         // Reduce totalShares by amount of StMatic locked in the LidoMatic contract
         // This StMatic shouldn't be considered in minting new tokens
         // because it is about to be burned after the WITHDRAWAL_DELAY expires
-        uint256 totalShares = totalSupply() - lockedAmount;
-        uint256 totalPooledMatic = totalBuffered + totalDelegated;
+        uint256 totalShares = totalSupply() - lockedAmountStMatic;
+        uint256 totalPooledMatic = totalBuffered +
+            totalDelegated -
+            lockedAmountMatic;
         uint256 amountToMint = totalDelegated != 0
             ? (_amount * totalShares) / totalPooledMatic
             : _amount;
@@ -142,16 +145,21 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             msg.sender
         ];
 
-        lockedAmount += _amount;
-
         require(
-            IERC20Upgradeable(address(this)).transferFrom(msg.sender, address(this), _amount),
+            IERC20Upgradeable(address(this)).transferFrom(
+                msg.sender,
+                address(this),
+                _amount
+            ),
             "Transferring StMatic failed"
         );
 
         uint256 totalBurned;
         uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
         uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
+
+        lockedAmountStMatic += _amount;
+        lockedAmountMatic += totalAmount2WithdrawInMatic;
 
         if (totalDelegated > currentAmount2WithdrawInMatic) {
             while (currentAmount2WithdrawInMatic != 0) {
@@ -312,43 +320,33 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         // Amount in Matic requested by the user
-        uint256 amount = userRequests[requestIndex].amountToClaim;
+        uint256 amountToClaim = userRequests[requestIndex].amountToClaim;
 
         if (userRequests[requestIndex].validatorAddress != address(0)) {
-            // Using balanceAfterClaim - balanceBeforeClaim instead of amount from userRequests
-            // just in case slashing or rewarding happened
-
-            uint256 balanceBeforeClaim = IERC20Upgradeable(token).balanceOf(
-                address(this)
-            );
 
             unstakeClaimTokens_new(
                 userRequests[requestIndex].validatorAddress,
                 userRequests[requestIndex].validatorNonce
             );
 
-            uint256 balanceAfterClaim = IERC20Upgradeable(token).balanceOf(
-                address(this)
-            );
-            amount = balanceAfterClaim - balanceBeforeClaim;
-
-            totalDelegated -= amount;
+            totalDelegated -= amountToClaim;
 
             validator2DelegatedAmount[
                 userRequests[requestIndex].validatorAddress
-            ] -= amount;
+            ] -= amountToClaim;
         } else {
-            reservedFunds -= amount;
-            totalBuffered -= amount;
+            reservedFunds -= amountToClaim;
+            totalBuffered -= amountToClaim;
         }
 
         uint256 amountToBurn = userRequests[requestIndex].amountToBurn;
 
         _burn(address(this), amountToBurn);
 
-        lockedAmount -= amountToBurn;
+        lockedAmountMatic -= amountToClaim;
+        lockedAmountStMatic -= amountToBurn;
 
-        IERC20Upgradeable(token).safeTransfer(msg.sender, amount);
+        IERC20Upgradeable(token).safeTransfer(msg.sender, amountToClaim);
 
         userRequests[requestIndex].active = false;
     }
