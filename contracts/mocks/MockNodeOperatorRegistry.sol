@@ -6,15 +6,17 @@ import "../lib/Operator.sol";
 
 contract MockNodeOperatorRegistry {
     Operator.OperatorShare[] operatorShare;
+    Operator.OperatorReward[] operatorRewards;
 
     uint256[] operatorIds;
-    address[] operatorAddresses;
+
+    // address[] operatorAddresses;
 
     constructor(address _validatorShare, address _operator) {
         operatorShare.push(
             Operator.OperatorShare(1, _validatorShare, 0, block.timestamp, true)
         );
-        operatorAddresses.push(_operator);
+        operatorRewards.push(Operator.OperatorReward(_operator, false));
     }
 
     /// @notice Get the all operator ids availablein the system.
@@ -53,8 +55,8 @@ contract MockNodeOperatorRegistry {
     function getOperatorRewardAddresses()
         external
         view
-        returns (address[] memory)
+        returns (Operator.OperatorReward[] memory)
     {
-        return operatorAddresses;
+        return operatorRewards;
     }
 }

@@ -11,4 +11,10 @@ library Operator {
         uint256 statusTimestamp;
         bool isTrusted;
     }
+
+    /// @notice OperatorShare struct
+    struct OperatorReward {
+        address rewardAddress;
+        bool penality;
+    }
 }

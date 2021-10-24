@@ -129,6 +129,8 @@ contract NodeOperatorRegistry is
     bool public allowsRestake;
     /// @notice allows unjail a validator.
     bool public allowsUnjail;
+    /// @notice allows unjail a validator.
+    uint256 SANCTION_SLASH_DELAY;
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) internal operators;
@@ -177,6 +179,7 @@ contract NodeOperatorRegistry is
         uint256 slashedTimestamp;
         uint256 statusTimestamp;
         bool isTrusted;
+        uint256 sanctionEndTimestamp;
     }
 
     // ====================================================================
@@ -234,7 +237,8 @@ contract NodeOperatorRegistry is
         minAmountStake = 10 * 10**18;
         maxHeimdallFees = 20 * 10**18;
         minHeimdallFees = 20 * 10**18;
-        totalTimesValidatorsSlashed = 0;
+        SANCTION_SLASH_DELAY = 2**13;
+
         // Set ACL roles
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ADD_OPERATOR_ROLE, msg.sender);
@@ -282,7 +286,8 @@ contract NodeOperatorRegistry is
             slashed: 0,
             slashedTimestamp: 0,
             statusTimestamp: block.timestamp,
-            isTrusted: isTrusted
+            isTrusted: isTrusted,
+            sanctionEndTimestamp: 0
         });
 
         // update global
@@ -884,7 +889,8 @@ contract NodeOperatorRegistry is
                     operatorId: id,
                     validatorShare: operators[id].validatorShare,
                     slashed: totalTimesValidatorsSlashed > 0
-                        ? (operators[id].slashed * 100) / totalTimesValidatorsSlashed
+                        ? (operators[id].slashed * 100) /
+                            totalTimesValidatorsSlashed
                         : 0,
                     statusTimestamp: operators[id].statusTimestamp,
                     isTrusted: operators[id].isTrusted
@@ -911,17 +917,24 @@ contract NodeOperatorRegistry is
         external
         view
         override
-        returns (address[] memory)
+        returns (Operator.OperatorReward[] memory)
     {
-        address[] memory rewardAddresses = new address[](
-            totalStakedNodeOpearator
-        );
+        Operator.OperatorReward[]
+            memory rewardAddresses = new Operator.OperatorReward[](
+                totalStakedNodeOpearator
+            );
         uint256 index = 0;
 
         for (uint256 idx = 0; idx < operatorIds.length; idx++) {
             uint256 id = operatorIds[idx];
             if (operators[id].status == NodeOperatorStatus.STAKED) {
-                rewardAddresses[index] = operators[id].rewardAddress;
+                rewardAddresses[idx] = Operator.OperatorReward({
+                    rewardAddress: operators[id].rewardAddress,
+                    penality: operators[id].sanctionEndTimestamp > 0 &&
+                        operators[id].sanctionEndTimestamp +
+                            SANCTION_SLASH_DELAY >
+                        block.timestamp
+                });
                 index++;
             }
         }

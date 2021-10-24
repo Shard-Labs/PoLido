@@ -15,8 +15,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint256 DELEGATE_DELAY;
-    uint256 DELEGATE_MAX;
     uint256 DELEGATE_MIN;
+    uint256 REWARD_MIN;
 
     INodeOperatorRegistry public nodeOperator;
     FeeDistribution public entityFees;
@@ -107,8 +107,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         lidoNFT = _lidoNFT;
 
         DELEGATE_DELAY = 2**13;
-        DELEGATE_MAX = 10;
-        DELEGATE_MIN = 100;
+        DELEGATE_MIN = 10;
+        REWARD_MIN = 80;
+
         minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(5, 5, 90);
     }
@@ -270,17 +271,14 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 totalRatios = 0;
 
         for (uint256 idx = 0; idx < operatorShares.length; idx++) {
-            if (
-                operatorShares[idx].statusTimestamp + DELEGATE_DELAY >=
+            uint256 delegateRatio = operatorShares[idx].statusTimestamp +
+                DELEGATE_DELAY >=
                 block.timestamp ||
                 operatorShares[idx].isTrusted
-            ) {
-                ratios[idx] = DELEGATE_MAX;
-                totalRatios += DELEGATE_MAX;
-            } else {
-                ratios[idx] = DELEGATE_MIN;
-                totalRatios += DELEGATE_MIN;
-            }
+                ? DELEGATE_MIN
+                : 100;
+            ratios[idx] = delegateRatio;
+            totalRatios += delegateRatio;
         }
 
         uint256 amountToDelegate = totalBuffered - reservedFunds;
@@ -398,13 +396,28 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         IERC20Upgradeable(token).safeTransfer(dao, daoRewards);
         IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
 
-        address[] memory operators = nodeOperator.getOperatorRewardAddresses();
-        uint256 rewardsPerOperator = operatorsRewards / operators.length;
+        Operator.OperatorReward[] memory operators = nodeOperator
+            .getOperatorRewardAddresses();
+        require(
+            operators.length == operatorShares.length,
+            "Operators Length doesn't match"
+        );
+
+        uint256[] memory ratios = new uint256[](operatorShares.length);
+        uint256 totalRatios = 0;
+
+        for (uint256 idx = 0; idx < operators.length; idx++) {
+            uint256 rewardRatio = operators[idx].penality
+                ? REWARD_MIN
+                : 100;
+            ratios[idx] = rewardRatio;
+            totalRatios += rewardRatio;
+        }
 
         for (uint256 i = 0; i < operators.length; i++) {
             IERC20Upgradeable(token).safeTransfer(
-                operators[i],
-                rewardsPerOperator
+                operators[i].rewardAddress,
+                (operatorsRewards * ratios[i]) / totalRatios
             );
         }
 
@@ -717,16 +730,26 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @dev Function that sets the delegation stats
      * @notice Only callable by dao role
      * @param _delay the delay that should wait to trust a validator
-     * @param _delegatMax in percent to delegate to a trusted validator.
      * @param _delegatMin in percent to delegate to a non trusted validator.
      */
-    function setDelegation(
+    function setDelegationBound(
         uint256 _delay,
-        uint256 _delegatMax,
         uint256 _delegatMin
     ) external auth(DAO) {
+        require(_delegatMin <= 100 , "invalid min reward value");
         DELEGATE_DELAY = _delay;
-        DELEGATE_MAX = _delegatMax;
         DELEGATE_MIN = _delegatMin;
+    }
+
+    /**
+     * @dev Function that sets the min rewards
+     * @notice Only callable by dao role
+     * @param _rewardMin in percent to delegate to a non trusted validator.
+     */
+    function setRewardBound(
+        uint256 _rewardMin
+    ) external auth(DAO) {
+        require(_rewardMin <= 100 , "invalid min reward value");
+        REWARD_MIN = _rewardMin;
     }
 }
