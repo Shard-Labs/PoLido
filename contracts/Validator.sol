@@ -21,7 +21,14 @@ contract Validator is IValidator {
     // =========================== Global Vars ============================
     // ====================================================================
 
-    Operator.ValidatorState internal state;
+    /// @notice State struct
+    struct ValidatorState {
+        address owner;
+        address implementation;
+        address operator;
+    }
+
+    ValidatorState internal state;
 
     // ====================================================================
     // =========================== MODIFIERS ==============================
@@ -277,7 +284,7 @@ contract Validator is IValidator {
     }
 
     /// @notice Allows to set the operator contract.
-    function getState() external view returns (Operator.ValidatorState memory) {
+    function getState() external view returns (ValidatorState memory) {
         return state;
     }
 

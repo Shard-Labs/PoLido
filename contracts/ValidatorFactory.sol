@@ -5,7 +5,6 @@ pragma solidity 0.8.7;
 import "hardhat/console.sol";
 import "./ValidatorProxy.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
-import "./lib/Operator.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title ValidatorFactory
@@ -22,8 +21,13 @@ contract ValidatorFactory is
 
     address[] internal validators;
 
-    Operator.ValidatorFactoryState internal state;
+    ValidatorFactoryState internal state;
 
+    /// @notice State struct
+    struct ValidatorFactoryState {
+        address operator;
+        address validatorImplementation;
+    }
     // ====================================================================
     // ============================== EVENTS ==============================
     // ====================================================================

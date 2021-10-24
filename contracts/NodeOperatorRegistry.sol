@@ -8,8 +8,6 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/ILido.sol";
-import "./lib/Operator.sol";
-import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 Shardlabs.
@@ -90,27 +88,50 @@ contract NodeOperatorRegistry is
     PausableUpgradeable,
     AccessControlUpgradeable
 {
-    /// @notice Node operator registry
-    uint256 totalNodeOpearator;
-    uint256 totalActiveNodeOpearator;
-    uint256 totalStakedNodeOpearator;
-    uint256 totalUnstakedNodeOpearator;
-    uint256 totalClaimedNodeOpearator;
-    uint256 totalExitNodeOpearator;
-    address validatorFactory;
-    address stakeManager;
-    address polygonERC20;
-    address lido;
+    /// @notice Total Node Operators
+    uint256 totalNodeOperator;
+    /// @notice Total Active Node Operators
+    uint256 totalActiveNodeOperator;
+    /// @notice Total Staked Node Operators
+    uint256 totalStakedNodeOperator;
+    /// @notice Total Unstaked Node Operators
+    uint256 totalUnstakedNodeOperator;
+    /// @notice Total Claimed Node Operators
+    uint256 totalClaimedNodeOperator;
+    /// @notice Total Exited Node Operators
+    uint256 totalExitNodeOperator;
+
+    /// @notice validatorFactory address
+    address public validatorFactory;
+    /// @notice stakeManager address
+    address public stakeManager;
+    /// @notice polygonERC20 address (Matic)
+    address public polygonERC20;
+    /// @notice lido address
+    address public lido;
+
+    /// @notice max amount allowed to stake per validator
     uint256 maxAmountStake;
+    /// @notice min amount allowed to stake per validator
     uint256 minAmountStake;
+    /// @notice max HeimdallFees allowed to stake per validator
     uint256 maxHeimdallFees;
+    /// @notice min HeimdallFees allowed to stake per validator
     uint256 minHeimdallFees;
+
+    /// @notice commision rate applied to all the validators.
     uint256 public commissionRate;
+    /// @notice total times the validators was slashed.
+    uint256 totalTimesValidatorsSlashed;
+    /// @notice allows restake.
     bool public allowsRestake;
+    /// @notice allows unjail a validator.
     bool public allowsUnjail;
+    /// @notice allows unjail a validator.
+    uint256 SANCTION_SLASH_DELAY;
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
-    mapping(uint256 => Operator.NodeOperator) internal operators;
+    mapping(uint256 => NodeOperator) internal operators;
 
     /// @dev This stores the operators ids.
     uint256[] internal operatorIds;
@@ -125,6 +146,38 @@ contract NodeOperatorRegistry is
         keccak256("UPDATE_COMMISSION_RATE");
     bytes32 public constant UPDATE_STAKE_HEIMDALL_FEES_ROLE =
         keccak256("UPDATE_STAKE_HEIMDALL_FEES");
+    bytes32 public constant CRON_JOB_ROLE = keccak256("CRON_JOB");
+
+    /// @notice The node operator states.
+    enum NodeOperatorStatus {
+        NONE,
+        ACTIVE,
+        STAKED,
+        UNSTAKED,
+        CLAIMED,
+        EXIT
+    }
+
+    /// @notice The node operator struct
+    /// @param state node operator status(ACTIVE, UNACTIVE, STAKED, UNSTAKED).
+    /// @param name node operator name.
+    /// @param rewardAddress Validator public key used for access control and receive rewards.
+    /// @param validatorId validator id of this node operator on the polygon stake manager.
+    /// @param signerPubkey public key used on heimdall.
+    struct NodeOperator {
+        NodeOperatorStatus status;
+        string name;
+        address rewardAddress;
+        uint256 validatorId;
+        bytes signerPubkey;
+        address validatorShare;
+        address validatorContract;
+        uint256 commissionRate;
+        uint256 slashed;
+        uint256 slashedTimestamp;
+        uint256 statusTimestamp;
+        bool isTrusted;
+    }
 
     // ====================================================================
     // =========================== MODIFIERS ==============================
@@ -164,7 +217,6 @@ contract NodeOperatorRegistry is
     /// @notice Initialize the NodeOperator contract.
     function initialize(
         address _validatorFactory,
-        // address _lido,
         address _stakeManager,
         address _polygonERC20
     ) public initializer {
@@ -173,7 +225,6 @@ contract NodeOperatorRegistry is
 
         // set default state
         validatorFactory = _validatorFactory;
-        // lido = _lido;
         stakeManager = _stakeManager;
         polygonERC20 = _polygonERC20;
         commissionRate = 0;
@@ -183,6 +234,7 @@ contract NodeOperatorRegistry is
         minAmountStake = 10 * 10**18;
         maxHeimdallFees = 20 * 10**18;
         minHeimdallFees = 20 * 10**18;
+        SANCTION_SLASH_DELAY = 2**13;
 
         // Set ACL roles
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -205,34 +257,39 @@ contract NodeOperatorRegistry is
     function addOperator(
         string memory _name,
         address _rewardAddress,
-        bytes memory _signerPubkey
+        bytes memory _signerPubkey,
+        bool isTrusted
     ) public override whenNotPaused userHasRole(ADD_OPERATOR_ROLE) {
         require(_signerPubkey.length == 64, "Invalid Public Key");
         require(_rewardAddress != address(0), "Invalid reward address");
         require(operatorOwners[_rewardAddress] == 0, "Address already used");
 
-        uint256 operatorId = totalNodeOpearator + 1;
+        uint256 operatorId = totalNodeOperator + 1;
 
         // deploy validator contract.
         address validatorContract = IValidatorFactory(validatorFactory)
             .create();
 
         // add the validator.
-        operators[operatorId] = Operator.NodeOperator({
-            status: Operator.NodeOperatorStatus.ACTIVE,
+        operators[operatorId] = NodeOperator({
+            status: NodeOperatorStatus.ACTIVE,
             name: _name,
             rewardAddress: _rewardAddress,
             validatorId: 0,
             signerPubkey: _signerPubkey,
             validatorShare: address(0),
             validatorContract: validatorContract,
-            commissionRate: commissionRate
+            commissionRate: commissionRate,
+            slashed: 0,
+            slashedTimestamp: 0,
+            statusTimestamp: block.timestamp,
+            isTrusted: isTrusted
         });
 
         // update global
         operatorIds.push(operatorId);
-        totalNodeOpearator++;
-        totalActiveNodeOpearator++;
+        totalNodeOperator++;
+        totalActiveNodeOperator++;
 
         // map user _rewardAddress with the operatorId.
         operatorOwners[_rewardAddress] = operatorId;
@@ -242,7 +299,7 @@ contract NodeOperatorRegistry is
             operatorId,
             _name,
             _signerPubkey,
-            Operator.NodeOperatorStatus.ACTIVE
+            NodeOperatorStatus.ACTIVE
         );
     }
 
@@ -257,22 +314,22 @@ contract NodeOperatorRegistry is
         whenNotPaused
         userHasRole(REMOVE_OPERATOR_ROLE)
     {
-        Operator.NodeOperator storage no = operators[_operatorId];
+        NodeOperator storage no = operators[_operatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.CLAIMED ||
-                no.status == Operator.NodeOperatorStatus.EXIT ||
-                no.status == Operator.NodeOperatorStatus.ACTIVE,
+            no.status == NodeOperatorStatus.CLAIMED ||
+                no.status == NodeOperatorStatus.EXIT ||
+                no.status == NodeOperatorStatus.ACTIVE,
             "Node Operator state isn't CLAIMED, ACTIVE or EXIT"
         );
 
-        if (no.status == Operator.NodeOperatorStatus.CLAIMED) {
-            totalClaimedNodeOpearator--;
-        } else if (no.status == Operator.NodeOperatorStatus.EXIT) {
-            totalExitNodeOpearator--;
-        } else if (no.status == Operator.NodeOperatorStatus.ACTIVE) {
-            totalActiveNodeOpearator--;
+        if (no.status == NodeOperatorStatus.CLAIMED) {
+            totalClaimedNodeOperator--;
+        } else if (no.status == NodeOperatorStatus.EXIT) {
+            totalExitNodeOperator--;
+        } else if (no.status == NodeOperatorStatus.ACTIVE) {
+            totalActiveNodeOperator--;
         }
-        totalNodeOpearator--;
+        totalNodeOperator--;
 
         // update the operatorIds array by removing the operator id.
         for (uint256 idx = 0; idx < operatorIds.length - 1; idx++) {
@@ -285,6 +342,9 @@ contract NodeOperatorRegistry is
 
         // remove validator proxy from the validatorFactory.
         IValidatorFactory(validatorFactory).remove(no.validatorContract);
+
+        // update the totalTimesValidatorsSlashed.
+        totalTimesValidatorsSlashed -= no.slashed;
 
         // delete operator and owner mappings from operators and operatorOwners.
         delete operatorOwners[no.rewardAddress];
@@ -313,9 +373,9 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.ACTIVE,
+            no.status == NodeOperatorStatus.ACTIVE,
             "The Operator status is not active"
         );
 
@@ -331,12 +391,13 @@ contract NodeOperatorRegistry is
             );
 
         // update the operator status to STAKED.
-        no.status = Operator.NodeOperatorStatus.STAKED;
+        no.status = NodeOperatorStatus.STAKED;
+        no.statusTimestamp = block.timestamp;
         no.commissionRate = commissionRate;
 
         // update global
-        totalActiveNodeOpearator--;
-        totalStakedNodeOpearator++;
+        totalActiveNodeOperator--;
+        totalStakedNodeOperator++;
 
         emit StakeOperator(operatorId, no.validatorId);
     }
@@ -358,9 +419,9 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "The operator status is not STAKED"
         );
 
@@ -381,9 +442,9 @@ contract NodeOperatorRegistry is
         uint256 id = operatorOwners[msg.sender];
         require(id != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[id];
+        NodeOperator storage no = operators[id];
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "The operator status is not STAKED"
         );
         IValidator(no.validatorContract).unstake(no.validatorId);
@@ -391,9 +452,10 @@ contract NodeOperatorRegistry is
         // request withdraw from validatorShare
         ILido(lido).withdrawTotalDelegated(no.validatorShare);
 
-        no.status = Operator.NodeOperatorStatus.UNSTAKED;
-        totalStakedNodeOpearator--;
-        totalUnstakedNodeOpearator++;
+        no.status = NodeOperatorStatus.UNSTAKED;
+        no.statusTimestamp = block.timestamp;
+        totalStakedNodeOperator--;
+        totalUnstakedNodeOperator++;
 
         emit UnstakeOperator(id);
     }
@@ -408,18 +470,19 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
 
         require(
-            no.status == Operator.NodeOperatorStatus.UNSTAKED,
+            no.status == NodeOperatorStatus.UNSTAKED,
             "Operator status isn't UNSTAKED"
         );
 
         IValidator(no.validatorContract).unjail(no.validatorId);
 
-        no.status = Operator.NodeOperatorStatus.STAKED;
-        totalStakedNodeOpearator++;
-        totalUnstakedNodeOpearator--;
+        no.status = NodeOperatorStatus.STAKED;
+        no.statusTimestamp = block.timestamp;
+        totalStakedNodeOperator++;
+        totalUnstakedNodeOperator--;
 
         emit Unjail(operatorId, no.validatorId);
     }
@@ -438,9 +501,9 @@ contract NodeOperatorRegistry is
         uint256 id = operatorOwners[msg.sender];
         require(id != 0, "Operator doesn't exists");
 
-        Operator.NodeOperator storage no = operators[id];
+        NodeOperator storage no = operators[id];
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "The operator status is not STAKED"
         );
         IValidator(no.validatorContract).topUpForFee(msg.sender, _heimdallFee);
@@ -456,9 +519,9 @@ contract NodeOperatorRegistry is
         uint256 validatorId = operatorOwners[msg.sender];
         require(validatorId != 0, "Operator not exists");
 
-        Operator.NodeOperator storage no = operators[validatorId];
+        NodeOperator storage no = operators[validatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.UNSTAKED,
+            no.status == NodeOperatorStatus.UNSTAKED,
             "Operator status isn't UNSTAKED"
         );
 
@@ -467,9 +530,10 @@ contract NodeOperatorRegistry is
             validatorId
         );
 
-        no.status = Operator.NodeOperatorStatus.CLAIMED;
-        totalUnstakedNodeOpearator--;
-        totalClaimedNodeOpearator++;
+        no.status = NodeOperatorStatus.CLAIMED;
+        no.statusTimestamp = block.timestamp;
+        totalUnstakedNodeOperator--;
+        totalClaimedNodeOperator++;
 
         emit ClaimUnstake(validatorId, msg.sender, amount);
     }
@@ -488,10 +552,10 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
 
         require(
-            no.status == Operator.NodeOperatorStatus.CLAIMED,
+            no.status == NodeOperatorStatus.CLAIMED,
             "Operator status isn't CLAIMED"
         );
 
@@ -505,9 +569,10 @@ contract NodeOperatorRegistry is
             _proof
         );
 
-        totalClaimedNodeOpearator--;
-        totalExitNodeOpearator++;
-        no.status = Operator.NodeOperatorStatus.EXIT;
+        totalClaimedNodeOperator--;
+        totalExitNodeOperator++;
+        no.status = NodeOperatorStatus.EXIT;
+        no.statusTimestamp = block.timestamp;
 
         emit ClaimFee(
             operatorId,
@@ -528,10 +593,10 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
 
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "Operator status not STAKED"
         );
 
@@ -559,15 +624,15 @@ contract NodeOperatorRegistry is
         returns (uint256[] memory, address[] memory)
     {
         require(msg.sender == lido, "Caller is not the lido contract");
-        uint256[] memory shares = new uint256[](totalStakedNodeOpearator);
-        address[] memory recipient = new address[](totalStakedNodeOpearator);
-        uint256 index = 0;
+        uint256[] memory shares = new uint256[](totalStakedNodeOperator);
+        address[] memory recipient = new address[](totalStakedNodeOperator);
+        uint256 index;
         uint256 totalRewards = 0;
 
         // withdraw validator rewards
         for (uint256 id = 0; id < operatorIds.length; id++) {
-            Operator.NodeOperator memory no = operators[operatorIds[id]];
-            if (no.status == Operator.NodeOperatorStatus.STAKED) {
+            NodeOperator memory no = operators[operatorIds[id]];
+            if (no.status == NodeOperatorStatus.STAKED) {
                 uint256 rewards = IValidator(no.validatorContract)
                     .withdrawRewards(no.validatorId);
 
@@ -595,9 +660,9 @@ contract NodeOperatorRegistry is
         uint256 _operatorId,
         uint256 _newCommissionRate
     ) public override whenNotPaused userHasRole(UPDATE_COMMISSION_RATE_ROLE) {
-        Operator.NodeOperator storage no = operators[_operatorId];
+        NodeOperator storage no = operators[_operatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "Operator status isn't STAKED"
         );
 
@@ -694,6 +759,16 @@ contract NodeOperatorRegistry is
         stakeManager = _stakeManager;
     }
 
+    /// @notice Check if a validators was slashed and update stats.
+    /// This should be called by a cron job.
+    function checkIfValidatorsWasSlashed()
+        external
+        whenNotPaused
+        userHasRole(CRON_JOB_ROLE)
+    {
+        revert("Not Implemented until Polygon implement slashing");
+    }
+
     // ====================================================================
     // ============================ GETTERS ===============================
     // ====================================================================
@@ -711,10 +786,9 @@ contract NodeOperatorRegistry is
     function getNodeOperator(uint256 _operatorId, bool _full)
         external
         view
-        override
-        returns (Operator.NodeOperator memory)
+        returns (NodeOperator memory)
     {
-        Operator.NodeOperator memory opts = operators[_operatorId];
+        NodeOperator memory opts = operators[_operatorId];
         if (!_full) {
             opts.name = "";
             return opts;
@@ -751,34 +825,20 @@ contract NodeOperatorRegistry is
         external
         view
         returns (
-            uint256 _totalNodeOpearator,
-            uint256 _totalActiveNodeOpearator,
-            uint256 _totalStakedNodeOpearator,
-            uint256 _totalUnstakedNodeOpearator,
-            uint256 _totalClaimedNodeOpearator,
-            uint256 _totalExitNodeOpearator
+            uint256 _totalNodeOperator,
+            uint256 _totalActiveNodeOperator,
+            uint256 _totalStakedNodeOperator,
+            uint256 _totalUnstakedNodeOperator,
+            uint256 _totalClaimedNodeOperator,
+            uint256 _totalExitNodeOperator
         )
-    // uint256 _maxAmountStake,
-    // uint256 _minAmountStake,
-    // uint256 _maxHeimdallFees,
-    // uint256 _minHeimdallFees,
-    // uint256 _commissionRate,
-    // bool _allowsRestake,
-    // bool _allowsUnjail
     {
-        _totalNodeOpearator = totalNodeOpearator;
-        _totalActiveNodeOpearator = totalActiveNodeOpearator;
-        _totalStakedNodeOpearator = totalStakedNodeOpearator;
-        _totalUnstakedNodeOpearator = totalUnstakedNodeOpearator;
-        _totalClaimedNodeOpearator = totalClaimedNodeOpearator;
-        _totalExitNodeOpearator = totalExitNodeOpearator;
-        // _maxAmountStake = maxAmountStake;
-        // _minAmountStake = minAmountStake;
-        // _maxHeimdallFees = maxHeimdallFees;
-        // _minHeimdallFees = minHeimdallFees;
-        // _commissionRate = commissionRate;
-        // _allowsRestake = allowsRestake;
-        // _allowsUnjail = allowsUnjail;
+        _totalNodeOperator = totalNodeOperator;
+        _totalActiveNodeOperator = totalActiveNodeOperator;
+        _totalStakedNodeOperator = totalStakedNodeOperator;
+        _totalUnstakedNodeOperator = totalUnstakedNodeOperator;
+        _totalClaimedNodeOperator = totalClaimedNodeOperator;
+        _totalExitNodeOperator = totalExitNodeOperator;
     }
 
     /// @notice Get validator total stake.
@@ -815,15 +875,21 @@ contract NodeOperatorRegistry is
     {
         Operator.OperatorShare[]
             memory operatorShares = new Operator.OperatorShare[](
-                totalStakedNodeOpearator
+                totalStakedNodeOperator
             );
 
         for (uint256 idx = 0; idx < operatorIds.length; idx++) {
             uint256 id = operatorIds[idx];
-            if (operators[id].status == Operator.NodeOperatorStatus.STAKED) {
+            if (operators[id].status == NodeOperatorStatus.STAKED) {
                 operatorShares[idx] = Operator.OperatorShare({
                     operatorId: id,
-                    validatorShare: operators[id].validatorShare
+                    validatorShare: operators[id].validatorShare,
+                    slashed: totalTimesValidatorsSlashed > 0
+                        ? (operators[id].slashed * 100) /
+                            totalTimesValidatorsSlashed
+                        : 0,
+                    statusTimestamp: operators[id].statusTimestamp,
+                    isTrusted: operators[id].isTrusted
                 });
             }
         }
@@ -847,17 +913,23 @@ contract NodeOperatorRegistry is
         external
         view
         override
-        returns (address[] memory)
+        returns (Operator.OperatorReward[] memory)
     {
-        address[] memory rewardAddresses = new address[](
-            totalStakedNodeOpearator
-        );
-        uint256 index = 0;
+        Operator.OperatorReward[]
+            memory rewardAddresses = new Operator.OperatorReward[](
+                totalStakedNodeOperator
+            );
+        uint256 index;
 
         for (uint256 idx = 0; idx < operatorIds.length; idx++) {
             uint256 id = operatorIds[idx];
-            if (operators[id].status == Operator.NodeOperatorStatus.STAKED) {
-                rewardAddresses[index] = operators[id].rewardAddress;
+            if (operators[id].status == NodeOperatorStatus.STAKED) {
+                rewardAddresses[idx] = Operator.OperatorReward({
+                    rewardAddress: operators[id].rewardAddress,
+                    penality: operators[id].slashedTimestamp +
+                        SANCTION_SLASH_DELAY >
+                        block.timestamp
+                });
                 index++;
             }
         }
@@ -900,7 +972,7 @@ contract NodeOperatorRegistry is
         uint256 id,
         string name,
         bytes signerPubkey,
-        Operator.NodeOperatorStatus state
+        NodeOperatorStatus state
     );
 
     /// @dev A node operator was removed.
