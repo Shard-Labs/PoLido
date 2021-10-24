@@ -118,13 +118,6 @@ interface INodeOperatorRegistry {
     /// @return Returns the lido contract address.
     function getLido() external view returns (address);
 
-    /// @notice Allows to get node operator details.
-    /// @return Returns node operator details.
-    function getNodeOperator(uint256 _operatorId, bool _full)
-        external
-        view
-        returns (Operator.NodeOperator memory);
-
     /// @notice Allows to get the validatorShare address of an operator.
     /// @param _operatorId operator id.
     function getOperatorShare(uint256 _operatorId) external returns (address);

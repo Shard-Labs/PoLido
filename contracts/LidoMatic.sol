@@ -34,7 +34,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     bool public paused;
 
     // mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
-    mapping(uint256 => RequestWithdraw[]) public token2WithdrawRequest;
+    mapping(uint256 => RequestWithdraw) public token2WithdrawRequest;
 
     mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
@@ -146,13 +146,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     function requestWithdraw(uint256 _amount) external notPaused {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
-        
+
         uint256 tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
-
-        RequestWithdraw[] storage requestWithdraws = token2WithdrawRequest[
-            tokenId
-        ];
-
         require(
             IERC20Upgradeable(address(this)).transferFrom(
                 msg.sender,
@@ -218,15 +213,13 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     amount2Burn += (_amount - totalBurned);
                 }
 
-                requestWithdraws.push(
-                    RequestWithdraw(
-                        amount2WithdrawFromValidator,
-                        amount2Burn,
-                        validator2Nonce[validatorShare],
-                        block.timestamp,
-                        validatorShare,
-                        true
-                    )
+                token2WithdrawRequest[tokenId] = RequestWithdraw(
+                    amount2WithdrawFromValidator,
+                    amount2Burn,
+                    validator2Nonce[validatorShare],
+                    block.timestamp,
+                    validatorShare,
+                    true
                 );
 
                 currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
@@ -234,15 +227,13 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 lastWithdrawnValidatorId++;
             }
         } else {
-            requestWithdraws.push(
-                RequestWithdraw(
-                    currentAmount2WithdrawInMatic,
-                    _amount,
-                    0,
-                    block.timestamp,
-                    address(0),
-                    true
-                )
+            token2WithdrawRequest[tokenId] = RequestWithdraw(
+                currentAmount2WithdrawInMatic,
+                _amount,
+                0,
+                block.timestamp,
+                address(0),
+                true
             );
 
             reservedFunds += currentAmount2WithdrawInMatic;
@@ -258,7 +249,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             totalBuffered > delegationLowerBound,
             "Amount to delegate lower than minimum"
         );
-
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
 
@@ -307,59 +297,50 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      */
     function claimTokens(uint256 _tokenId) external {
         // check if the token is owner by the msg.sender.
-        require(ILidoNFT(lidoNFT).isApprovedOrOwner(msg.sender, _tokenId), "Not owner");
+        require(
+            ILidoNFT(lidoNFT).isApprovedOrOwner(msg.sender, _tokenId),
+            "Not owner"
+        );
 
-        RequestWithdraw[] storage userRequests = token2WithdrawRequest[
-            _tokenId
-        ];
+        RequestWithdraw storage userRequests = token2WithdrawRequest[_tokenId];
 
-        uint256 requestIndex;
-
-        for (uint256 i = userRequests.length - 1; i >= 0; i--) {
-            if (i > 0 && userRequests[i - 1].active) continue;
-            requestIndex = i;
-            break;
-        }
-
-        require(userRequests[requestIndex].active, "No active withdrawals");
-
+        require(userRequests.active, "No active withdrawals");
         require(
             block.timestamp >=
-                userRequests[requestIndex].requestTime +
-                    stakeManager.withdrawalDelay(),
+                userRequests.requestTime + stakeManager.withdrawalDelay(),
             "Not able to claim yet"
         );
 
         // Amount in Matic requested by the user
-        uint256 amountToClaim = userRequests[requestIndex].amountToClaim;
+        uint256 amountToClaim = userRequests.amountToClaim;
 
-        if (userRequests[requestIndex].validatorAddress != address(0)) {
-
+        if (userRequests.validatorAddress != address(0)) {
             unstakeClaimTokens_new(
-                userRequests[requestIndex].validatorAddress,
-                userRequests[requestIndex].validatorNonce
+                userRequests.validatorAddress,
+                userRequests.validatorNonce
             );
 
             totalDelegated -= amountToClaim;
 
             validator2DelegatedAmount[
-                userRequests[requestIndex].validatorAddress
+                userRequests.validatorAddress
             ] -= amountToClaim;
         } else {
             reservedFunds -= amountToClaim;
             totalBuffered -= amountToClaim;
         }
 
-        uint256 amountToBurn = userRequests[requestIndex].amountToBurn;
+        uint256 amountToBurn = userRequests.amountToBurn;
 
         _burn(address(this), amountToBurn);
+        ILidoNFT(lidoNFT).burn(_tokenId);
 
         lockedAmountMatic -= amountToClaim;
         lockedAmountStMatic -= amountToBurn;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amountToClaim);
 
-        userRequests[requestIndex].active = false;
+        userRequests.active = false;
     }
 
     /**
@@ -412,11 +393,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      */
     function withdrawTotalDelegated(address _validatorShare) external {
         require(msg.sender == address(nodeOperator), "Not a node operator");
-        
-        uint256 tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
-        RequestWithdraw[] storage requestWithdraws = token2WithdrawRequest[
-            tokenId
-        ];
+
+        uint256 tokenId = ILidoNFT(lidoNFT).mint(address(this));
 
         (uint256 stakedAmount, ) = IValidatorShare(_validatorShare)
             .getTotalStake(address(this));
@@ -427,15 +405,13 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         user2Nonce[address(this)]++;
 
-        requestWithdraws.push(
-            RequestWithdraw(
-                stakedAmount,
-                uint256(0),
-                validator2Nonce[_validatorShare],
-                block.timestamp,
-                _validatorShare,
-                true
-            )
+        token2WithdrawRequest[tokenId] = RequestWithdraw(
+            stakedAmount,
+            uint256(0),
+            validator2Nonce[_validatorShare],
+            block.timestamp,
+            _validatorShare,
+            true
         );
     }
 
@@ -445,46 +421,41 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * LidoMatic contract
      */
     function claimTokens2LidoMatic(uint256 _tokenId) public {
-        RequestWithdraw[] storage lidoRequests = token2WithdrawRequest[
-            _tokenId
-        ];
+        RequestWithdraw storage lidoRequests = token2WithdrawRequest[_tokenId];
 
-        uint256 requestIndex;
-
-        // Locate the oldest active request
-        // Start from the end to save gas
-        for (uint256 i = lidoRequests.length - 1; i >= 0; i--) {
-            if (i > 0 && lidoRequests[i - 1].active) continue;
-            requestIndex = i;
-            break;
-        }
+        ILidoNFT lidoFNTContract = ILidoNFT(lidoNFT);
+        require(
+            lidoFNTContract.ownerOf(_tokenId) == address(this),
+            "Not owner of the NFT"
+        );
 
         // Return from function if request has already been processed or withdrawal delay isnt fulfilled
-        require(lidoRequests[requestIndex].active, "No active withdrawals");
+        require(lidoRequests.active, "No active withdrawals");
 
         require(
             block.timestamp >=
-                lidoRequests[requestIndex].requestTime +
-                    stakeManager.withdrawalDelay(),
+                lidoRequests.requestTime + stakeManager.withdrawalDelay(),
             "Not able to claim yet"
         );
 
         unstakeClaimTokens_new(
-            lidoRequests[requestIndex].validatorAddress,
-            lidoRequests[requestIndex].validatorNonce
+            lidoRequests.validatorAddress,
+            lidoRequests.validatorNonce
         );
 
         // Update totalBuffered after claiming the amount
-        totalBuffered += lidoRequests[requestIndex].amountToClaim;
+        totalBuffered += lidoRequests.amountToClaim;
 
         // Update delegated amount for a validator
         // Not sure if this part is necessary because the validator is unstaked
-        validator2DelegatedAmount[
-            lidoRequests[requestIndex].validatorAddress
-        ] -= lidoRequests[requestIndex].amountToClaim;
+        validator2DelegatedAmount[lidoRequests.validatorAddress] -= lidoRequests
+            .amountToClaim;
 
         // Wrap up the request
-        lidoRequests[requestIndex].active = false;
+        lidoRequests.active = false;
+
+        // burn nft
+        lidoFNTContract.burn(_tokenId);
     }
 
     /**

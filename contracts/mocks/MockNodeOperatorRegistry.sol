@@ -2,20 +2,16 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
-contract MockNodeOperatorRegistry {
-    /// @notice OperatorShare struct
-    struct OperatorShare {
-        uint256 operatorId;
-        address validatorShare;
-    }
+import "../lib/Operator.sol";
 
-    OperatorShare[] operatorShare;
+contract MockNodeOperatorRegistry {
+    Operator.OperatorShare[] operatorShare;
 
     uint256[] operatorIds;
     address[] operatorAddresses;
 
     constructor(address _validatorShare, address _operator) {
-        operatorShare.push(OperatorShare(1, _validatorShare));
+        operatorShare.push(Operator.OperatorShare(1, _validatorShare, 0, block.timestamp));
         operatorAddresses.push(_operator);
     }
 
@@ -30,17 +26,15 @@ contract MockNodeOperatorRegistry {
     }
 
     /// @notice Get validator total stake.
-    /// @param _user user address.
     /// @return Returns the validatorId of an address.
-    function getValidatorId(address _user) external pure returns (uint256) {
+    function getValidatorId(address) external pure returns (uint256) {
         return 1;
     }
 
     /// @notice Get validatorShare contract address.
     /// @dev Get validatorShare contract address.
-    /// @param _validatorId Validator Id
     /// @return Returns the address of the validatorShare contract.
-    function getValidatorContract(uint256 _validatorId)
+    function getValidatorContract(uint256)
         external
         pure
         returns (address)
@@ -53,12 +47,12 @@ contract MockNodeOperatorRegistry {
     function getOperatorShares()
         external
         view
-        returns (OperatorShare[] memory)
+        returns (Operator.OperatorShare[] memory)
     {
         return operatorShare;
     }
 
-    function getOperatorRewardAddresses() external returns (address[] memory) {
+    function getOperatorRewardAddresses() view external returns (address[] memory) {
         return operatorAddresses;
     }
 }

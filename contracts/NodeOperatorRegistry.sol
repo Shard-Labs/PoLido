@@ -8,7 +8,7 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/ILido.sol";
-import "./lib/Operator.sol";
+// import "./lib/Operator.sol";
 import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
@@ -104,13 +104,13 @@ contract NodeOperatorRegistry is
     uint256 totalExitNodeOpearator;
 
     /// @notice validatorFactory address
-    address validatorFactory;
+    address public validatorFactory;
     /// @notice stakeManager address
-    address stakeManager;
+    address public stakeManager;
     /// @notice polygonERC20 address (Matic)
-    address polygonERC20;
+    address public polygonERC20;
     /// @notice lido address
-    address lido;
+    address public lido;
 
     /// @notice max amount allowed to stake per validator
     uint256 maxAmountStake;
@@ -131,7 +131,7 @@ contract NodeOperatorRegistry is
     bool public allowsUnjail;
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
-    mapping(uint256 => Operator.NodeOperator) internal operators;
+    mapping(uint256 => NodeOperator) internal operators;
 
     /// @dev This stores the operators ids.
     uint256[] internal operatorIds;
@@ -147,6 +147,36 @@ contract NodeOperatorRegistry is
     bytes32 public constant UPDATE_STAKE_HEIMDALL_FEES_ROLE =
         keccak256("UPDATE_STAKE_HEIMDALL_FEES");
     bytes32 public constant CRON_JOB_ROLE = keccak256("CRON_JOB");
+
+    /// @notice The node operator states.
+    enum NodeOperatorStatus {
+        NONE,
+        ACTIVE,
+        STAKED,
+        UNSTAKED,
+        CLAIMED,
+        EXIT
+    }
+
+    /// @notice The node operator struct
+    /// @param state node operator status(ACTIVE, UNACTIVE, STAKED, UNSTAKED).
+    /// @param name node operator name.
+    /// @param rewardAddress Validator public key used for access control and receive rewards.
+    /// @param validatorId validator id of this node operator on the polygon stake manager.
+    /// @param signerPubkey public key used on heimdall.
+    struct NodeOperator {
+        NodeOperatorStatus status;
+        string name;
+        address rewardAddress;
+        uint256 validatorId;
+        bytes signerPubkey;
+        address validatorShare;
+        address validatorContract;
+        uint256 commissionRate;
+        uint256 slashed;
+        uint256 slashedTimestamp;
+        uint256 statusTimestamp;
+    }
 
     // ====================================================================
     // =========================== MODIFIERS ==============================
@@ -238,8 +268,8 @@ contract NodeOperatorRegistry is
             .create();
 
         // add the validator.
-        operators[operatorId] = Operator.NodeOperator({
-            status: Operator.NodeOperatorStatus.ACTIVE,
+        operators[operatorId] = NodeOperator({
+            status: NodeOperatorStatus.ACTIVE,
             name: _name,
             rewardAddress: _rewardAddress,
             validatorId: 0,
@@ -248,6 +278,7 @@ contract NodeOperatorRegistry is
             validatorContract: validatorContract,
             commissionRate: commissionRate,
             slashed: 0,
+            slashedTimestamp: 0,
             statusTimestamp: block.timestamp
         });
 
@@ -264,7 +295,7 @@ contract NodeOperatorRegistry is
             operatorId,
             _name,
             _signerPubkey,
-            Operator.NodeOperatorStatus.ACTIVE
+            NodeOperatorStatus.ACTIVE
         );
     }
 
@@ -279,19 +310,19 @@ contract NodeOperatorRegistry is
         whenNotPaused
         userHasRole(REMOVE_OPERATOR_ROLE)
     {
-        Operator.NodeOperator storage no = operators[_operatorId];
+        NodeOperator storage no = operators[_operatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.CLAIMED ||
-                no.status == Operator.NodeOperatorStatus.EXIT ||
-                no.status == Operator.NodeOperatorStatus.ACTIVE,
+            no.status == NodeOperatorStatus.CLAIMED ||
+                no.status == NodeOperatorStatus.EXIT ||
+                no.status == NodeOperatorStatus.ACTIVE,
             "Node Operator state isn't CLAIMED, ACTIVE or EXIT"
         );
 
-        if (no.status == Operator.NodeOperatorStatus.CLAIMED) {
+        if (no.status == NodeOperatorStatus.CLAIMED) {
             totalClaimedNodeOpearator--;
-        } else if (no.status == Operator.NodeOperatorStatus.EXIT) {
+        } else if (no.status == NodeOperatorStatus.EXIT) {
             totalExitNodeOpearator--;
-        } else if (no.status == Operator.NodeOperatorStatus.ACTIVE) {
+        } else if (no.status == NodeOperatorStatus.ACTIVE) {
             totalActiveNodeOpearator--;
         }
         totalNodeOpearator--;
@@ -338,9 +369,9 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.ACTIVE,
+            no.status == NodeOperatorStatus.ACTIVE,
             "The Operator status is not active"
         );
 
@@ -356,7 +387,7 @@ contract NodeOperatorRegistry is
             );
 
         // update the operator status to STAKED.
-        no.status = Operator.NodeOperatorStatus.STAKED;
+        no.status = NodeOperatorStatus.STAKED;
         no.statusTimestamp = block.timestamp;
         no.commissionRate = commissionRate;
 
@@ -384,9 +415,9 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator not exists");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "The operator status is not STAKED"
         );
 
@@ -407,9 +438,9 @@ contract NodeOperatorRegistry is
         uint256 id = operatorOwners[msg.sender];
         require(id != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[id];
+        NodeOperator storage no = operators[id];
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "The operator status is not STAKED"
         );
         IValidator(no.validatorContract).unstake(no.validatorId);
@@ -417,7 +448,7 @@ contract NodeOperatorRegistry is
         // request withdraw from validatorShare
         ILido(lido).withdrawTotalDelegated(no.validatorShare);
 
-        no.status = Operator.NodeOperatorStatus.UNSTAKED;
+        no.status = NodeOperatorStatus.UNSTAKED;
         no.statusTimestamp = block.timestamp;
         totalStakedNodeOpearator--;
         totalUnstakedNodeOpearator++;
@@ -435,16 +466,16 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
 
         require(
-            no.status == Operator.NodeOperatorStatus.UNSTAKED,
+            no.status == NodeOperatorStatus.UNSTAKED,
             "Operator status isn't UNSTAKED"
         );
 
         IValidator(no.validatorContract).unjail(no.validatorId);
 
-        no.status = Operator.NodeOperatorStatus.STAKED;
+        no.status = NodeOperatorStatus.STAKED;
         no.statusTimestamp = block.timestamp;
         totalStakedNodeOpearator++;
         totalUnstakedNodeOpearator--;
@@ -466,9 +497,9 @@ contract NodeOperatorRegistry is
         uint256 id = operatorOwners[msg.sender];
         require(id != 0, "Operator doesn't exists");
 
-        Operator.NodeOperator storage no = operators[id];
+        NodeOperator storage no = operators[id];
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "The operator status is not STAKED"
         );
         IValidator(no.validatorContract).topUpForFee(msg.sender, _heimdallFee);
@@ -484,9 +515,9 @@ contract NodeOperatorRegistry is
         uint256 validatorId = operatorOwners[msg.sender];
         require(validatorId != 0, "Operator not exists");
 
-        Operator.NodeOperator storage no = operators[validatorId];
+        NodeOperator storage no = operators[validatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.UNSTAKED,
+            no.status == NodeOperatorStatus.UNSTAKED,
             "Operator status isn't UNSTAKED"
         );
 
@@ -495,7 +526,7 @@ contract NodeOperatorRegistry is
             validatorId
         );
 
-        no.status = Operator.NodeOperatorStatus.CLAIMED;
+        no.status = NodeOperatorStatus.CLAIMED;
         no.statusTimestamp = block.timestamp;
         totalUnstakedNodeOpearator--;
         totalClaimedNodeOpearator++;
@@ -517,10 +548,10 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
 
         require(
-            no.status == Operator.NodeOperatorStatus.CLAIMED,
+            no.status == NodeOperatorStatus.CLAIMED,
             "Operator status isn't CLAIMED"
         );
 
@@ -536,7 +567,7 @@ contract NodeOperatorRegistry is
 
         totalClaimedNodeOpearator--;
         totalExitNodeOpearator++;
-        no.status = Operator.NodeOperatorStatus.EXIT;
+        no.status = NodeOperatorStatus.EXIT;
         no.statusTimestamp = block.timestamp;
 
         emit ClaimFee(
@@ -558,10 +589,10 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[msg.sender];
         require(operatorId != 0, "Operator doesn't exist");
 
-        Operator.NodeOperator storage no = operators[operatorId];
+        NodeOperator storage no = operators[operatorId];
 
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "Operator status not STAKED"
         );
 
@@ -596,8 +627,8 @@ contract NodeOperatorRegistry is
 
         // withdraw validator rewards
         for (uint256 id = 0; id < operatorIds.length; id++) {
-            Operator.NodeOperator memory no = operators[operatorIds[id]];
-            if (no.status == Operator.NodeOperatorStatus.STAKED) {
+            NodeOperator memory no = operators[operatorIds[id]];
+            if (no.status == NodeOperatorStatus.STAKED) {
                 uint256 rewards = IValidator(no.validatorContract)
                     .withdrawRewards(no.validatorId);
 
@@ -625,9 +656,9 @@ contract NodeOperatorRegistry is
         uint256 _operatorId,
         uint256 _newCommissionRate
     ) public override whenNotPaused userHasRole(UPDATE_COMMISSION_RATE_ROLE) {
-        Operator.NodeOperator storage no = operators[_operatorId];
+        NodeOperator storage no = operators[_operatorId];
         require(
-            no.status == Operator.NodeOperatorStatus.STAKED,
+            no.status == NodeOperatorStatus.STAKED,
             "Operator status isn't STAKED"
         );
 
@@ -751,10 +782,9 @@ contract NodeOperatorRegistry is
     function getNodeOperator(uint256 _operatorId, bool _full)
         external
         view
-        override
-        returns (Operator.NodeOperator memory)
+        returns (NodeOperator memory)
     {
-        Operator.NodeOperator memory opts = operators[_operatorId];
+        NodeOperator memory opts = operators[_operatorId];
         if (!_full) {
             opts.name = "";
             return opts;
@@ -846,10 +876,14 @@ contract NodeOperatorRegistry is
 
         for (uint256 idx = 0; idx < operatorIds.length; idx++) {
             uint256 id = operatorIds[idx];
-            if (operators[id].status == Operator.NodeOperatorStatus.STAKED) {
+            if (operators[id].status == NodeOperatorStatus.STAKED) {
                 operatorShares[idx] = Operator.OperatorShare({
                     operatorId: id,
-                    validatorShare: operators[id].validatorShare
+                    validatorShare: operators[id].validatorShare,
+                    slashed: totalTimesValidatorsSlashed > 0
+                        ? (operators[id].slashed * 100) / totalTimesValidatorsSlashed
+                        : 0,
+                    statusTimestamp: operators[id].statusTimestamp
                 });
             }
         }
@@ -882,7 +916,7 @@ contract NodeOperatorRegistry is
 
         for (uint256 idx = 0; idx < operatorIds.length; idx++) {
             uint256 id = operatorIds[idx];
-            if (operators[id].status == Operator.NodeOperatorStatus.STAKED) {
+            if (operators[id].status == NodeOperatorStatus.STAKED) {
                 rewardAddresses[index] = operators[id].rewardAddress;
                 index++;
             }
@@ -926,7 +960,7 @@ contract NodeOperatorRegistry is
         uint256 id,
         string name,
         bytes signerPubkey,
-        Operator.NodeOperatorStatus state
+        NodeOperatorStatus state
     );
 
     /// @dev A node operator was removed.
