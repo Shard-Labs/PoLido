@@ -754,4 +754,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         require(_rewardMin <= 100 , "invalid min reward value");
         RewardMin = _rewardMin;
     }
+
+    /**
+     * @dev Function that sets the lidoNFT address
+     * @param _lidoNFT new lidoNFT address
+     */
+    function setLidoNFT(address _lidoNFT) external auth(DAO){
+        lidoNFT = _lidoNFT;
+    }
 }

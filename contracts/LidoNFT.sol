@@ -27,6 +27,7 @@ contract LidoNFT is
         __Ownable_init();
         __ERC721_init(_name, _symbol);
         __ERC721Enumerable_init();
+        __Pausable_init();
     }
 
     /// @notice Mint token.
