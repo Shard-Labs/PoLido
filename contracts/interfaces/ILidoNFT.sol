@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 /// @title LidoMatic interface.
 /// @author 2021 Shardlabs
-interface ILidoNFT is IERC721{
+interface ILidoNFT is IERC721 {
     function mint(address _to) external returns (uint256);
 
     function burn(uint256 _tokenId) external;
@@ -15,4 +15,6 @@ interface ILidoNFT is IERC721{
         external
         view
         returns (bool);
+
+    function setLido(address _lido) external;
 }

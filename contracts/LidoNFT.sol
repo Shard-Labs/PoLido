@@ -24,6 +24,7 @@ contract LidoNFT is
         public
         initializer
     {
+        __Ownable_init();
         __ERC721_init(_name, _symbol);
         __ERC721Enumerable_init();
     }
@@ -60,7 +61,7 @@ contract LidoNFT is
     }
 
     /// @notice Set LidoMatic contract
-    function setLido(address _lido) public {
+    function setLido(address _lido) external onlyOwner {
         lido = _lido;
     }
 }

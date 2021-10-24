@@ -14,9 +14,11 @@ import "./interfaces/ILidoNFT.sol";
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint256 DELEGATE_DELAY;
-    uint256 DELEGATE_MIN;
-    uint256 REWARD_MIN;
+    uint256 public DelegationDelay;
+    // percentage to delegate to a validator whene it's not trusted.
+    uint256 public DelegationMin;
+    // percentage of rewards a validator will take if he was slashed.
+    uint256 public RewardMin;
 
     INodeOperatorRegistry public nodeOperator;
     FeeDistribution public entityFees;
@@ -106,9 +108,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         insurance = _insurance;
         lidoNFT = _lidoNFT;
 
-        DELEGATE_DELAY = 2**13;
-        DELEGATE_MIN = 10;
-        REWARD_MIN = 80;
+        DelegationDelay = 2**13;
+        DelegationMin = 10;
+        RewardMin = 80;
 
         minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(5, 5, 90);
@@ -266,23 +268,23 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         // calculated the ratio for each validator, if the validator is trusted
-        // the ratio is DELEGATE_MAX if not yet trusted the amount is DELEGATE_MIN.
+        // the ratio is DELEGATE_MAX if not yet trusted the amount is DelegationMin.
         uint256[] memory ratios = new uint256[](operatorShares.length);
-        uint256 totalRatios = 0;
+        uint256 totalRatio = 0;
 
         for (uint256 idx = 0; idx < operatorShares.length; idx++) {
             uint256 delegateRatio = operatorShares[idx].statusTimestamp +
-                DELEGATE_DELAY >=
+                DelegationDelay >=
                 block.timestamp ||
                 operatorShares[idx].isTrusted
-                ? DELEGATE_MIN
-                : 100;
+                ? 100
+                : DelegationMin;
             ratios[idx] = delegateRatio;
-            totalRatios += delegateRatio;
+            totalRatio += delegateRatio;
         }
 
         uint256 amountToDelegate = totalBuffered - reservedFunds;
-        uint256 totalAmountDelegated = 0;
+        uint256 totalAmountDelegated;
 
         IERC20Upgradeable(token).approve(
             address(stakeManager),
@@ -291,7 +293,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
             uint256 amountPerValidator = (amountToDelegate * ratios[i]) /
-                totalRatios;
+                totalRatio;
             totalAmountDelegated += amountPerValidator;
             buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
 
@@ -404,20 +406,20 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         uint256[] memory ratios = new uint256[](operatorShares.length);
-        uint256 totalRatios = 0;
+        uint256 totalRatio = 0;
 
         for (uint256 idx = 0; idx < operators.length; idx++) {
             uint256 rewardRatio = operators[idx].penality
-                ? REWARD_MIN
+                ? RewardMin
                 : 100;
             ratios[idx] = rewardRatio;
-            totalRatios += rewardRatio;
+            totalRatio += rewardRatio;
         }
 
         for (uint256 i = 0; i < operators.length; i++) {
             IERC20Upgradeable(token).safeTransfer(
                 operators[i].rewardAddress,
-                (operatorsRewards * ratios[i]) / totalRatios
+                (operatorsRewards * ratios[i]) / totalRatio
             );
         }
 
@@ -737,8 +739,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 _delegatMin
     ) external auth(DAO) {
         require(_delegatMin <= 100 , "invalid min reward value");
-        DELEGATE_DELAY = _delay;
-        DELEGATE_MIN = _delegatMin;
+        DelegationDelay = _delay;
+        DelegationMin = _delegatMin;
     }
 
     /**
@@ -750,6 +752,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 _rewardMin
     ) external auth(DAO) {
         require(_rewardMin <= 100 , "invalid min reward value");
-        REWARD_MIN = _rewardMin;
+        RewardMin = _rewardMin;
     }
 }

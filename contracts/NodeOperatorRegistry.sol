@@ -8,8 +8,6 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/ILido.sol";
-// import "./lib/Operator.sol";
-import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 Shardlabs.
@@ -91,17 +89,17 @@ contract NodeOperatorRegistry is
     AccessControlUpgradeable
 {
     /// @notice Total Node Operators
-    uint256 totalNodeOpearator;
+    uint256 totalNodeOperator;
     /// @notice Total Active Node Operators
-    uint256 totalActiveNodeOpearator;
+    uint256 totalActiveNodeOperator;
     /// @notice Total Staked Node Operators
-    uint256 totalStakedNodeOpearator;
+    uint256 totalStakedNodeOperator;
     /// @notice Total Unstaked Node Operators
-    uint256 totalUnstakedNodeOpearator;
+    uint256 totalUnstakedNodeOperator;
     /// @notice Total Claimed Node Operators
-    uint256 totalClaimedNodeOpearator;
+    uint256 totalClaimedNodeOperator;
     /// @notice Total Exited Node Operators
-    uint256 totalExitNodeOpearator;
+    uint256 totalExitNodeOperator;
 
     /// @notice validatorFactory address
     address public validatorFactory;
@@ -179,7 +177,6 @@ contract NodeOperatorRegistry is
         uint256 slashedTimestamp;
         uint256 statusTimestamp;
         bool isTrusted;
-        uint256 sanctionEndTimestamp;
     }
 
     // ====================================================================
@@ -267,7 +264,7 @@ contract NodeOperatorRegistry is
         require(_rewardAddress != address(0), "Invalid reward address");
         require(operatorOwners[_rewardAddress] == 0, "Address already used");
 
-        uint256 operatorId = totalNodeOpearator + 1;
+        uint256 operatorId = totalNodeOperator + 1;
 
         // deploy validator contract.
         address validatorContract = IValidatorFactory(validatorFactory)
@@ -286,14 +283,13 @@ contract NodeOperatorRegistry is
             slashed: 0,
             slashedTimestamp: 0,
             statusTimestamp: block.timestamp,
-            isTrusted: isTrusted,
-            sanctionEndTimestamp: 0
+            isTrusted: isTrusted
         });
 
         // update global
         operatorIds.push(operatorId);
-        totalNodeOpearator++;
-        totalActiveNodeOpearator++;
+        totalNodeOperator++;
+        totalActiveNodeOperator++;
 
         // map user _rewardAddress with the operatorId.
         operatorOwners[_rewardAddress] = operatorId;
@@ -327,13 +323,13 @@ contract NodeOperatorRegistry is
         );
 
         if (no.status == NodeOperatorStatus.CLAIMED) {
-            totalClaimedNodeOpearator--;
+            totalClaimedNodeOperator--;
         } else if (no.status == NodeOperatorStatus.EXIT) {
-            totalExitNodeOpearator--;
+            totalExitNodeOperator--;
         } else if (no.status == NodeOperatorStatus.ACTIVE) {
-            totalActiveNodeOpearator--;
+            totalActiveNodeOperator--;
         }
-        totalNodeOpearator--;
+        totalNodeOperator--;
 
         // update the operatorIds array by removing the operator id.
         for (uint256 idx = 0; idx < operatorIds.length - 1; idx++) {
@@ -400,8 +396,8 @@ contract NodeOperatorRegistry is
         no.commissionRate = commissionRate;
 
         // update global
-        totalActiveNodeOpearator--;
-        totalStakedNodeOpearator++;
+        totalActiveNodeOperator--;
+        totalStakedNodeOperator++;
 
         emit StakeOperator(operatorId, no.validatorId);
     }
@@ -458,8 +454,8 @@ contract NodeOperatorRegistry is
 
         no.status = NodeOperatorStatus.UNSTAKED;
         no.statusTimestamp = block.timestamp;
-        totalStakedNodeOpearator--;
-        totalUnstakedNodeOpearator++;
+        totalStakedNodeOperator--;
+        totalUnstakedNodeOperator++;
 
         emit UnstakeOperator(id);
     }
@@ -485,8 +481,8 @@ contract NodeOperatorRegistry is
 
         no.status = NodeOperatorStatus.STAKED;
         no.statusTimestamp = block.timestamp;
-        totalStakedNodeOpearator++;
-        totalUnstakedNodeOpearator--;
+        totalStakedNodeOperator++;
+        totalUnstakedNodeOperator--;
 
         emit Unjail(operatorId, no.validatorId);
     }
@@ -536,8 +532,8 @@ contract NodeOperatorRegistry is
 
         no.status = NodeOperatorStatus.CLAIMED;
         no.statusTimestamp = block.timestamp;
-        totalUnstakedNodeOpearator--;
-        totalClaimedNodeOpearator++;
+        totalUnstakedNodeOperator--;
+        totalClaimedNodeOperator++;
 
         emit ClaimUnstake(validatorId, msg.sender, amount);
     }
@@ -573,8 +569,8 @@ contract NodeOperatorRegistry is
             _proof
         );
 
-        totalClaimedNodeOpearator--;
-        totalExitNodeOpearator++;
+        totalClaimedNodeOperator--;
+        totalExitNodeOperator++;
         no.status = NodeOperatorStatus.EXIT;
         no.statusTimestamp = block.timestamp;
 
@@ -628,9 +624,9 @@ contract NodeOperatorRegistry is
         returns (uint256[] memory, address[] memory)
     {
         require(msg.sender == lido, "Caller is not the lido contract");
-        uint256[] memory shares = new uint256[](totalStakedNodeOpearator);
-        address[] memory recipient = new address[](totalStakedNodeOpearator);
-        uint256 index = 0;
+        uint256[] memory shares = new uint256[](totalStakedNodeOperator);
+        address[] memory recipient = new address[](totalStakedNodeOperator);
+        uint256 index;
         uint256 totalRewards = 0;
 
         // withdraw validator rewards
@@ -829,20 +825,20 @@ contract NodeOperatorRegistry is
         external
         view
         returns (
-            uint256 _totalNodeOpearator,
-            uint256 _totalActiveNodeOpearator,
-            uint256 _totalStakedNodeOpearator,
-            uint256 _totalUnstakedNodeOpearator,
-            uint256 _totalClaimedNodeOpearator,
-            uint256 _totalExitNodeOpearator
+            uint256 _totalNodeOperator,
+            uint256 _totalActiveNodeOperator,
+            uint256 _totalStakedNodeOperator,
+            uint256 _totalUnstakedNodeOperator,
+            uint256 _totalClaimedNodeOperator,
+            uint256 _totalExitNodeOperator
         )
     {
-        _totalNodeOpearator = totalNodeOpearator;
-        _totalActiveNodeOpearator = totalActiveNodeOpearator;
-        _totalStakedNodeOpearator = totalStakedNodeOpearator;
-        _totalUnstakedNodeOpearator = totalUnstakedNodeOpearator;
-        _totalClaimedNodeOpearator = totalClaimedNodeOpearator;
-        _totalExitNodeOpearator = totalExitNodeOpearator;
+        _totalNodeOperator = totalNodeOperator;
+        _totalActiveNodeOperator = totalActiveNodeOperator;
+        _totalStakedNodeOperator = totalStakedNodeOperator;
+        _totalUnstakedNodeOperator = totalUnstakedNodeOperator;
+        _totalClaimedNodeOperator = totalClaimedNodeOperator;
+        _totalExitNodeOperator = totalExitNodeOperator;
     }
 
     /// @notice Get validator total stake.
@@ -879,7 +875,7 @@ contract NodeOperatorRegistry is
     {
         Operator.OperatorShare[]
             memory operatorShares = new Operator.OperatorShare[](
-                totalStakedNodeOpearator
+                totalStakedNodeOperator
             );
 
         for (uint256 idx = 0; idx < operatorIds.length; idx++) {
@@ -921,18 +917,17 @@ contract NodeOperatorRegistry is
     {
         Operator.OperatorReward[]
             memory rewardAddresses = new Operator.OperatorReward[](
-                totalStakedNodeOpearator
+                totalStakedNodeOperator
             );
-        uint256 index = 0;
+        uint256 index;
 
         for (uint256 idx = 0; idx < operatorIds.length; idx++) {
             uint256 id = operatorIds[idx];
             if (operators[id].status == NodeOperatorStatus.STAKED) {
                 rewardAddresses[idx] = Operator.OperatorReward({
                     rewardAddress: operators[id].rewardAddress,
-                    penality: operators[id].sanctionEndTimestamp > 0 &&
-                        operators[id].sanctionEndTimestamp +
-                            SANCTION_SLASH_DELAY >
+                    penality: operators[id].slashedTimestamp +
+                        SANCTION_SLASH_DELAY >
                         block.timestamp
                 });
                 index++;
