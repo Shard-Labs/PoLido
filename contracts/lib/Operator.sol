@@ -9,5 +9,6 @@ library Operator {
         address validatorShare;
         uint256 slashed;
         uint256 statusTimestamp;
+        bool isTrusted;
     }
 }

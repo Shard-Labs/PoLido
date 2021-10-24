@@ -102,7 +102,7 @@ describe("NodeOperator", function () {
         await nodeOperatorRegistryContract.pause();
 
         // check if calls revert
-        await expect(newValidator(1, user1Address)).to.revertedWith("Pausable: paused");
+        await expect(newValidator(1, user1Address, true)).to.revertedWith("Pausable: paused");
         await expect(nodeOperatorRegistryContract.unstake()).to.revertedWith("Pausable: paused");
         await expect(nodeOperatorRegistryContract.removeOperator(0)).to.revertedWith("Pausable: paused");
         await expect(nodeOperatorRegistryContract.stake(0, 0)).to.revertedWith("Pausable: paused");
@@ -120,11 +120,11 @@ describe("NodeOperator", function () {
         await nodeOperatorRegistryContract.unpause();
 
         // add new operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
     });
 
     it("Success add new operator", async function () {
-        const { name, signerPubkey } = await newValidator(1, user1Address);
+        const { name, signerPubkey } = await newValidator(1, user1Address, true);
 
         // check node operator state
         const state = await nodeOperatorRegistryContract.getState();
@@ -145,7 +145,8 @@ describe("NodeOperator", function () {
         expect(res[6], "operator validator contract address").to.equal(validators[0]);
         expect(res[7].toString(), "commision rate").to.equal("0");
         expect(res[8].toString(), "times slashed").to.equal("0");
-        expect(res[9].toString(), "timestamp").not.equal("0");
+        expect(res[9].toString(), "slashedtimestamp").to.equal("0");
+        expect(res[10].toString(), "timestamp").not.equal("0");
     });
 
     it("Fails to add new operator", async function () {
@@ -155,37 +156,41 @@ describe("NodeOperator", function () {
         await expect(nodeOperatorRegistryContract.connect(user1).addOperator(
             name,
             user1Address,
-            signerPubkey
+            signerPubkey,
+            true
         )).to.revertedWith("Permission not found");
 
         // revert signer pubkey not valid should be 64.
         await expect(nodeOperatorRegistryContract.addOperator(
             name,
             user1Address,
-            ethers.utils.hexZeroPad("0x0", 32)
+            ethers.utils.hexZeroPad("0x0", 32),
+            true
         )).to.revertedWith("Invalid Public Key");
 
         // revert reward address is zero.
         await expect(nodeOperatorRegistryContract.addOperator(
             name,
             ethers.constants.AddressZero,
-            signerPubkey
+            signerPubkey,
+            true
         )).to.revertedWith("Invalid reward address");
 
         // add operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // revert user try to add another operator with the same reward address
         await expect(nodeOperatorRegistryContract.addOperator(
             name,
             user1Address,
-            signerPubkey
+            signerPubkey,
+            true
         )).to.revertedWith("Address already used");
     });
 
     it("Success get operators list", async function () {
-        await newValidator(1, user1Address);
-        await newValidator(2, user2Address);
+        await newValidator(1, user1Address, true);
+        await newValidator(2, user2Address, true);
 
         const ops = await nodeOperatorRegistryContract.getOperators();
         expect(ops.length, "Total validators in the system not match").to.equal(2);
@@ -193,7 +198,7 @@ describe("NodeOperator", function () {
 
     it("Success stake an operator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -211,7 +216,7 @@ describe("NodeOperator", function () {
         expect(res[0], "operator status not staked").to.equal(2);
         expect(res[3].toString(), "operator validator id").to.equal("1");
         expect(res[5].toString(), "operator validator share contract").not.equal(ethers.constants.AddressZero.toString());
-        expect(res[9], "timestamp").not.equal(no[9]);
+        expect(res[10], "timestamp").not.equal(no[10]);
 
         // check global state
         const state = await nodeOperatorRegistryContract.getState();
@@ -224,7 +229,7 @@ describe("NodeOperator", function () {
 
     it("Success restake an operator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -248,7 +253,7 @@ describe("NodeOperator", function () {
 
     it("Fail restake an operator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -278,7 +283,7 @@ describe("NodeOperator", function () {
 
     it("Fail to stake an operator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // revert the amount and heimdall fees are zero.
         await expect(nodeOperatorRegistryContract.connect(user1).stake(toEth("0"), toEth("20")))
@@ -312,8 +317,8 @@ describe("NodeOperator", function () {
 
     it("Success get operators validatorShare contracts", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
-        await newValidator(2, user2Address);
+        await newValidator(1, user1Address, true);
+        await newValidator(2, user2Address, true);
 
         // get node operator
         const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -349,7 +354,7 @@ describe("NodeOperator", function () {
 
     it("Success unstake an operator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get an operator by id
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -367,7 +372,7 @@ describe("NodeOperator", function () {
         // chez=ck if the status is unstaked === 3
         const res = await nodeOperatorRegistryContract.getNodeOperator(1, false);
         expect(res[0], "operator status").to.equal(3);
-        expect(res[9], "timestamp").not.equal(no[9]);
+        expect(res[10], "timestamp").not.equal(no[10]);
 
         // check global state
         const state = await nodeOperatorRegistryContract.getState();
@@ -380,7 +385,7 @@ describe("NodeOperator", function () {
 
     it("Fail to unstake an operator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // revert caller try to unstake a operator that has not yet staked
         await expect(nodeOperatorRegistryContract.connect(user1).unstake())
@@ -403,7 +408,7 @@ describe("NodeOperator", function () {
 
     it("Success topUpFee for a validator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get a node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -426,7 +431,7 @@ describe("NodeOperator", function () {
 
     it("Fail topUpFee for a validator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get a node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -455,8 +460,8 @@ describe("NodeOperator", function () {
     });
 
     it("Success withdraw validator rewards", async function () {
-        await newValidator(1, user1Address);
-        await newValidator(2, user2Address);
+        await newValidator(1, user1Address, true);
+        await newValidator(2, user2Address, true);
 
         {
             // add a new node operator 1
@@ -488,7 +493,7 @@ describe("NodeOperator", function () {
     });
 
     it("Fail withdraw validator rewards", async function () {
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // add a new node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -506,7 +511,7 @@ describe("NodeOperator", function () {
 
     it("Success unstake claim", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get a node operator
         const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -538,7 +543,7 @@ describe("NodeOperator", function () {
         // check global state
         const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
         expect(no1a[0], "operator status").to.equal(4);
-        expect(no1a[9], "timestamp").not.equal(no1[9]);
+        expect(no1a[10], "timestamp").not.equal(no1[10]);
 
         const state = await nodeOperatorRegistryContract.getState();
         expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
@@ -550,7 +555,7 @@ describe("NodeOperator", function () {
 
     it("Success unjail", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get a node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -576,7 +581,7 @@ describe("NodeOperator", function () {
         // check global state
         const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
         expect(no1a[0], "operator status").to.equal(2);
-        expect(no1a[9], "timestamp").not.equal(no1[9]);
+        expect(no1a[10], "timestamp").not.equal(no1[10]);
 
         const state = await nodeOperatorRegistryContract.getState();
         expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
@@ -588,7 +593,7 @@ describe("NodeOperator", function () {
 
     it("Fail unjail", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get a node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -617,7 +622,7 @@ describe("NodeOperator", function () {
 
     it("Success claim heimdall fees", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get a node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -644,12 +649,12 @@ describe("NodeOperator", function () {
         // check global state
         const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
         expect(no1a[0], "operator status").to.equal(5);
-        expect(no1a[9], "timestamp").not.equal(no1[9]);
+        expect(no1a[10], "timestamp").not.equal(no1[10]);
     });
 
     it("Fail claim heimdall fees", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get a node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -688,8 +693,8 @@ describe("NodeOperator", function () {
     });
 
     it("get reward addresses", async function () {
-        await newValidator(1, user1Address);
-        await newValidator(2, user2Address);
+        await newValidator(1, user1Address, true);
+        await newValidator(2, user2Address, true);
 
         let rewardAddresses = await nodeOperatorRegistryContract.getOperatorRewardAddresses();
         expect(rewardAddresses.length).to.equal(0);
@@ -726,7 +731,7 @@ describe("NodeOperator", function () {
     });
 
     it("Success update operator commision rate", async function () {
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
 
         // approve token to validator contract
@@ -741,7 +746,7 @@ describe("NodeOperator", function () {
     });
 
     it("Fail update one operator commision rate", async function () {
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
 
         // approve token to validator contract
@@ -756,7 +761,7 @@ describe("NodeOperator", function () {
     });
 
     it("Success update signer publickey", async function () {
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         let no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
 
@@ -778,8 +783,8 @@ describe("NodeOperator", function () {
     it("Success remove node operator", async function () {
         try {
             // add a new node operator
-            await newValidator(1, user1Address);
-            await newValidator(2, user2Address);
+            await newValidator(1, user1Address, true);
+            await newValidator(2, user2Address, true);
 
             // get a node operator
             let no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -857,7 +862,7 @@ describe("NodeOperator", function () {
 
     it("Fail to remove operator", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
 
         // get a node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -920,8 +925,8 @@ describe("NodeOperator", function () {
     });
 
     it("upgrade contract", async function () {
-        await newValidator(1, user1Address);
-        await newValidator(2, user2Address);
+        await newValidator(1, user1Address, true);
+        await newValidator(2, user2Address, true);
 
         // get a node operator
         const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -989,8 +994,8 @@ describe("NodeOperator", function () {
 
     it("Success upgrade validator Proxy validator implementation", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
-        await newValidator(2, user2Address);
+        await newValidator(1, user1Address, true);
+        await newValidator(2, user2Address, true);
 
         // get a node operator
         const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
@@ -1067,7 +1072,7 @@ describe("NodeOperator", function () {
 
     it("Fail to upgrade validator factory proxy implementation", async function () {
         // add a new node operator
-        await newValidator(1, user1Address);
+        await newValidator(1, user1Address, true);
         const validatorArtifactV2: Artifact = await hardhat.artifacts.readArtifact("ValidatorV2");
         const validatorContractV2 = await deployContract(
             signer,
@@ -1095,14 +1100,15 @@ function getValidatorFakeData (): { name: string; signerPubkey: string } {
 }
 
 // create a new validator
-async function newValidator (_id: number, userAddress: string, signer?: Signer) {
+async function newValidator (_id: number, userAddress: string, isTrusted: boolean,signer?: Signer) {
     const { name, signerPubkey } = getValidatorFakeData();
 
     // add new node operator
     expect(await nodeOperatorRegistryContract.addOperator(
         name,
         userAddress,
-        signerPubkey
+        signerPubkey,
+        isTrusted
     )).to.emit(nodeOperatorRegistryContract, "NewOperator").withArgs(
         _id, name, signerPubkey, 1
     );

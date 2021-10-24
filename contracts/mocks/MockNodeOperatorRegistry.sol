@@ -11,7 +11,9 @@ contract MockNodeOperatorRegistry {
     address[] operatorAddresses;
 
     constructor(address _validatorShare, address _operator) {
-        operatorShare.push(Operator.OperatorShare(1, _validatorShare, 0, block.timestamp));
+        operatorShare.push(
+            Operator.OperatorShare(1, _validatorShare, 0, block.timestamp, true)
+        );
         operatorAddresses.push(_operator);
     }
 
@@ -34,11 +36,7 @@ contract MockNodeOperatorRegistry {
     /// @notice Get validatorShare contract address.
     /// @dev Get validatorShare contract address.
     /// @return Returns the address of the validatorShare contract.
-    function getValidatorContract(uint256)
-        external
-        pure
-        returns (address)
-    {
+    function getValidatorContract(uint256) external pure returns (address) {
         return address(0);
     }
 
@@ -52,7 +50,11 @@ contract MockNodeOperatorRegistry {
         return operatorShare;
     }
 
-    function getOperatorRewardAddresses() view external returns (address[] memory) {
+    function getOperatorRewardAddresses()
+        external
+        view
+        returns (address[] memory)
+    {
         return operatorAddresses;
     }
 }

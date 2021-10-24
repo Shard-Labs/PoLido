@@ -176,6 +176,7 @@ contract NodeOperatorRegistry is
         uint256 slashed;
         uint256 slashedTimestamp;
         uint256 statusTimestamp;
+        bool isTrusted;
     }
 
     // ====================================================================
@@ -255,7 +256,8 @@ contract NodeOperatorRegistry is
     function addOperator(
         string memory _name,
         address _rewardAddress,
-        bytes memory _signerPubkey
+        bytes memory _signerPubkey,
+        bool isTrusted
     ) public override whenNotPaused userHasRole(ADD_OPERATOR_ROLE) {
         require(_signerPubkey.length == 64, "Invalid Public Key");
         require(_rewardAddress != address(0), "Invalid reward address");
@@ -279,7 +281,8 @@ contract NodeOperatorRegistry is
             commissionRate: commissionRate,
             slashed: 0,
             slashedTimestamp: 0,
-            statusTimestamp: block.timestamp
+            statusTimestamp: block.timestamp,
+            isTrusted: isTrusted
         });
 
         // update global
@@ -883,7 +886,8 @@ contract NodeOperatorRegistry is
                     slashed: totalTimesValidatorsSlashed > 0
                         ? (operators[id].slashed * 100) / totalTimesValidatorsSlashed
                         : 0,
-                    statusTimestamp: operators[id].statusTimestamp
+                    statusTimestamp: operators[id].statusTimestamp,
+                    isTrusted: operators[id].isTrusted
                 });
             }
         }
