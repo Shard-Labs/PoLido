@@ -33,7 +33,7 @@ contract MockValidatorShare is IValidatorShare {
         return;
     }
 
-    function getLiquidRewards(address user)
+    function getLiquidRewards(address)
         external
         pure
         override
@@ -42,7 +42,7 @@ contract MockValidatorShare is IValidatorShare {
         return 1;
     }
 
-    function buyVoucher(uint256 _amount, uint256 _minSharesToMint)
+    function buyVoucher(uint256 _amount, uint256)
         external
         override
         returns (uint256)
@@ -57,15 +57,11 @@ contract MockValidatorShare is IValidatorShare {
         return 1;
     }
 
-    function sellVoucher_new(uint256 claimAmount, uint256 maximumSharesToBurn)
-        external
-        pure
-        override
-    {
+    function sellVoucher_new(uint256, uint256) external pure override {
         return;
     }
 
-    function unstakeClaimTokens_new(uint256 unbondNonce) external override {
+    function unstakeClaimTokens_new(uint256) external override {
         stakeManager.unstakeClaim(validatorId());
         IERC20(token).transfer(
             msg.sender,
@@ -73,7 +69,7 @@ contract MockValidatorShare is IValidatorShare {
         );
     }
 
-    function getTotalStake(address user)
+    function getTotalStake(address)
         external
         view
         override
@@ -99,30 +95,30 @@ contract MockValidatorShare is IValidatorShare {
     }
 
     function drain(
-        address token,
-        address payable destination,
-        uint256 amount
+        address,
+        address payable,
+        uint256
     ) external pure override {
         return;
     }
 
     function slash(
-        uint256 valPow,
-        uint256 delegatedAmount,
-        uint256 totalAmountToSlash
+        uint256,
+        uint256,
+        uint256
     ) external pure override returns (uint256) {
         return 1;
     }
 
-    function updateDelegation(bool delegation) external pure override {
+    function updateDelegation(bool) external pure override {
         return;
     }
 
-    function migrateOut(address user, uint256 amount) external pure override {
+    function migrateOut(address, uint256) external pure override {
         return;
     }
 
-    function migrateIn(address user, uint256 amount) external pure override {
+    function migrateIn(address, uint256) external pure override {
         return;
     }
 

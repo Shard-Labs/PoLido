@@ -147,12 +147,12 @@ contract StakeManagerMock is IStakeManager {
         emit Unjail(_validatorId);
     }
 
-    function withdrawalDelay() external view override returns (uint256) {
+    function withdrawalDelay() external pure override returns (uint256) {
         return (2**13);
     }
 
     function delegationDeposit(
-        uint256 validatorId,
+        uint256 ,
         uint256 amount,
         address delegator
     ) external override returns (bool) {
