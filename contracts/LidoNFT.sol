@@ -155,6 +155,7 @@ contract LidoNFT is
         lido = _lido;
     }
 
+    /// @notice Retrieve owned tokens by address
     function getOwnedTokens(address _address)
         public
         view
@@ -163,6 +164,7 @@ contract LidoNFT is
         return owner2Tokens[_address];
     }
 
+    /// @notice Retrieve approved tokens by address
     function getApprovedTokens(address _address)
         public
         view
