@@ -14,6 +14,9 @@ contract LidoNFT is
     address public lido;
     uint256 public tokenIdIndex;
 
+    mapping(address => uint256[]) public owner2Tokens;
+    mapping(uint256 => uint256) public token2Index;
+
     // check if lido contract is the caller
     modifier isLido() {
         require(msg.sender == lido, "Caller is not lido contract");
@@ -34,6 +37,7 @@ contract LidoNFT is
     function mint(address _to) external isLido returns (uint256) {
         tokenIdIndex++;
         _mint(_to, tokenIdIndex);
+
         return tokenIdIndex;
     }
 
@@ -50,6 +54,33 @@ contract LidoNFT is
         super._beforeTokenTransfer(from, to, tokenId);
 
         require(!paused(), "ERC721Pausable: token transfer while paused");
+
+        // Minting
+        if (from == address(0)) {
+            uint256[] storage ownerTokens = owner2Tokens[to];
+
+            ownerTokens.push(tokenId);
+            token2Index[tokenId] = ownerTokens.length - 1;
+        }
+        // Burning
+        else if (to == address(0)) {
+            uint256[] storage ownerTokens = owner2Tokens[from];
+
+            uint256 tokenIndex = token2Index[tokenId];
+            delete owner2Tokens[from];
+            token2Index[tokenId] = 0;
+        }
+        // Transferring
+        else if (from != to) {
+            uint256[] storage senderTokens = owner2Tokens[from];
+            uint256[] storage receiverTokens = owner2Tokens[to];
+
+            uint256 tokenIndex = token2Index[tokenId];
+            senderTokens[tokenIndex] = 0;
+
+            receiverTokens.push(tokenId);
+            token2Index[tokenId] = receiverTokens.length - 1;
+        }
     }
 
     // isApprovedOrOwner check if the spender is owner or an approved.
