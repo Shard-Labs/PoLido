@@ -39,9 +39,9 @@ const main = async () => {
     console.log("LidoMatic Proxy address:", lidoMatic.address);
 
     // Update nodeOperatorLido address
-    const stakeManagerMockArtifact = await hardhat.artifacts.readArtifact("NodeOperatorRegistry");
+    const nodeOperatorLidoArtifact = await hardhat.artifacts.readArtifact("NodeOperatorRegistry");
     const nor = await ethers.getContractAt(
-        stakeManagerMockArtifact.abi,
+        nodeOperatorLidoArtifact.abi,
         GOERLI_DEPLOYMENT_DETAILS.node_operator_registry_proxy
     );
     await nor.setLido(GOERLI_DEPLOYMENT_DETAILS.lido_matic_proxy);
