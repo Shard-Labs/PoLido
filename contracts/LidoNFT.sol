@@ -16,6 +16,11 @@ contract LidoNFT is
 
     mapping(address => uint256[]) public owner2Tokens;
     mapping(uint256 => uint256) public token2Index;
+    mapping(uint256 => bool) public indexExists;
+
+    mapping(address => uint256[]) public address2Approved;
+    mapping(uint256 => uint256) public approved2Index;
+    mapping(uint256 => bool) public approvalExists;
 
     // check if lido contract is the caller
     modifier isLido() {
@@ -46,6 +51,34 @@ contract LidoNFT is
         _burn(_tokenId);
     }
 
+    function approve(address to, uint256 tokenId) public override {
+        address owner = ERC721Upgradeable.ownerOf(tokenId);
+        require(to != owner, "ERC721: approval to current owner");
+
+        require(
+            _msgSender() == owner || isApprovedForAll(owner, _msgSender()),
+            "ERC721: approve caller is not owner nor approved for all"
+        );
+
+        uint256[] storage approvedTokens = address2Approved[to];
+        uint256 approvedIndex = approved2Index[tokenId];
+
+        if (approvalExists[approvedIndex]) {
+            address oldApprovedAddress = getApproved(tokenId);
+            uint256[] storage oldApprovedTokens = address2Approved[
+                oldApprovedAddress
+            ];
+
+            delete oldApprovedTokens[approvedIndex];
+        }
+
+        approvedTokens.push(tokenId);
+        approved2Index[tokenId] = approvedTokens.length - 1;
+        approvalExists[approved2Index[tokenId]] = true;
+
+        _approve(to, tokenId);
+    }
+
     function _beforeTokenTransfer(
         address from,
         address to,
@@ -61,19 +94,44 @@ contract LidoNFT is
 
             ownerTokens.push(tokenId);
             token2Index[tokenId] = ownerTokens.length - 1;
+            indexExists[token2Index[tokenId]] = true;
         }
         // Burning
         else if (to == address(0)) {
             uint256[] storage ownerTokens = owner2Tokens[from];
+            uint256[] storage approvedTokens = address2Approved[from];
 
             uint256 tokenIndex = token2Index[tokenId];
-            delete owner2Tokens[from];
+            delete ownerTokens[tokenIndex];
+            indexExists[tokenIndex] = false;
             token2Index[tokenId] = 0;
+
+            uint256 approvedIndex = approved2Index[tokenId];
+
+            if (approvalExists[approvedIndex]) {
+                delete approvedTokens[approvedIndex];
+                approved2Index[tokenId] = 0;
+                approvalExists[approvedIndex] = false;
+            }
         }
         // Transferring
         else if (from != to) {
             uint256[] storage senderTokens = owner2Tokens[from];
             uint256[] storage receiverTokens = owner2Tokens[to];
+
+            uint256 approvedIndex = approved2Index[tokenId];
+
+            // Reset approvals
+            if (approvalExists[approvedIndex]) {
+                address lastApprovedAddress = getApproved(tokenId);
+                uint256[] storage lastApprovedTokens = address2Approved[
+                    lastApprovedAddress
+                ];
+
+                delete lastApprovedTokens[approvedIndex];
+                approved2Index[tokenId] = 0;
+                approvalExists[approvedIndex] = false;
+            }
 
             uint256 tokenIndex = token2Index[tokenId];
             senderTokens[tokenIndex] = 0;
@@ -95,5 +153,21 @@ contract LidoNFT is
     /// @notice Set LidoMatic contract
     function setLido(address _lido) external onlyOwner {
         lido = _lido;
+    }
+
+    function getOwnedTokens(address _address)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return owner2Tokens[_address];
+    }
+
+    function getApprovedTokens(address _address)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return address2Approved[_address];
     }
 }
