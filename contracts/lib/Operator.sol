@@ -9,7 +9,7 @@ library Operator {
         address validatorShare;
         uint256 slashed;
         uint256 statusTimestamp;
-        bool isTrusted;
+        uint256 maxDelegateLimit;
     }
 
     /// @notice OperatorShare struct

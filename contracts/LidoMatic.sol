@@ -275,8 +275,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         for (uint256 idx = 0; idx < operatorShares.length; idx++) {
             uint256 delegateRatio = operatorShares[idx].statusTimestamp +
                 DelegationDelay >=
-                block.timestamp ||
-                operatorShares[idx].isTrusted
+                block.timestamp
                 ? 100
                 : DelegationMin;
             ratios[idx] = delegateRatio;

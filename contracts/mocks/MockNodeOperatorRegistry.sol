@@ -13,8 +13,9 @@ contract MockNodeOperatorRegistry {
     // address[] operatorAddresses;
 
     constructor(address _validatorShare, address _operator) {
+        uint256 MAX_INT = 2**256 - 1;
         operatorShare.push(
-            Operator.OperatorShare(1, _validatorShare, 0, block.timestamp, true)
+            Operator.OperatorShare(1, _validatorShare, 0, block.timestamp, MAX_INT)
         );
         operatorRewards.push(Operator.OperatorReward(_operator, false));
     }
