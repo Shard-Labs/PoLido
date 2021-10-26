@@ -16,8 +16,7 @@ interface INodeOperatorRegistry {
     function addOperator(
         string memory _name,
         address _rewardAddress,
-        bytes memory _signerPubkey,
-        bool isTrusted
+        bytes memory _signerPubkey
     ) external;
 
     /// @notice Remove a node operator from the system.
