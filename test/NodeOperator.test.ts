@@ -122,6 +122,18 @@ describe("NodeOperator", function () {
         // add new operator
         await newValidator(1, user1Address);
     });
+    it("Success set default max delegate limit", async function () {
+        const defaultMaxDelegateLimit = toEth("1000");
+        await nodeOperatorRegistryContract.setDefaultMaxDelegateLimit(defaultMaxDelegateLimit);
+        await nodeOperatorRegistryContract.defaultMaxDelegateLimit();
+    });
+
+    it("Fail set default max delegate limit", async function () {
+        const defaultMaxDelegateLimit = toEth("1000");
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .setDefaultMaxDelegateLimit(defaultMaxDelegateLimit))
+            .revertedWith("Permission not found");
+    });
 
     it("Success add new operator", async function () {
         const { name, signerPubkey } = await newValidator(1, user1Address);

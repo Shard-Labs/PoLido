@@ -130,7 +130,8 @@ contract NodeOperatorRegistry is
     /// @notice default period where an operator will marked as "was slashed"
     /// we use this value to set the operator.slashedTimestamp = block.timestamp + slashingDelay
     uint256 public slashingDelay;
-    
+    /// @notice default max delgation limit when add a new operator
+    uint256 public defaultMaxDelegateLimit;
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) internal operators;
@@ -238,6 +239,7 @@ contract NodeOperatorRegistry is
         maxHeimdallFees = 20 * 10**18;
         minHeimdallFees = 20 * 10**18;
         slashingDelay = 2**13;
+        defaultMaxDelegateLimit = 10 ether;
 
         // Set ACL roles
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -286,7 +288,7 @@ contract NodeOperatorRegistry is
             slashed: 0,
             slashedTimestamp: 0,
             statusTimestamp: block.timestamp,
-            maxDelegateLimit: 0
+            maxDelegateLimit: defaultMaxDelegateLimit
         });
 
         // update global
@@ -634,7 +636,16 @@ contract NodeOperatorRegistry is
 
     // ====================================================================
     // ========================== GOVERNANCE ==============================
-    // ====================================================================
+    // ====================================================================  
+
+    /// @notice Allows the DAO to set the operator defaultMaxDelegateLimit.
+    /// @param _defaultMaxDelegateLimit default max delegation amount.
+    function setDefaultMaxDelegateLimit(uint256 _defaultMaxDelegateLimit)
+        external
+        userHasRole(DAO_ROLE)
+    {
+        defaultMaxDelegateLimit = _defaultMaxDelegateLimit;
+    }
 
     /// @notice Allows the DAO to set the operator maxDelegateLimit.
     /// @param _operatorId operator id.
