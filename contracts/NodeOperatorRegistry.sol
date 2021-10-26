@@ -516,10 +516,10 @@ contract NodeOperatorRegistry is
     /// the owner can transfer back his staked balance by calling
     /// unstakeClaim, after that the operator status is set to CLAIMED
     function unstakeClaim() external override whenNotPaused {
-        uint256 validatorId = operatorOwners[msg.sender];
-        require(validatorId != 0, "Operator not exists");
+        uint256 operatorId = operatorOwners[msg.sender];
+        require(operatorId != 0, "Operator not exists");
 
-        NodeOperator storage no = operators[validatorId];
+        NodeOperator storage no = operators[operatorId];
         require(
             no.status == NodeOperatorStatus.UNSTAKED,
             "Operator status isn't UNSTAKED"
@@ -527,7 +527,7 @@ contract NodeOperatorRegistry is
 
         uint256 amount = IValidator(no.validatorContract).unstakeClaim(
             msg.sender,
-            validatorId
+            no.validatorId
         );
 
         no.status = NodeOperatorStatus.CLAIMED;
@@ -535,7 +535,7 @@ contract NodeOperatorRegistry is
         totalUnstakedNodeOperator--;
         totalClaimedNodeOperator++;
 
-        emit ClaimUnstake(validatorId, msg.sender, amount);
+        emit ClaimUnstake(operatorId, msg.sender, amount);
     }
 
     /// @notice Allows withdraw heimdall fees
