@@ -273,7 +273,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
             maxDelegateLimitsSum += operatorShares[i].maxDelegateLimit;
-        }      
+        }
 
         // First case - maxDelegateLimitsSum is lower or equal than amountToDelegate
         // Delegate maxDelegateLimit to each Operator
@@ -305,7 +305,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         // Delegate to each Operator in proportion with respect to its maxDelegateLimit
         else {
             // maxDelegateLimitsSum is greater than availableAmountToDelegate
-            // That means the availableAmountToDelegate will try to be delegated completely 
+            // That means the availableAmountToDelegate will try to be delegated completely
             // *(if sum of amountToDelegate per validator equals availableAmountToDelegate)
             IERC20Upgradeable(token).approve(
                 address(stakeManager),
@@ -334,6 +334,20 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             remainder = availableAmountToDelegate - amountDelegated;
             totalDelegated += amountDelegated;
             totalBuffered = remainder + reservedFunds;
+        }
+
+        // Update minValidatorBalance to 10% of the highest staked
+        for (uint256 i = 0; i < operatorShares.length; i++) {
+            uint256 minValidatorBalanceCurrent = (IValidatorShare(
+                operatorShares[i].validatorShare
+            ).activeAmount() * 10) / 100;
+
+            if (
+                minValidatorBalanceCurrent != 0 &&
+                minValidatorBalanceCurrent < minValidatorBalance
+            ) {
+                minValidatorBalance = minValidatorBalanceCurrent;
+            }
         }
     }
 

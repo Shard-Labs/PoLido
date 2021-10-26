@@ -3,7 +3,7 @@ on:
   push:    
     branches:
       - main
-      - feat/track-nfts-by-owner
+      - fix/delegate
     paths-ignore:
       - '**.md'
       - 'docs/**'
