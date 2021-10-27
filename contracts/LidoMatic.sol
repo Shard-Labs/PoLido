@@ -275,66 +275,38 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             maxDelegateLimitsSum += operatorShares[i].maxDelegateLimit;
         }
 
-        // First case - maxDelegateLimitsSum is lower or equal than amountToDelegate
-        // Delegate maxDelegateLimit to each Operator
-        if (maxDelegateLimitsSum <= availableAmountToDelegate) {
-            // maxDelegateLimitsSum is lower or equal than availableAmountToDelegate
-            // That means that we are going to delegate maxDelegateLimitsSum
-            IERC20Upgradeable(token).approve(
-                address(stakeManager),
-                maxDelegateLimitsSum
+        uint256 totalToDelegatedAmount = maxDelegateLimitsSum <=
+            availableAmountToDelegate
+            ? maxDelegateLimitsSum
+            : availableAmountToDelegate;
+
+        IERC20Upgradeable(token).approve(
+            address(stakeManager),
+            totalToDelegatedAmount
+        );
+
+        uint256 amountDelegated;
+        for (uint256 i = 0; i < operatorShares.length; i++) {
+            uint256 amountToDelegatePerOperator = (operatorShares[i]
+                .maxDelegateLimit * totalToDelegatedAmount) /
+                maxDelegateLimitsSum;
+
+            buyVoucher(
+                operatorShares[i].validatorShare,
+                amountToDelegatePerOperator,
+                0
             );
 
-            for (uint256 i = 0; i < operatorShares.length; i++) {
-                buyVoucher(
-                    operatorShares[i].validatorShare,
-                    operatorShares[i].maxDelegateLimit,
-                    0
-                );
+            validator2DelegatedAmount[
+                operatorShares[i].validatorShare
+            ] += amountToDelegatePerOperator;
 
-                validator2DelegatedAmount[
-                    operatorShares[i].validatorShare
-                ] += operatorShares[i].maxDelegateLimit;
-            }
-
-            remainder = availableAmountToDelegate - maxDelegateLimitsSum;
-            totalDelegated += maxDelegateLimitsSum;
-            totalBuffered = remainder + reservedFunds;
+            amountDelegated += amountToDelegatePerOperator;
         }
-        // Second case - maxDelegateLimitsSum is greater than amountToDelegate
-        // Delegate to each Operator in proportion with respect to its maxDelegateLimit
-        else {
-            // maxDelegateLimitsSum is greater than availableAmountToDelegate
-            // That means the availableAmountToDelegate will try to be delegated completely
-            // *(if sum of amountToDelegate per validator equals availableAmountToDelegate)
-            IERC20Upgradeable(token).approve(
-                address(stakeManager),
-                availableAmountToDelegate
-            );
 
-            uint256 amountDelegated;
-
-            for (uint256 i = 0; i < operatorShares.length; i++) {
-                uint256 amountToDelegate = (operatorShares[i].maxDelegateLimit *
-                    availableAmountToDelegate) / maxDelegateLimitsSum;
-
-                buyVoucher(
-                    operatorShares[i].validatorShare,
-                    amountToDelegate,
-                    0
-                );
-
-                validator2DelegatedAmount[
-                    operatorShares[i].validatorShare
-                ] += amountToDelegate;
-
-                amountDelegated += amountToDelegate;
-            }
-
-            remainder = availableAmountToDelegate - amountDelegated;
-            totalDelegated += amountDelegated;
-            totalBuffered = remainder + reservedFunds;
-        }
+        remainder = availableAmountToDelegate - amountDelegated;
+        totalDelegated += amountDelegated;
+        totalBuffered = remainder + reservedFunds;
 
         // Update minValidatorBalance to 10% of the highest staked
         for (uint256 i = 0; i < operatorShares.length; i++) {
