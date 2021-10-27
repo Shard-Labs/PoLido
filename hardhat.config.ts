@@ -15,7 +15,8 @@ import {
     removeOperator,
     stakeOperator,
     unstakeOperator,
-    claimUnstakeOperator
+    claimUnstakeOperator,
+    getValidatorDetails
 } from "./scripts/tasks";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperatorArgs } from "./scripts/types";
@@ -78,6 +79,13 @@ task("unstakeOperator", "Unstake an Operator")
 task("claimUnstakeOperator", "claim staked Matics by the Operator on stakeManager")
     .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
         await claimUnstakeOperator(hre);
+    });
+
+task("getValidatorDetails", "Get validator details on Polygon stake manager")
+    .addParam("id", "validator id")
+    .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
+        const { id } = args;
+        await getValidatorDetails(hre, Number(id));
     });
 
 const config: HardhatUserConfig = {

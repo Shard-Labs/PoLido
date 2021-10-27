@@ -104,3 +104,45 @@ export const claimUnstakeOperator = async (
 
     console.log("claimUnstakeOperator done");
 };
+
+export const getValidatorDetails = async (
+    hre: HardhatRuntimeEnvironment,
+    validatorID: number
+) => {
+    const stakeManagerAddress =
+        GOERLI_DEPLOYMENT_DETAILS.matic_stake_manager_proxy;
+
+    if (validatorID === 0) {
+        console.log("validator id not valid");
+    }
+
+    const stakeManagerArtifact = await hre.artifacts.readArtifact("IStakeManager");
+    const stakeManagerContract = await hre.ethers.getContractAt(stakeManagerArtifact.abi, stakeManagerAddress);
+
+    const v = await stakeManagerContract.validators(validatorID);
+    const epoch = await stakeManagerContract.epoch();
+    const withdrawalDelay = await stakeManagerContract.withdrawalDelay();
+
+    console.log("Validator:");
+    console.log("-----------------------------------------");
+    console.log("amount:", v.amount.toString());
+    console.log("activationEpoch:", v.activationEpoch.toString());
+    console.log("deactivationEpoch:", v.deactivationEpoch.toString());
+    console.log("reward:", v.reward.toString());
+    console.log("jailTime:", v.jailTime.toString());
+    console.log("signer:", v.signer.toString());
+    console.log("contractAddress:", v.contractAddress.toString());
+    console.log("status:", v.status.toString());
+    console.log("commissionRate:", v.commissionRate.toString());
+    console.log("lastCommissionUpdate:", v.lastCommissionUpdate.toString());
+    console.log("delegatorsReward:", v.delegatorsReward.toString());
+    console.log("delegatedAmount:", v.delegatedAmount.toString());
+    console.log("initialRewardPerStake:", v.initialRewardPerStake.toString());
+    console.log();
+    console.log("WithdrawalDelay:", withdrawalDelay.toString());
+    console.log("Current Epoch:", epoch.toString());
+    console.log("-----------------------------------------");
+    if (v.deactivationEpoch !== hre.ethers.BigNumber.from(0)) {
+        console.log("Can claim unstaked tokens after:", v.deactivationEpoch.add(withdrawalDelay).toString());
+    }
+};
