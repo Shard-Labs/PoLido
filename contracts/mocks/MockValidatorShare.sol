@@ -11,6 +11,8 @@ contract MockValidatorShare is IValidatorShare {
 
     uint256 public totalStaked;
 
+    mapping(address => uint256) public override unbondNonces;
+
     IStakeManager stakeManager;
 
     constructor(address _token, address _stakeManager) {
@@ -57,8 +59,10 @@ contract MockValidatorShare is IValidatorShare {
         return 1;
     }
 
-    function sellVoucher_new(uint256, uint256) external pure override {
-        return;
+    function sellVoucher_new(uint256, uint256) external override {
+        uint256 unbondNonce = unbondNonces[msg.sender] + 1;
+
+        unbondNonces[msg.sender] = unbondNonce;
     }
 
     function unstakeClaimTokens_new(uint256) external override {
