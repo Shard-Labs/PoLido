@@ -44,7 +44,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
     mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
-    mapping(address => uint256) public validator2Nonce;
+    mapping(address => uint256) public validator2Nonce; // DELETE before deploying to production
     mapping(address => uint256) public user2Nonce;
 
     bytes32 public constant DAO = keccak256("DAO");
@@ -208,8 +208,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     type(uint256).max
                 );
 
-                validator2Nonce[validatorShare]++;
-
                 user2Nonce[msg.sender]++;
 
                 totalBurned += amount2Burn;
@@ -226,7 +224,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     amount2WithdrawFromValidator,
                     amount2Burn,
-                    validator2Nonce[validatorShare],
+                    IValidatorShare(validatorShare).unbondNonces(address(this)),
                     block.timestamp,
                     validatorShare,
                     true
@@ -446,14 +444,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
-        validator2Nonce[_validatorShare]++;
-
         user2Nonce[address(this)]++;
 
         token2WithdrawRequest[tokenId] = RequestWithdraw(
             stakedAmount,
             uint256(0),
-            validator2Nonce[_validatorShare],
+            IValidatorShare(_validatorShare).unbondNonces(address(this)),
             block.timestamp,
             _validatorShare,
             true
