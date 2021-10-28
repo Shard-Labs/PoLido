@@ -52,14 +52,6 @@ contract LidoNFT is
     }
 
     function approve(address to, uint256 tokenId) public override {
-        address owner = ERC721Upgradeable.ownerOf(tokenId);
-        require(to != owner, "ERC721: approval to current owner");
-
-        require(
-            _msgSender() == owner || isApprovedForAll(owner, _msgSender()),
-            "ERC721: approve caller is not owner nor approved for all"
-        );
-
         uint256[] storage approvedTokens = address2Approved[to];
         uint256 approvedIndex = approved2Index[tokenId];
 
@@ -72,11 +64,11 @@ contract LidoNFT is
             delete oldApprovedTokens[approvedIndex];
         }
 
+        super.approve(to, tokenId);
+
         approvedTokens.push(tokenId);
         approved2Index[tokenId] = approvedTokens.length - 1;
         approvalExists[approved2Index[tokenId]] = true;
-
-        _approve(to, tokenId);
     }
 
     function _beforeTokenTransfer(
