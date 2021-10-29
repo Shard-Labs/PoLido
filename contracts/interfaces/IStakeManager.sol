@@ -103,4 +103,35 @@ interface IStakeManager {
         uint256 amount,
         address delegator
     ) external returns (bool);
+
+    function epoch() external view returns (uint256);
+
+    enum Status {
+        Inactive,
+        Active,
+        Locked,
+        Unstaked
+    }
+
+    struct Validator {
+        uint256 amount;
+        uint256 reward;
+        uint256 activationEpoch;
+        uint256 deactivationEpoch;
+        uint256 jailTime;
+        address signer;
+        address contractAddress;
+        Status status;
+        uint256 commissionRate;
+        uint256 lastCommissionUpdate;
+        uint256 delegatorsReward;
+        uint256 delegatedAmount;
+        uint256 initialRewardPerStake;
+    }
+
+    function validators(uint256 _index)
+        external
+        view
+        returns (Validator memory);
+
 }

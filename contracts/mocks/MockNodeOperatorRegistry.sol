@@ -14,7 +14,7 @@ contract MockNodeOperatorRegistry {
 
     constructor(address _validatorShare, address _operator) {
         operatorShare.push(
-            Operator.OperatorShare(1, _validatorShare, 0, block.timestamp, true)
+            Operator.OperatorShare(1, _validatorShare, 0, block.timestamp, 10 ether)
         );
         operatorRewards.push(Operator.OperatorReward(_operator, false));
     }

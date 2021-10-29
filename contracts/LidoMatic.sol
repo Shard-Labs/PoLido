@@ -44,7 +44,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
     mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
-    mapping(address => uint256) public validator2Nonce;
+    mapping(address => uint256) public validator2Nonce; // DELETE before deploying to production
     mapping(address => uint256) public user2Nonce;
 
     bytes32 public constant DAO = keccak256("DAO");
@@ -208,8 +208,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     type(uint256).max
                 );
 
-                validator2Nonce[validatorShare]++;
-
                 user2Nonce[msg.sender]++;
 
                 totalBurned += amount2Burn;
@@ -226,7 +224,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     amount2WithdrawFromValidator,
                     amount2Burn,
-                    validator2Nonce[validatorShare],
+                    IValidatorShare(validatorShare).unbondNonces(address(this)),
                     block.timestamp,
                     validatorShare,
                     true
@@ -267,37 +265,49 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             "No operator shares, cannot delegate"
         );
 
-        // calculated the ratio for each validator, if the validator is trusted
-        // the ratio is DELEGATE_MAX if not yet trusted the amount is DelegationMin.
-        uint256[] memory ratios = new uint256[](operatorShares.length);
-        uint256 totalRatio = 0;
+        uint256 availableAmountToDelegate = totalBuffered - reservedFunds;
+        uint256 maxDelegateLimitsSum;
+        uint256 remainder;
 
-        for (uint256 idx = 0; idx < operatorShares.length; idx++) {
-            uint256 delegateRatio = operatorShares[idx].statusTimestamp +
-                DelegationDelay >=
-                block.timestamp ||
-                operatorShares[idx].isTrusted
-                ? 100
-                : DelegationMin;
-            ratios[idx] = delegateRatio;
-            totalRatio += delegateRatio;
+        for (uint256 i = 0; i < operatorShares.length; i++) {
+            maxDelegateLimitsSum += operatorShares[i].maxDelegateLimit;
         }
 
-        uint256 amountToDelegate = totalBuffered - reservedFunds;
-        uint256 totalAmountDelegated;
+        uint256 totalToDelegatedAmount = maxDelegateLimitsSum <=
+            availableAmountToDelegate
+            ? maxDelegateLimitsSum
+            : availableAmountToDelegate;
 
         IERC20Upgradeable(token).approve(
             address(stakeManager),
-            amountToDelegate
+            totalToDelegatedAmount
         );
 
+        uint256 amountDelegated;
         for (uint256 i = 0; i < operatorShares.length; i++) {
-            uint256 amountPerValidator = (amountToDelegate * ratios[i]) /
-                totalRatio;
-            totalAmountDelegated += amountPerValidator;
-            buyVoucher(operatorShares[i].validatorShare, amountPerValidator, 0);
+            uint256 amountToDelegatePerOperator = (operatorShares[i]
+                .maxDelegateLimit * totalToDelegatedAmount) /
+                maxDelegateLimitsSum;
 
-            // Take the 10% of current validator balance
+            buyVoucher(
+                operatorShares[i].validatorShare,
+                amountToDelegatePerOperator,
+                0
+            );
+
+            validator2DelegatedAmount[
+                operatorShares[i].validatorShare
+            ] += amountToDelegatePerOperator;
+
+            amountDelegated += amountToDelegatePerOperator;
+        }
+
+        remainder = availableAmountToDelegate - amountDelegated;
+        totalDelegated += amountDelegated;
+        totalBuffered = remainder + reservedFunds;
+
+        // Update minValidatorBalance to 10% of the highest staked
+        for (uint256 i = 0; i < operatorShares.length; i++) {
             uint256 minValidatorBalanceCurrent = (IValidatorShare(
                 operatorShares[i].validatorShare
             ).activeAmount() * 10) / 100;
@@ -308,15 +318,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             ) {
                 minValidatorBalance = minValidatorBalanceCurrent;
             }
-
-            validator2DelegatedAmount[
-                operatorShares[i].validatorShare
-            ] += amountPerValidator;
         }
-
-        uint256 remainder = amountToDelegate - totalAmountDelegated;
-        totalDelegated += amountToDelegate - remainder;
-        totalBuffered = remainder + reservedFunds;
     }
 
     /**
@@ -409,9 +411,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 totalRatio = 0;
 
         for (uint256 idx = 0; idx < operators.length; idx++) {
-            uint256 rewardRatio = operators[idx].penality
-                ? RewardMin
-                : 100;
+            uint256 rewardRatio = operators[idx].penality ? RewardMin : 100;
             ratios[idx] = rewardRatio;
             totalRatio += rewardRatio;
         }
@@ -444,14 +444,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
-        validator2Nonce[_validatorShare]++;
-
         user2Nonce[address(this)]++;
 
         token2WithdrawRequest[tokenId] = RequestWithdraw(
             stakedAmount,
             uint256(0),
-            validator2Nonce[_validatorShare],
+            IValidatorShare(_validatorShare).unbondNonces(address(this)),
             block.timestamp,
             _validatorShare,
             true
@@ -734,11 +732,11 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @param _delay the delay that should wait to trust a validator
      * @param _delegatMin in percent to delegate to a non trusted validator.
      */
-    function setDelegationBound(
-        uint256 _delay,
-        uint256 _delegatMin
-    ) external auth(DAO) {
-        require(_delegatMin <= 100 , "invalid min reward value");
+    function setDelegationBound(uint256 _delay, uint256 _delegatMin)
+        external
+        auth(DAO)
+    {
+        require(_delegatMin <= 100, "invalid min reward value");
         DelegationDelay = _delay;
         DelegationMin = _delegatMin;
     }
@@ -748,10 +746,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Only callable by dao role
      * @param _rewardMin in percent to delegate to a non trusted validator.
      */
-    function setRewardBound(
-        uint256 _rewardMin
-    ) external auth(DAO) {
-        require(_rewardMin <= 100 , "invalid min reward value");
+    function setRewardBound(uint256 _rewardMin) external auth(DAO) {
+        require(_rewardMin <= 100, "invalid min reward value");
         RewardMin = _rewardMin;
     }
 
@@ -759,7 +755,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @dev Function that sets the lidoNFT address
      * @param _lidoNFT new lidoNFT address
      */
-    function setLidoNFT(address _lidoNFT) external auth(DAO){
+    function setLidoNFT(address _lidoNFT) external auth(DAO) {
         lidoNFT = _lidoNFT;
     }
 }

@@ -152,10 +152,39 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function delegationDeposit(
-        uint256 ,
+        uint256,
         uint256 amount,
         address delegator
     ) external override returns (bool) {
-        return IERC20(state.token).transferFrom(delegator, address(this), amount);
+        return
+            IERC20(state.token).transferFrom(delegator, address(this), amount);
+    }
+
+    function epoch() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function validators(uint256)
+        external
+        pure
+        override
+        returns (Validator memory)
+    {
+        return
+            Validator({
+                amount: 0,
+                reward: 0,
+                activationEpoch: 0,
+                deactivationEpoch: 0,
+                jailTime: 0,
+                signer: address(0),
+                contractAddress: address(0),
+                status: Status.Active,
+                commissionRate: 0,
+                lastCommissionUpdate: 0,
+                delegatorsReward: 0,
+                delegatedAmount: 0,
+                initialRewardPerStake: 0
+            });
     }
 }

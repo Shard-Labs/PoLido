@@ -9,7 +9,15 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-gas-reporter";
 
-import { verify, addOperator, removeOperator, stakeValidator } from "./scripts/tasks";
+import {
+    verify,
+    addOperator,
+    removeOperator,
+    stakeOperator,
+    unstakeOperator,
+    claimUnstakeOperator,
+    getValidatorDetails
+} from "./scripts/tasks";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperatorArgs } from "./scripts/types";
 import { getPublicKey } from "./scripts/utils";
@@ -51,16 +59,33 @@ task("removeOperator", "Removes an operator")
         await removeOperator(hre, id, privateKey);
     });
 
-task("stakeValidator", "Stakes a validator")
+task("stakeOperator", "Stakes a Operator")
     .addParam("amount", "Amount that will be staked")
     .addParam("heimdallFee", "Heimdall fee")
-    .addOptionalParam("privateKey", "Private key of validator owner")
+    .addOptionalParam("privateKey", "Private key of Operator owner")
     .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
         const { amount, heimdallFee, privateKey } = args;
         const amountWei = hre.ethers.utils.parseEther(amount);
         const heimdallFeeWei = hre.ethers.utils.parseEther(heimdallFee);
 
-        await stakeValidator(hre, amountWei, heimdallFeeWei, privateKey);
+        await stakeOperator(hre, amountWei, heimdallFeeWei, privateKey);
+    });
+
+task("unstakeOperator", "Unstake an Operator")
+    .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
+        await unstakeOperator(hre);
+    });
+
+task("claimUnstakeOperator", "claim staked Matics by the Operator on stakeManager")
+    .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
+        await claimUnstakeOperator(hre);
+    });
+
+task("getValidatorDetails", "Get validator details on Polygon stake manager")
+    .addParam("id", "validator id")
+    .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
+        const { id } = args;
+        await getValidatorDetails(hre, Number(id));
     });
 
 const config: HardhatUserConfig = {

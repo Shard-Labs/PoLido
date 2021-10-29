@@ -127,8 +127,11 @@ contract NodeOperatorRegistry is
     bool public allowsRestake;
     /// @notice allows unjail a validator.
     bool public allowsUnjail;
-    /// @notice allows unjail a validator.
-    uint256 SANCTION_SLASH_DELAY;
+    /// @notice default period where an operator will marked as "was slashed"
+    /// we use this value to set the operator.slashedTimestamp = block.timestamp + slashingDelay
+    uint256 public slashingDelay;
+    /// @notice default max delgation limit when add a new operator
+    uint256 public defaultMaxDelegateLimit;
 
     /// @dev Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) internal operators;
@@ -147,6 +150,7 @@ contract NodeOperatorRegistry is
     bytes32 public constant UPDATE_STAKE_HEIMDALL_FEES_ROLE =
         keccak256("UPDATE_STAKE_HEIMDALL_FEES");
     bytes32 public constant CRON_JOB_ROLE = keccak256("CRON_JOB");
+    bytes32 public constant DAO_ROLE = keccak256("DAO");
 
     /// @notice The node operator states.
     enum NodeOperatorStatus {
@@ -176,7 +180,7 @@ contract NodeOperatorRegistry is
         uint256 slashed;
         uint256 slashedTimestamp;
         uint256 statusTimestamp;
-        bool isTrusted;
+        uint256 maxDelegateLimit;
     }
 
     // ====================================================================
@@ -234,7 +238,8 @@ contract NodeOperatorRegistry is
         minAmountStake = 10 * 10**18;
         maxHeimdallFees = 20 * 10**18;
         minHeimdallFees = 20 * 10**18;
-        SANCTION_SLASH_DELAY = 2**13;
+        slashingDelay = 2**13;
+        defaultMaxDelegateLimit = 10 ether;
 
         // Set ACL roles
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -243,6 +248,7 @@ contract NodeOperatorRegistry is
         _setupRole(PAUSE_OPERATOR_ROLE, msg.sender);
         _setupRole(UPDATE_COMMISSION_RATE_ROLE, msg.sender);
         _setupRole(UPDATE_STAKE_HEIMDALL_FEES_ROLE, msg.sender);
+        _setupRole(DAO_ROLE, msg.sender);
     }
 
     /// @notice Add a new node operator to the system.
@@ -257,8 +263,7 @@ contract NodeOperatorRegistry is
     function addOperator(
         string memory _name,
         address _rewardAddress,
-        bytes memory _signerPubkey,
-        bool isTrusted
+        bytes memory _signerPubkey
     ) public override whenNotPaused userHasRole(ADD_OPERATOR_ROLE) {
         require(_signerPubkey.length == 64, "Invalid Public Key");
         require(_rewardAddress != address(0), "Invalid reward address");
@@ -283,7 +288,7 @@ contract NodeOperatorRegistry is
             slashed: 0,
             slashedTimestamp: 0,
             statusTimestamp: block.timestamp,
-            isTrusted: isTrusted
+            maxDelegateLimit: defaultMaxDelegateLimit
         });
 
         // update global
@@ -301,6 +306,26 @@ contract NodeOperatorRegistry is
             _signerPubkey,
             NodeOperatorStatus.ACTIVE
         );
+    }
+
+    /// @notice Allows the operator owner to update the name.
+    /// @param _name new operator name.
+    function setOperatorName(string memory _name) external {
+        uint256 operatorId = operatorOwners[msg.sender];
+        require(operatorId != 0, "Operator doesn't exist");
+
+        NodeOperator storage no = operators[operatorId];
+        no.name = _name;
+    }
+
+    /// @notice Allows the operator owner to update the rewardAddress.
+    /// @param _rewardAddress new reward address.
+    function setOperatorRewardAddress(address _rewardAddress) external {
+        uint256 operatorId = operatorOwners[msg.sender];
+        require(operatorId != 0, "Operator doesn't exist");
+
+        NodeOperator storage no = operators[operatorId];
+        no.rewardAddress = _rewardAddress;
     }
 
     /// @notice Allows to remove an operator from the system.
@@ -516,10 +541,10 @@ contract NodeOperatorRegistry is
     /// the owner can transfer back his staked balance by calling
     /// unstakeClaim, after that the operator status is set to CLAIMED
     function unstakeClaim() external override whenNotPaused {
-        uint256 validatorId = operatorOwners[msg.sender];
-        require(validatorId != 0, "Operator not exists");
+        uint256 operatorId = operatorOwners[msg.sender];
+        require(operatorId != 0, "Operator not exists");
 
-        NodeOperator storage no = operators[validatorId];
+        NodeOperator storage no = operators[operatorId];
         require(
             no.status == NodeOperatorStatus.UNSTAKED,
             "Operator status isn't UNSTAKED"
@@ -527,7 +552,7 @@ contract NodeOperatorRegistry is
 
         uint256 amount = IValidator(no.validatorContract).unstakeClaim(
             msg.sender,
-            validatorId
+            no.validatorId
         );
 
         no.status = NodeOperatorStatus.CLAIMED;
@@ -535,7 +560,7 @@ contract NodeOperatorRegistry is
         totalUnstakedNodeOperator--;
         totalClaimedNodeOperator++;
 
-        emit ClaimUnstake(validatorId, msg.sender, amount);
+        emit ClaimUnstake(operatorId, msg.sender, amount);
     }
 
     /// @notice Allows withdraw heimdall fees
@@ -611,7 +636,40 @@ contract NodeOperatorRegistry is
 
     // ====================================================================
     // ========================== GOVERNANCE ==============================
-    // ====================================================================
+    // ====================================================================  
+
+    /// @notice Allows the DAO to set the operator defaultMaxDelegateLimit.
+    /// @param _defaultMaxDelegateLimit default max delegation amount.
+    function setDefaultMaxDelegateLimit(uint256 _defaultMaxDelegateLimit)
+        external
+        userHasRole(DAO_ROLE)
+    {
+        defaultMaxDelegateLimit = _defaultMaxDelegateLimit;
+    }
+
+    /// @notice Allows the DAO to set the operator maxDelegateLimit.
+    /// @param _operatorId operator id.
+    /// @param _maxDelegateLimit max amount to delegate .
+    function setMaxDelegateLimit(uint256 _operatorId, uint256 _maxDelegateLimit)
+        external
+        userHasRole(DAO_ROLE)
+    {
+        NodeOperator storage no = operators[_operatorId];
+        require(
+            no.status != NodeOperatorStatus.NONE,
+            "Operator doesn't exists"
+        );
+        no.maxDelegateLimit = _maxDelegateLimit;
+    }
+
+    /// @notice Allows the DAO to set the slashingDelay.
+    /// @param _slashingDelay slashing delay in seconds.
+    function setSlashingDelay(uint256  _slashingDelay)
+        external
+        userHasRole(DAO_ROLE)
+    {
+        slashingDelay = _slashingDelay;
+    }
 
     /// @notice Allows to withdraw rewards from the validator.
     /// @dev Allows to withdraw rewards from the validator using the _validatorId. Only the
@@ -889,7 +947,7 @@ contract NodeOperatorRegistry is
                             totalTimesValidatorsSlashed
                         : 0,
                     statusTimestamp: operators[id].statusTimestamp,
-                    isTrusted: operators[id].isTrusted
+                    maxDelegateLimit: operators[id].maxDelegateLimit
                 });
             }
         }
@@ -927,7 +985,7 @@ contract NodeOperatorRegistry is
                 rewardAddresses[idx] = Operator.OperatorReward({
                     rewardAddress: operators[id].rewardAddress,
                     penality: operators[id].slashedTimestamp +
-                        SANCTION_SLASH_DELAY >
+                        slashingDelay >
                         block.timestamp
                 });
                 index++;

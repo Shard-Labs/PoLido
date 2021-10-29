@@ -125,6 +125,27 @@ async function main () {
         nodeOperatorRegistryContractImplAddress
     );
 
+    console.log("deploy LidoNFT...");
+    const LidoNFT = await ethers.getContractFactory("LidoNFT");
+    const lidoNFT = await upgrades.deployProxy(LidoNFT, [
+        "PoLido",
+        "PLO"
+    ]);
+    await lidoNFT.deployed();
+    const lidoNFTImplAddress =
+        await upgrades.erc1967.getImplementationAddress(
+            lidoNFT.address
+        );
+
+    console.log(
+        "LidoNFT contract deployed to:",
+        lidoNFT.address
+    );
+    console.log(
+        "LidoNFT implementation contract deployed to:",
+        lidoNFTImplAddress
+    );
+
     // deploy lido contract
     const LidoMaticFactory: LidoMatic__factory =
         (await ethers.getContractFactory("LidoMatic")) as LidoMatic__factory;
@@ -132,7 +153,9 @@ async function main () {
         nodeOperatorRegistryContract.address,
         maticERC20Address,
         config.dao,
-        config.insurance
+        config.insurance,
+        polygonStakeManager,
+        lidoNFT.address
     ])) as LidoMatic;
 
     await lidoMatic.deployed();
@@ -155,6 +178,10 @@ async function main () {
     await nodeOperatorRegistryContract.setLido(lidoMatic.address);
     console.log("NodeOperatorRegistry lido set");
 
+    // set lido contract fot the LidoNFT
+    await lidoNFT.setLido(lidoMatic.address);
+    console.log("LidoNFT lido set");
+
     // write addreses into json file
     const data = {
         network: networkName,
@@ -163,7 +190,9 @@ async function main () {
         treasury: config.treasury,
         matic_erc20_address: maticERC20Address,
         matic_stake_manager_proxy: polygonStakeManager,
-        lido_matic: lidoMatic.address,
+        lido_nft_proxy: lidoNFT.address,
+        lido_nft_implementation: lidoNFTImplAddress,
+        lido_matic_proxy: lidoMatic.address,
         lido_matic_implementation: lidoMaticImplAddress,
         validator_factory_proxy: validatorFactoryContract.address,
         validator_factory_implementation: validatorContract.address,
