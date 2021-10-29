@@ -236,6 +236,8 @@ describe("LidoMatic", () => {
             const userBalanceBefore = await mockToken.balanceOf(
                 deployer.address
             );
+            
+            await lidoNFT.approve(dao.address, 1);
 
             await ethers.provider.send("evm_mine", [1625097606000]);
 

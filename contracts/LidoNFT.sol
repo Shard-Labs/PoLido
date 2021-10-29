@@ -91,7 +91,9 @@ contract LidoNFT is
         // Burning
         else if (to == address(0)) {
             uint256[] storage ownerTokens = owner2Tokens[from];
-            uint256[] storage approvedTokens = address2Approved[from];
+            uint256[] storage approvedTokens = address2Approved[
+                getApproved(tokenId)
+            ];
 
             uint256 tokenIndex = token2Index[tokenId];
             delete ownerTokens[tokenIndex];
