@@ -643,6 +643,21 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         return balanceInMATIC;
     }
 
+    /**
+     * @dev Function that converts users StMATIC to MATIC
+     * @return Users balance in MATIC
+     */
+    function getUserBalanceInMATIC() public view returns (uint256) {
+        uint256 userShares = balanceOf(msg.sender);
+        uint256 totalShares = totalSupply();
+        uint256 totalPooledMATIC = getTotalStakeAcrossAllValidators();
+
+        uint256 userBalanceInMATIC = (userShares * totalPooledMATIC) /
+            totalShares;
+
+        return userBalanceInMATIC;
+    }
+
     ////////////////////////////////////////////////////////////
     /////                                                    ///
     /////                 ***Setters***                      ///
