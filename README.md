@@ -43,12 +43,12 @@ NODE_OPERATOR_REGISTRY_PROXY_IMPLEMENTATION
 To add a new operator run:
 `npx hardhat addOperator --network <network> --operator-name <operatorName> --reward-address <rewardAddress> --pub-key <pubKey> --private-key <privateKey>`
 OPTIONAL PARAMS: pub-key, private-key.
-If you don't provide pub-key, it will be generated from GOERLI_PRIVATE_KEY from .env.
+If you don't provide pub-key, it will be generated from VALIDATOR_PRIVATE_KEY from .env.
 If you don't provide private key, tx will be signed with a wallet whose private key responds to GOERLI_PRIVATE_KEY from .env.
 For now, the only supported <network> is goerli.
 
-To stake a validator run:
-`npx hardhat stakeValidator --network <network> --amount <amount> --heimdall-fee <heimdallFee> --private-key <privateKey>`
+To stake an operator run:
+`npx hardhat stakeOperator --network <network> --amount <amount> --heimdall-fee <heimdallFee> --private-key <privateKey>`
 OPTIONAL PARAMS: private-key.
 If you don't provide private key, tx will be signed with a wallet whose private key responds to GOERLI_PRIVATE_KEY from .env.
 For now, the only supported <network> is goerli.
