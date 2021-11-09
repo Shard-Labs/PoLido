@@ -3,7 +3,9 @@
 pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {AccessControlUpgradeable, Initializable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
+
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
@@ -249,6 +251,53 @@ contract NodeOperatorRegistry is
         _setupRole(UPDATE_COMMISSION_RATE_ROLE, msg.sender);
         _setupRole(UPDATE_STAKE_HEIMDALL_FEES_ROLE, msg.sender);
         _setupRole(DAO_ROLE, msg.sender);
+    }
+
+    function joinOperator()
+        public
+        whenNotPaused
+        userHasRole(ADD_OPERATOR_ROLE)
+    {
+        uint256 operatorId = operatorOwners[msg.sender];
+
+        require(operatorId != 0, "Operator doesn't exist");
+
+        uint256 validatorId = IStakeManager(stakeManager).getValidatorId(
+            msg.sender
+        );
+
+        IStakeManager.Validator memory validatorContract = IStakeManager(stakeManager)
+            .validators(validatorId);
+
+        require(
+            validatorContract.status == IStakeManager.Status.Active,
+            "Validator isn't staked"
+        );
+
+        NodeOperator storage no = operators[operatorId];
+
+        require(
+            no.status == NodeOperatorStatus.ACTIVE,
+            "The Operator status isn't active"
+        );
+
+        IERC721Upgradeable stakingNFT = IERC721Upgradeable(
+            IStakeManager(stakeManager).NFTContract()
+        );
+
+        stakingNFT.safeTransferFrom(
+            msg.sender,
+            no.validatorContract,
+            validatorId
+        );
+
+        no.status = NodeOperatorStatus.STAKED;
+        no.validatorShare = IStakeManager(stakeManager).getValidatorContract(
+            validatorId
+        );
+        no.validatorId = validatorId;
+        no.statusTimestamp = block.timestamp;
+        no.commissionRate = commissionRate;
     }
 
     /// @notice Add a new node operator to the system.
@@ -636,7 +685,7 @@ contract NodeOperatorRegistry is
 
     // ====================================================================
     // ========================== GOVERNANCE ==============================
-    // ====================================================================  
+    // ====================================================================
 
     /// @notice Allows the DAO to set the operator defaultMaxDelegateLimit.
     /// @param _defaultMaxDelegateLimit default max delegation amount.
@@ -664,7 +713,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows the DAO to set the slashingDelay.
     /// @param _slashingDelay slashing delay in seconds.
-    function setSlashingDelay(uint256  _slashingDelay)
+    function setSlashingDelay(uint256 _slashingDelay)
         external
         userHasRole(DAO_ROLE)
     {
@@ -984,8 +1033,7 @@ contract NodeOperatorRegistry is
             if (operators[id].status == NodeOperatorStatus.STAKED) {
                 rewardAddresses[idx] = Operator.OperatorReward({
                     rewardAddress: operators[id].rewardAddress,
-                    penality: operators[id].slashedTimestamp +
-                        slashingDelay >
+                    penality: operators[id].slashedTimestamp + slashingDelay >
                         block.timestamp
                 });
                 index++;

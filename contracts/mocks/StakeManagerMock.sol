@@ -187,4 +187,8 @@ contract StakeManagerMock is IStakeManager {
                 initialRewardPerStake: 0
             });
     }
+
+    function NFTContract() external view override returns (address) {
+        return address(0);
+    }
 }

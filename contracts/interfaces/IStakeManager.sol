@@ -134,4 +134,6 @@ interface IStakeManager {
         view
         returns (Validator memory);
 
+    /// @notice Returns the address of the nft contract
+    function NFTContract() external view returns (address);
 }
