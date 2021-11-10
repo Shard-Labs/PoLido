@@ -43,7 +43,7 @@ describe("LidoNFT", () => {
     });
 
     describe("Testing main functionalities...", async () => {
-        it("should successfully mint 1 token to lido, 2 tokens to account0, 3 tokens to account1 and 4 tokens to account3", async () => {
+        it("Should successfully mint 1 token to lido, 2 tokens to account0, 3 tokens to account1 and 4 tokens to account3", async () => {
             const deployerBalance = await lidoNFT.balanceOf(lido.address);
             const account0Balance = await lidoNFT.balanceOf(accounts[0].address);
             const account1Balance = await lidoNFT.balanceOf(accounts[1].address);
@@ -98,6 +98,44 @@ describe("LidoNFT", () => {
             // Check if approval was reset
             const deployerApprovedPost = (await lidoNFT.getApprovedTokens(lido.address)).filter(tokenId => tokenId.toNumber() !== 0);
             expect(deployerApprovedPost.length).to.equal(0);
+        });
+
+        it("Should add tokens to approval list", async () => {
+            const lidoNft1 = lidoNFT.connect(accounts[0]);
+            await lidoNft1.approve(lido.address, 2);
+            await lidoNft1.approve(lido.address, 3);
+
+            const lidoNft2 = lidoNFT.connect(accounts[1]);
+            await lidoNft2.approve(lido.address, 4);
+            await lidoNft2.approve(lido.address, 5);
+            await lidoNft2.approve(lido.address, 6);
+
+            const approvedTokensLido = (await lidoNft1.getApprovedTokens(lido.address)).map(tokenId => tokenId.toNumber());
+            const expected = [2, 3, 4, 5, 6];
+
+            expect(approvedTokensLido).to.eql(expected);
+        });
+
+        it("Should remove token from approved and owned arrays after burning", async () => {
+            const lidoNft1 = lidoNFT.connect(accounts[0]);
+            await lidoNft1.approve(lido.address, 2);
+            await lidoNft1.approve(lido.address, 3);
+
+            const lidoNft2 = lidoNFT.connect(accounts[1]);
+            await lidoNft2.approve(lido.address, 4);
+            await lidoNft2.approve(lido.address, 5);
+            await lidoNft2.approve(lido.address, 6);
+
+            await lidoNFT.burn(3);
+
+            const ownedTokens = (await lidoNFT.getOwnedTokens(accounts[0].address)).map(tokenId => tokenId.toNumber());
+            const approvedTokens = (await lidoNFT.getApprovedTokens(lido.address)).map(tokenId => tokenId.toNumber());
+
+            const ownedExpected = [2, 0];
+            const approvedExpected = [2, 0, 4, 5, 6];
+
+            expect(ownedExpected).to.eql(ownedTokens);
+            expect(approvedExpected).to.eql(approvedTokens);
         });
     });
 });
