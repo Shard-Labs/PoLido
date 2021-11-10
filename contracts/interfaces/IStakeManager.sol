@@ -136,4 +136,10 @@ interface IStakeManager {
 
     /// @notice Returns the address of the nft contract
     function NFTContract() external view returns (address);
+
+    /// @notice Returns the validator accumulated rewards on stake manager.
+    function validatorReward(uint256 validatorId)
+        external
+        view
+        returns (uint256);
 }
