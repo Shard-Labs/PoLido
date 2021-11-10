@@ -1,25 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.7;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract LidoNFT is
-    OwnableUpgradeable,
-    ERC721EnumerableUpgradeable,
-    PausableUpgradeable
-{
+contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
     // lido contract
     address public lido;
     uint256 public tokenIdIndex;
 
     mapping(address => uint256[]) public owner2Tokens;
     mapping(uint256 => uint256) public token2Index;
-    mapping(uint256 => bool) public indexExists;
+    mapping(uint256 => bool) public indexExists; // Probably delete
 
     mapping(address => uint256[]) public address2Approved;
-    mapping(uint256 => uint256) public approved2Index;
+    mapping(uint256 => uint256) public tokenId2ApprovedIndex;
     mapping(uint256 => bool) public approvalExists;
 
     // check if lido contract is the caller
@@ -34,7 +30,6 @@ contract LidoNFT is
     {
         __Ownable_init();
         __ERC721_init(_name, _symbol);
-        __ERC721Enumerable_init();
         __Pausable_init();
     }
 
@@ -52,10 +47,13 @@ contract LidoNFT is
     }
 
     function approve(address to, uint256 tokenId) public override {
-        uint256[] storage approvedTokens = address2Approved[to];
-        uint256 approvedIndex = approved2Index[tokenId];
-
-        if (approvalExists[approvedIndex]) {
+        // Check if this token was ever approved before
+        // If it was retrieve the address that this token was approved to
+        // Retrieve the old owners approved token array
+        // Retrieve the index of that token inside the old approved token array
+        // Delete the tokenId at the retrieved index from the old approved array
+        if (approvalExists[tokenId]) {
+            uint256 approvedIndex = tokenId2ApprovedIndex[tokenId];
             address oldApprovedAddress = getApproved(tokenId);
             uint256[] storage oldApprovedTokens = address2Approved[
                 oldApprovedAddress
@@ -66,19 +64,23 @@ contract LidoNFT is
 
         super.approve(to, tokenId);
 
+        // Retrieve the array of the address that this token will be approved to
+        // Push this tokenId to the retrieved array
+        // Update the tokens index by seeting it to the retrieved array.length - 1
+        // Update the approval status of the approved token
+        uint256[] storage approvedTokens = address2Approved[to];
+
         approvedTokens.push(tokenId);
-        approved2Index[tokenId] = approvedTokens.length - 1;
-        approvalExists[approved2Index[tokenId]] = true;
+        tokenId2ApprovedIndex[tokenId] = approvedTokens.length - 1;
+        approvalExists[tokenId] = true;
     }
 
     function _beforeTokenTransfer(
         address from,
         address to,
         uint256 tokenId
-    ) internal virtual override {
+    ) internal virtual override whenNotPaused {
         super._beforeTokenTransfer(from, to, tokenId);
-
-        require(!paused(), "ERC721Pausable: token transfer while paused");
 
         // Minting
         if (from == address(0)) {
@@ -86,49 +88,49 @@ contract LidoNFT is
 
             ownerTokens.push(tokenId);
             token2Index[tokenId] = ownerTokens.length - 1;
-            indexExists[token2Index[tokenId]] = true;
+            indexExists[tokenId] = true; // Possibly unused
         }
         // Burning
         else if (to == address(0)) {
             uint256[] storage ownerTokens = owner2Tokens[from];
-            uint256[] storage approvedTokens = address2Approved[
-                getApproved(tokenId)
-            ];
 
             uint256 tokenIndex = token2Index[tokenId];
             delete ownerTokens[tokenIndex];
-            indexExists[tokenIndex] = false;
-            token2Index[tokenId] = 0;
 
-            uint256 approvedIndex = approved2Index[tokenId];
+            indexExists[tokenId] = false;
+            token2Index[tokenId] = 0; // Possibly a problem
 
-            if (approvalExists[approvedIndex]) {
+            // DRY - Repeated Logic
+            if (approvalExists[tokenId]) {
+                uint256[] storage approvedTokens = address2Approved[
+                    getApproved(tokenId)
+                ];
+                uint256 approvedIndex = tokenId2ApprovedIndex[tokenId];
+
                 delete approvedTokens[approvedIndex];
-                approved2Index[tokenId] = 0;
-                approvalExists[approvedIndex] = false;
+                tokenId2ApprovedIndex[tokenId] = 0;
+                approvalExists[tokenId] = false;
             }
         }
         // Transferring
         else if (from != to) {
+            // DRY - Extract
+            if (approvalExists[tokenId]) {
+                uint256[] storage lastApprovedTokens = address2Approved[
+                    getApproved(tokenId)
+                ];
+                uint256 approvedIndex = tokenId2ApprovedIndex[tokenId];
+
+                delete lastApprovedTokens[approvedIndex];
+                tokenId2ApprovedIndex[tokenId] = 0;
+                approvalExists[tokenId] = false;
+            }
+
             uint256[] storage senderTokens = owner2Tokens[from];
             uint256[] storage receiverTokens = owner2Tokens[to];
 
-            uint256 approvedIndex = approved2Index[tokenId];
-
-            // Reset approvals
-            if (approvalExists[approvedIndex]) {
-                address lastApprovedAddress = getApproved(tokenId);
-                uint256[] storage lastApprovedTokens = address2Approved[
-                    lastApprovedAddress
-                ];
-
-                delete lastApprovedTokens[approvedIndex];
-                approved2Index[tokenId] = 0;
-                approvalExists[approvedIndex] = false;
-            }
-
             uint256 tokenIndex = token2Index[tokenId];
-            senderTokens[tokenIndex] = 0;
+            delete senderTokens[tokenIndex];
 
             receiverTokens.push(tokenId);
             token2Index[tokenId] = receiverTokens.length - 1;
