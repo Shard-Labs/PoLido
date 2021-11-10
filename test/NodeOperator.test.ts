@@ -1,0 +1,1199 @@
+import hardhat, { ethers, upgrades } from "hardhat";
+import { Signer, Contract, BigNumber } from "ethers";
+import chai, { expect } from "chai";
+import { solidity } from "ethereum-waffle";
+import { Artifact } from "hardhat/types";
+
+const { deployContract } = hardhat.waffle;
+
+chai.use(solidity);
+
+let signer: Signer;
+let user1: Signer;
+let user1Address: string;
+let user2: Signer;
+let user2Address: string;
+
+let nodeOperatorRegistryContract: Contract;
+let validatorFactoryContract: Contract;
+let stakeManagerMockContract: Contract;
+let lidoMockContract: Contract;
+let polygonERC20Contract: Contract;
+let erc721Contract: Contract;
+let validatorContract: Contract;
+const ZERO_ADDRESS = ethers.constants.AddressZero;
+
+describe("NodeOperator", function () {
+    beforeEach(async function () {
+        const accounts = await ethers.getSigners();
+        signer = accounts[0];
+        user1 = accounts[1];
+        user2 = accounts[2];
+        user1Address = await user1.getAddress();
+        user2Address = await user2.getAddress();
+
+        // deploy ERC20 token
+        const polygonERC20Artifact: Artifact = await hardhat.artifacts.readArtifact("Polygon");
+        polygonERC20Contract = await deployContract(signer, polygonERC20Artifact);
+
+        // deploy ERC721 token
+        const polygonERC721Artifact: Artifact = await hardhat.artifacts.readArtifact("ERC721Test");
+        erc721Contract = await deployContract(signer, polygonERC721Artifact);
+
+        // deploy stake manager mock
+        const stakeManagerMockArtifact: Artifact = await hardhat.artifacts.readArtifact("StakeManagerMock");
+        stakeManagerMockContract = await deployContract(
+            signer,
+            stakeManagerMockArtifact,
+            [polygonERC20Contract.address, erc721Contract.address]
+        );
+        const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact("Validator");
+        validatorContract = await deployContract(
+            signer,
+            validatorArtifact,
+            []
+        );
+
+        // deploy validator factory
+        const validatorFactoryArtifact = await ethers.getContractFactory("ValidatorFactory");
+        validatorFactoryContract = await upgrades.deployProxy(
+            validatorFactoryArtifact, [validatorContract.address]);
+
+        // deploy node operator contract
+        const nodeOperatorRegistryArtifact = await ethers.getContractFactory("NodeOperatorRegistry");
+        nodeOperatorRegistryContract = await upgrades.deployProxy(
+            nodeOperatorRegistryArtifact,
+            [
+                validatorFactoryContract.address,
+                stakeManagerMockContract.address,
+                polygonERC20Contract.address
+            ]
+
+        );
+
+        // deploy lido mock contract
+        // TODO: change later with the real lido contract.
+        const lidoMockArtifact: Artifact = await hardhat.artifacts.readArtifact("LidoMock");
+        lidoMockContract = await deployContract(signer, lidoMockArtifact);
+
+        await validatorFactoryContract.setOperatorAddress(nodeOperatorRegistryContract.address);
+        await nodeOperatorRegistryContract.setLido(lidoMockContract.address);
+        await lidoMockContract.setOperator(nodeOperatorRegistryContract.address);
+
+        // transfer some funds to the stake manager, so we can use it to withdraw rewards.
+        await polygonERC20Contract.transfer(
+            stakeManagerMockContract.address,
+            ethers.utils.parseEther("10000")
+        );
+
+        await polygonERC20Contract.transfer(user1Address, toEth("1000"));
+        await polygonERC20Contract.transfer(await user2.getAddress(), toEth("1000"));
+    });
+
+    // it("success join operator", async function () {
+    //     try {
+    //         await newValidator(1, user1Address);
+    //         const no = await nodeOperatorRegistryContract.getNodeOperator(1, true);
+    //         await erc721Contract.mint(user1Address, 1);
+
+    //         await polygonERC20Contract.connect(user1).approve(stakeManagerMockContract.address, toEth("30"));
+    //         await stakeManagerMockContract.connect(user1).stakeFor(
+    //             user1Address,
+    //             toEth("10"),
+    //             toEth("20"),
+    //             true,
+    //             ethers.utils.hexZeroPad("0x01", 64)
+    //         );
+    //         console.log(user1Address);
+    //         console.log(no.validatorContract);
+    //         await erc721Contract.connect(user1).approve(no.validatorContract, 1);
+    //         console.log(await erc721Contract.getApproved(1));
+    //         await nodeOperatorRegistryContract.connect(user1).joinOperator();
+    //     } catch (e) {
+    //         console.log(e);
+    //     }
+    // });
+
+    it("set stake manager", async function () {
+        const stakeManagerAddress = ethers.utils.hexZeroPad("0x5", 20);
+        expect(await nodeOperatorRegistryContract.getStakeManager()).not.equal(stakeManagerAddress);
+
+        // update stake manager
+        await nodeOperatorRegistryContract.setStakeManager(stakeManagerAddress);
+        expect(await nodeOperatorRegistryContract.getStakeManager()).to.equal(stakeManagerAddress);
+
+        // revert user no allowed to update
+        await expect(nodeOperatorRegistryContract.connect(user1).setStakeManager(stakeManagerAddress)).to.reverted;
+    });
+
+    it("Node Operator Pause Unpause", async function () {
+        // pause the node operator contract
+        await nodeOperatorRegistryContract.pause();
+
+        // check if calls revert
+        await expect(newValidator(1, user1Address)).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.unstake()).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.removeOperator(0)).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.stake(0, 0)).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.restake(0)).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.unstake()).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.topUpForFee(0)).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.unstakeClaim()).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.withdrawRewards()).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.updateSigner(ethers.utils.randomBytes(64))).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.claimFee(0, 0, ethers.utils.randomBytes(64))).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.updateOperatorCommissionRate(0, 0)).to.revertedWith("Pausable: paused");
+        await expect(nodeOperatorRegistryContract.unjail()).to.revertedWith("Pausable: paused");
+
+        // unpasue the node operator contract
+        await nodeOperatorRegistryContract.unpause();
+
+        // add new operator
+        await newValidator(1, user1Address);
+    });
+
+    it("Success set default max delegate limit", async function () {
+        const defaultMaxDelegateLimit = toEth("1000");
+        await nodeOperatorRegistryContract.setDefaultMaxDelegateLimit(defaultMaxDelegateLimit);
+        await nodeOperatorRegistryContract.defaultMaxDelegateLimit();
+    });
+
+    it("Fail set default max delegate limit", async function () {
+        const defaultMaxDelegateLimit = toEth("1000");
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .setDefaultMaxDelegateLimit(defaultMaxDelegateLimit))
+            .revertedWith("Permission not found");
+    });
+
+    it("Success add new operator", async function () {
+        const { name, signerPubkey } = await newValidator(1, user1Address);
+
+        // check node operator state
+        const state = await nodeOperatorRegistryContract.getState();
+        expect(state[0].toNumber(), "totalNodeOpearator not match").equal(1);
+        expect(state[1].toNumber(), "totalActiveNodeOpearator not match").equal(1);
+
+        // get validators address deployed by the factory
+        const validators = await validatorFactoryContract.getValidators();
+
+        // get operator data
+        const res = await nodeOperatorRegistryContract.getNodeOperator(1, true);
+        expect(res[0], "operator status").to.equal(1);
+        expect(res[1], "operator name").to.equal(name);
+        expect(res[2], "operator reward address").to.equal(user1Address);
+        expect(res[3].toString(), "operator validatorId").to.equal("0");
+        expect(res[4], "operator signer public key").to.equal(signerPubkey);
+        expect(res[5], "operator validator share address").to.equal(ethers.constants.AddressZero);
+        expect(res[6], "operator validator contract address").to.equal(validators[0]);
+        expect(res[7].toString(), "commision rate").to.equal("0");
+        expect(res[8].toString(), "times slashed").to.equal("0");
+        expect(res[9].toString(), "slashedtimestamp").to.equal("0");
+        expect(res[10].toString(), "timestamp").not.equal("0");
+    });
+
+    it("Fail to add new operator", async function () {
+        const { name, signerPubkey } = getValidatorFakeData();
+
+        // revert the caller has no permission.
+        await expect(nodeOperatorRegistryContract.connect(user1).addOperator(
+            name,
+            user1Address,
+            signerPubkey
+        )).to.revertedWith("Permission not found");
+
+        // revert signer pubkey not valid should be 64.
+        await expect(nodeOperatorRegistryContract.addOperator(
+            name,
+            user1Address,
+            ethers.utils.hexZeroPad("0x0", 32)
+        )).to.revertedWith("Invalid Public Key");
+
+        // revert reward address is zero.
+        await expect(nodeOperatorRegistryContract.addOperator(
+            name,
+            ethers.constants.AddressZero,
+            signerPubkey
+        )).to.revertedWith("Invalid reward address");
+
+        // add operator
+        await newValidator(1, user1Address);
+
+        // revert user try to add another operator with the same reward address
+        await expect(nodeOperatorRegistryContract.addOperator(
+            name,
+            user1Address,
+            signerPubkey
+        )).to.revertedWith("Address already used");
+    });
+
+    it("Success set operator name", async function () {
+        await newValidator(1, user1Address);
+        const newName = "new name";
+        await nodeOperatorRegistryContract.connect(user1).setOperatorName(newName);
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, true);
+        expect(no[1], "name not match").equal(newName);
+    });
+
+    it("Fail set operator name", async function () {
+        await newValidator(1, user1Address);
+        const newName = "new name";
+        await expect(nodeOperatorRegistryContract.setOperatorName(newName))
+            .revertedWith("Operator doesn't exist");
+    });
+
+    it("Success set operator max delegation limit", async function () {
+        await newValidator(1, user1Address);
+        const maxDelegateLimit = toEth("1000");
+        await nodeOperatorRegistryContract.setMaxDelegateLimit(1, maxDelegateLimit);
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, true);
+        expect(no.maxDelegateLimit, "maxDelegateLimit not match").equal(maxDelegateLimit);
+    });
+
+    it("Fail set operator max delegation limit", async function () {
+        await newValidator(1, user1Address);
+        const maxDelegateLimit = toEth("1000");
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .setMaxDelegateLimit(1, maxDelegateLimit)).revertedWith("Permission not found");
+    });
+
+    it("Success set slashing delay", async function () {
+        const slashingDelay = 2 ** 8;
+        await nodeOperatorRegistryContract.setSlashingDelay(slashingDelay);
+        const res = await nodeOperatorRegistryContract.slashingDelay();
+        expect(res, "slashing delay not match").equal(slashingDelay);
+    });
+
+    it("Fail set slashing delay", async function () {
+        const slashingDelay = 2 ** 8;
+        await expect(nodeOperatorRegistryContract.connect(user1).setSlashingDelay(slashingDelay))
+            .revertedWith("Permission not found");
+    });
+
+    it("Success set reward address", async function () {
+        await newValidator(1, user1Address);
+        await nodeOperatorRegistryContract.connect(user1).setOperatorRewardAddress(user2Address);
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no[2], "name not match").equal(user2Address);
+    });
+
+    it("Fail set reward address", async function () {
+        await newValidator(1, user1Address);
+        await expect(nodeOperatorRegistryContract.setOperatorName(user2Address))
+            .revertedWith("Operator doesn't exist");
+    });
+
+    it("Success get operators list", async function () {
+        await newValidator(1, user1Address);
+        await newValidator(2, user2Address);
+
+        const ops = await nodeOperatorRegistryContract.getOperators();
+        expect(ops.length, "Total validators in the system not match").to.equal(2);
+    });
+
+    it("Success stake an operator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1);
+
+        // get node operator after staked
+        const res = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(res[0], "operator status not ACTIVE").to.equal(2);
+        expect(res[3].toString(), "operator validator id").to.equal("1");
+        expect(res[5].toString(), "operator validator share contract")
+            .not.equal(ethers.constants.AddressZero.toString());
+        expect(res[10], "timestamp").not.equal(no[10]);
+
+        // check global state
+        const state = await nodeOperatorRegistryContract.getState();
+        expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
+        expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("0");
+        expect(state[2].toString(), "totalActiveNodeOpearator").to.equal("1");
+        expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
+        expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+    });
+
+    it("Success restake an operator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("50"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1);
+
+        // set restake to true
+        await nodeOperatorRegistryContract.setRestake(true);
+
+        // restake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .restake(toEth("10")))
+            .to.emit(nodeOperatorRegistryContract, "RestakeOperator").withArgs(1, 1);
+    });
+
+    it("Fail restake an operator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        // revert restake a node operator
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .restake(toEth("0"))).to.revertedWith("Invalid amount");
+
+        // revert restake a node operator
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .restake(toEth("10"))).to.revertedWith("Restake is disabled");
+
+        // set restake to true
+        await nodeOperatorRegistryContract.setRestake(true);
+
+        // revert restake a node operator
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .restake(toEth("10"))).to.revertedWith("The operator status is not ACTIVE");
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("50"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1);
+    });
+
+    it("Fail to stake an operator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // revert the amount and heimdall fees are zero.
+        await expect(nodeOperatorRegistryContract.connect(user1).stake(toEth("0"), toEth("20")))
+            .to.revertedWith("Invalid amount");
+
+        // revert the amount and heimdall fees are zero.
+        await expect(nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("0")))
+            .to.revertedWith("Invalid heimdallFee");
+
+        // revert the caller is not the owner(owner is user1 and here the signer is the caller).
+        await expect(nodeOperatorRegistryContract
+            .stake(toEth("10"), toEth("20")))
+            .to.revertedWith("Operator doesn't exist");
+
+        // get node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1);
+
+        // revert try to stake the same operator 2 times
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.revertedWith("The Operator status is not UNACTIVE");
+    });
+
+    it("Success get operators validatorShare contracts", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+        await newValidator(2, user2Address);
+
+        // get node operator
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no1[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1);
+
+        // get node operator
+        const no2 = await nodeOperatorRegistryContract.getNodeOperator(2, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user2).approve(no2[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user2)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(2, 2);
+
+        const operatorShares = await nodeOperatorRegistryContract.getOperatorShares();
+        expect(operatorShares.length).to.equal(2);
+
+        for (let idx = 0; idx < operatorShares.length; idx++) {
+            expect(operatorShares[idx][1]).not.equal(ZERO_ADDRESS);
+        }
+
+        expect(await nodeOperatorRegistryContract.getOperatorShare(1)).not.equal(ZERO_ADDRESS);
+    });
+
+    it("Success unstake an operator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get an operator by id
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")));
+
+        // unstake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1).unstake());
+
+        // chez=ck if the status is unstaked === 3
+        const res = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(res[0], "operator status").to.equal(3);
+        expect(res[10], "timestamp").not.equal(no[10]);
+
+        // check global state
+        const state = await nodeOperatorRegistryContract.getState();
+        expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
+        expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("0");
+        expect(state[2].toString(), "totalActiveNodeOpearator").to.equal("0");
+        expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("1");
+        expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+    });
+
+    it("Fail to unstake an operator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // revert caller try to unstake a operator that has not yet staked
+        await expect(nodeOperatorRegistryContract.connect(user1).unstake())
+            .to.revertedWith("The operator status is not ACTIVE");
+
+        // add a new node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")));
+
+        // revert caller does not has any node operator
+        await expect(nodeOperatorRegistryContract.unstake())
+            .to.revertedWith("Operator doesn't exist");
+    });
+
+    it("Success topUpFee for a validator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get a node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")));
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("20"));
+
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .topUpForFee(toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "TopUpHeimdallFees")
+            .withArgs(1, toEth("20"));
+    });
+
+    it("Fail topUpFee for a validator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get a node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")));
+
+        // revert heimdall fees = 0
+        await expect(nodeOperatorRegistryContract.connect(user1).topUpForFee(0))
+            .to.revertedWith("Invalid heimdallFee");
+
+        // revert the caller has no node operator.
+        await expect(nodeOperatorRegistryContract.topUpForFee(toEth("20")))
+            .to.revertedWith("Operator doesn't exist");
+
+        // unstake a node operator
+        await nodeOperatorRegistryContract.connect(user1).unstake();
+
+        // revert topup on a no staked operator
+        await expect(nodeOperatorRegistryContract.connect(user1).topUpForFee(toEth("20")))
+            .to.revertedWith("The operator status is not ACTIVE");
+    });
+
+    it("Success withdraw validator rewards", async function () {
+        await newValidator(1, user1Address);
+        await newValidator(2, user2Address);
+
+        {
+            // add a new node operator 1
+            const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+            // approve token to validator contract 1
+            await polygonERC20Contract.connect(user1).approve(no1[6], toEth("30"));
+
+            // stake the first node operator
+            await nodeOperatorRegistryContract.connect(user1)
+                .stake(toEth("10"), toEth("20"));
+        }
+
+        {
+            // add a new node operator 2
+            const no2 = await nodeOperatorRegistryContract.getNodeOperator(2, false);
+
+            // approve token to validator contract 2
+            await polygonERC20Contract.connect(user2).approve(no2[6], toEth("30"));
+
+            // stake the second node operator
+            await nodeOperatorRegistryContract.connect(user2)
+                .stake(toEth("10"), toEth("20"));
+        }
+
+        await polygonERC20Contract.transfer(stakeManagerMockContract.address, toEth("200"));
+        // get users balance before request withdraw rewards
+        const b1 = await polygonERC20Contract.balanceOf(user1Address);
+        const b2 = await polygonERC20Contract.balanceOf(user2Address);
+
+        // users request withdraw rewards
+        await nodeOperatorRegistryContract.connect(user1).withdrawRewards();
+        await nodeOperatorRegistryContract.connect(user2).withdrawRewards();
+
+        // get users balance before request withdraw rewards
+        const a1 = await polygonERC20Contract.balanceOf(user1Address);
+        const a2 = await polygonERC20Contract.balanceOf(user2Address);
+
+        expect(b1, "balance user1").not.eq(a1);
+        expect(b2, "balance user2").not.eq(a2);
+    });
+
+    it("Fail withdraw validator rewards", async function () {
+        await newValidator(1, user1Address);
+
+        // add a new node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // withdraw rewards before stake
+        await expect(nodeOperatorRegistryContract.connect(user1).withdrawRewards())
+            .to.revertedWith("Operator status isn't ACTIVE");
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // withdraw rewards
+        await expect(nodeOperatorRegistryContract.withdrawRewards())
+            .to.revertedWith("Operator doesn't exist");
+    });
+
+    it("Success unstake claim", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get a node operator
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no1[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1);
+
+        // unstake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .unstake())
+            .to.emit(nodeOperatorRegistryContract, "UnstakeOperator").withArgs(1);
+
+        const beforeBalance = await polygonERC20Contract.balanceOf(user1Address);
+        const beforeBalanceLido = await polygonERC20Contract.balanceOf(lidoMockContract.address);
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .unstakeClaim())
+            .to.emit(nodeOperatorRegistryContract, "ClaimUnstake");
+        const afterBalance = await polygonERC20Contract.balanceOf(user1Address);
+        const afterBalanceLido = await polygonERC20Contract.balanceOf(lidoMockContract.address);
+
+        expect(beforeBalance.toString()).not.equal(afterBalance.toString());
+        expect(beforeBalanceLido.toString()).not.equal(afterBalanceLido.toString());
+
+        // check global state
+        const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no1a[0], "operator status").to.equal(4);
+        expect(no1a[10], "timestamp").not.equal(no1[10]);
+
+        const state = await nodeOperatorRegistryContract.getState();
+        expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
+        expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("0");
+        expect(state[2].toString(), "totalActiveNodeOpearator").to.equal("0");
+        expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
+        expect(state[4].toString(), "totalExitNodeOpearator").to.equal("1");
+    });
+
+    it("Success unjail", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get a node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // unstake a node operator
+        await nodeOperatorRegistryContract.connect(user1).unstake();
+
+        // set unjail to true
+        await nodeOperatorRegistryContract.setUnjail(true);
+
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // unjail a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1).unjail())
+            .to.emit(nodeOperatorRegistryContract, "Unjail").withArgs(1, 1);
+
+        // check global state
+        const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no1a[0], "operator status").to.equal(2);
+        expect(no1a[10], "timestamp").not.equal(no1[10]);
+
+        const state = await nodeOperatorRegistryContract.getState();
+        expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
+        expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("0");
+        expect(state[2].toString(), "totalActiveNodeOpearator").to.equal("1");
+        expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
+        expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+    });
+
+    it("Fail unjail", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get a node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // revert unjail a node operator
+        await expect(nodeOperatorRegistryContract.connect(user2).unjail())
+            .to.revertedWith("Unjail is disabled");
+
+        // set unjail to true
+        await nodeOperatorRegistryContract.setUnjail(true);
+
+        // revert unjail a node operator that not exists
+        await expect(nodeOperatorRegistryContract.connect(user2).unjail())
+            .to.revertedWith("Operator doesn't exist");
+
+        // revert unjail a node operator that was not unstaked
+        await expect(nodeOperatorRegistryContract.connect(user1).unjail())
+            .to.revertedWith("Operator status isn't UNSTAKED");
+    });
+
+    it("Success claim heimdall fees", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get a node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // unstake a node operator
+        await nodeOperatorRegistryContract.connect(user1).unstake();
+
+        // unstakeClaim a node operator
+        await nodeOperatorRegistryContract.connect(user1).unstakeClaim();
+
+        // check global state
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // claim fees
+        await nodeOperatorRegistryContract.connect(user1)
+            .claimFee(1, 1, ethers.utils.randomBytes(64));
+
+        // check global state
+        const no1a = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no1a[0], "operator status").to.equal(5);
+        expect(no1a[10], "timestamp").not.equal(no1[10]);
+    });
+
+    it("Fail claim heimdall fees", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get a node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // claim fees before unstake
+        await expect(nodeOperatorRegistryContract.connect(user1)
+            .claimFee(1, 1, ethers.utils.randomBytes(64)))
+            .to.revertedWith("Operator status isn't CLAIMED");
+
+        // claim fees of an operator that not exists
+        await expect(nodeOperatorRegistryContract.connect(user2)
+            .claimFee(1, 1, ethers.utils.randomBytes(64)))
+            .to.revertedWith("Operator doesn't exist");
+    });
+
+    it("get reward addresses", async function () {
+        await newValidator(1, user1Address);
+        await newValidator(2, user2Address);
+
+        let rewardAddresses = await nodeOperatorRegistryContract.getOperatorRewardAddresses();
+        expect(rewardAddresses.length).to.equal(0);
+
+        // get node operator
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no1[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(1, 1);
+
+        rewardAddresses = await nodeOperatorRegistryContract.getOperatorRewardAddresses();
+        expect(rewardAddresses.length).to.equal(1);
+        expect(rewardAddresses[0]).not.equal(ZERO_ADDRESS);
+        // get node operator
+        const no2 = await nodeOperatorRegistryContract.getNodeOperator(2, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user2).approve(no2[6], toEth("30"));
+
+        // stake a node operator
+        expect(await nodeOperatorRegistryContract.connect(user2)
+            .stake(toEth("10"), toEth("20")))
+            .to.emit(nodeOperatorRegistryContract, "StakeOperator").withArgs(2, 2);
+
+        rewardAddresses = await nodeOperatorRegistryContract.getOperatorRewardAddresses();
+        expect(rewardAddresses.length).to.equal(2);
+        expect(rewardAddresses[0]).not.equal(ZERO_ADDRESS);
+        expect(rewardAddresses[1]).not.equal(ZERO_ADDRESS);
+    });
+
+    it("Success update operator commision rate", async function () {
+        await newValidator(1, user1Address);
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // update commission rate
+        expect(await nodeOperatorRegistryContract.updateOperatorCommissionRate(1, 10))
+            .to.emit(nodeOperatorRegistryContract, "UpdateCommissionRate").withArgs(1, 10);
+    });
+
+    it("Fail update one operator commision rate", async function () {
+        await newValidator(1, user1Address);
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // update commission rate
+        await expect(nodeOperatorRegistryContract.updateOperatorCommissionRate(0, 10))
+            .to.revertedWith("Operator status isn't ACTIVE");
+    });
+
+    it("Success update signer publickey", async function () {
+        await newValidator(1, user1Address);
+
+        let no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        const newSignPubkey = ethers.utils.hexZeroPad("0x02", 64);
+        expect(await nodeOperatorRegistryContract.connect(user1)
+            .updateSigner(newSignPubkey))
+            .to.emit(nodeOperatorRegistryContract, "UpdateSignerPubkey");
+
+        no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(newSignPubkey === no[4], "Signer pubkey not match");
+    });
+
+    it("Success remove node operator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+        await newValidator(2, user2Address);
+
+        // get a node operator
+        let no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no[0] === 2, "status not active").true;
+
+        // unstake a node operator
+        await nodeOperatorRegistryContract.connect(user1).unstake();
+        no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no[0] === 3, "status not unstaked").true;
+
+        // unstakeClaim a node operator
+        await nodeOperatorRegistryContract.connect(user1).unstakeClaim();
+        no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no[0] === 4, "status not claimed").true;
+
+        // claim fees
+        await nodeOperatorRegistryContract.connect(user1)
+            .claimFee(1, 1, ethers.utils.randomBytes(64));
+
+        no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+        expect(no[0] === 5, "status not exit").true;
+
+        // remove node operator.
+        let res = await nodeOperatorRegistryContract.removeOperator(1);
+        expect(res).to.emit(nodeOperatorRegistryContract, "RemoveOperator").withArgs(1);
+
+        let ops = await nodeOperatorRegistryContract.getOperators();
+        expect(ops.length, "all validators ids").to.equal(1);
+        expect(ops[0].toString(), "validator id 2").to.equal("2");
+
+        // check global state
+        let state = await nodeOperatorRegistryContract.getState();
+        expect(state[0].toString(), "totalNodeOpearator").to.equal("1");
+        expect(state[1].toString(), "totalUnactiveNodeOpearator").to.equal("1");
+        expect(state[2].toString(), "totalActiveNodeOpearator").to.equal("0");
+        expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
+        expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+
+        let v = await validatorFactoryContract.getValidators();
+        expect(v.length, "validator proxies").to.equal(1);
+
+        no = await nodeOperatorRegistryContract.getNodeOperator(2, false);
+        expect(no[0] === 1, "status not active");
+        expect(v[0], "ValidatorContract").to.equal(no[6]);
+
+        // remove node operator.
+        res = await nodeOperatorRegistryContract.removeOperator(2);
+        expect(res).to.emit(nodeOperatorRegistryContract, "RemoveOperator").withArgs(2);
+
+        ops = await nodeOperatorRegistryContract.getOperators();
+        expect(ops.length, "all validators ids").to.equal(0);
+
+        // check global state
+        state = await nodeOperatorRegistryContract.getState();
+        expect(state[0].toString(), "totalNodeOpearator").to.equal("0");
+        expect(state[1].toString(), "totalUnactiveNodeOpearator").to.equal("0");
+        expect(state[2].toString(), "totalActiveNodeOpearator").to.equal("0");
+        expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
+        expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+
+        v = await validatorFactoryContract.getValidators();
+        expect(v.length, "validator proxies").to.equal(0);
+    });
+
+    it("Fail to remove operator", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+
+        // get a node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // unstake a node operator
+        await nodeOperatorRegistryContract.connect(user1).unstake();
+
+        // unstakeClaim a node operator
+        await nodeOperatorRegistryContract.connect(user1).unstakeClaim();
+
+        // claim fees
+        await nodeOperatorRegistryContract.connect(user1)
+            .claimFee(1, 1, ethers.utils.randomBytes(64));
+
+        // revert remove node operator.
+        await expect(nodeOperatorRegistryContract.connect(user1).removeOperator(1))
+            .to.revertedWith("Permission not found");
+
+        // revert remove node operator that not exists.
+        await expect(nodeOperatorRegistryContract.removeOperator(2))
+            .to.revertedWith("Node Operator state isn't UNACTIVE or EXIT");
+    });
+
+    it("Success set stake amount and fees", async function () {
+        await nodeOperatorRegistryContract.setStakeAmountAndFees(
+            toEth("100"),
+            toEth("30")
+        );
+        const state = await nodeOperatorRegistryContract.getStakeAndHeimdallFees();
+        expect(state[0], "minAmountStake").to.equal(toEth("100"));
+        expect(state[1], "minHeimdallFees").to.equal(toEth("30"));
+    });
+
+    it("Fail to set stake amount and fees", async function () {
+        // revert mac amount less than the min amount
+        await expect(nodeOperatorRegistryContract.setStakeAmountAndFees(
+            toEth("1"),
+            toEth("100")
+        )).to.revertedWith("Invalid amount");
+
+        // revert mac amount less than the min amount
+        await expect(nodeOperatorRegistryContract.setStakeAmountAndFees(
+            toEth("100"),
+            toEth("1")
+        )).to.revertedWith("Invalid heimdallFees");
+    });
+
+    it("upgrade contract", async function () {
+        await newValidator(1, user1Address);
+        await newValidator(2, user2Address);
+
+        // get a node operator
+        const no = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        await nodeOperatorRegistryContract.setStakeAmountAndFees(
+            toEth("100"),
+            toEth("100")
+        );
+
+        // check the actual contract version should be 1.0.0
+        expect(await nodeOperatorRegistryContract.version() === "1.0.0");
+
+        // upgrade the contract to v2
+        const NodeOperatorRegistryV2Artifact = await ethers.getContractFactory("NodeOperatorRegistryV2");
+        await upgrades.upgradeProxy(nodeOperatorRegistryContract.address, NodeOperatorRegistryV2Artifact);
+
+        // check the actual contract version should be 2.0.0
+        expect(await nodeOperatorRegistryContract.version() === "2.0.0");
+
+        // check node operator state v1.0.0 is maintained
+        let state = await nodeOperatorRegistryContract.getState();
+        expect(state[0].toString(), "totalNodeOpearator").to.equal("2");
+        expect(state[1].toString(), "totalActiveNodeOpearator").to.equal("1");
+        expect(state[2].toString(), "totalActiveNodeOpearator").to.equal("1");
+        expect(state[3].toString(), "totalUnstakedNodeOpearator").to.equal("0");
+        expect(state[4].toString(), "totalExitNodeOpearator").to.equal("0");
+
+        state = await nodeOperatorRegistryContract.getStakeAndHeimdallFees();
+
+        expect(state[0], "maxAmountStake").to.equal(toEth("100"));
+        expect(state[1], "minAmountStake").to.equal(toEth("100"));
+    });
+
+    it("Success set lido and validatorFactory addresses", async function () {
+        const newValidatorFactoryAddress = ethers.utils.hexZeroPad("0x1", 20);
+        const newLidoAddress = ethers.utils.hexZeroPad("0x2", 20);
+        await nodeOperatorRegistryContract.setValidatorFactory(newValidatorFactoryAddress);
+        await nodeOperatorRegistryContract.setLido(newLidoAddress);
+
+        expect(await nodeOperatorRegistryContract.getLido()).equal(newLidoAddress);
+        expect(await nodeOperatorRegistryContract.getValidatorFactory()).equal(newValidatorFactoryAddress);
+    });
+
+    it("Success upgrade validator factory", async function () {
+        // before upgrade
+        expect(await validatorFactoryContract.version() === "1.0.0");
+
+        // upgrade contract
+        const validatorFactoryV2Artifact = await ethers.getContractFactory("ValidatorFactoryV2");
+        await upgrades.upgradeProxy(validatorFactoryContract, validatorFactoryV2Artifact);
+
+        // after upgrade
+        expect(await validatorFactoryContract.version() === "2.0.0");
+    });
+
+    it("Success upgrade validator Proxy validator implementation", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+        await newValidator(2, user2Address);
+
+        // get a node operator
+        const no1 = await nodeOperatorRegistryContract.getNodeOperator(1, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user1).approve(no1[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user1).stake(toEth("10"), toEth("20"));
+
+        // get a node operator
+        const no2 = await nodeOperatorRegistryContract.getNodeOperator(2, false);
+
+        // approve token to validator contract
+        await polygonERC20Contract.connect(user2).approve(no2[6], toEth("30"));
+
+        // stake a node operator
+        await nodeOperatorRegistryContract.connect(user2).stake(toEth("10"), toEth("20"));
+
+        const validatorArtifactV2: Artifact = await hardhat.artifacts.readArtifact("ValidatorV2");
+        const validatorContractV2 = await deployContract(
+            signer,
+            validatorArtifactV2,
+            []
+        );
+
+        const validatorProxyArtifact: Artifact = await hardhat.artifacts.readArtifact("ValidatorProxy");
+        const v = await validatorFactoryContract.getValidators();
+
+        for (let idx = 0; idx < v.length; idx++) {
+            await signer.sendTransaction({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorProxyArtifact.abi)
+                    .encodeFunctionData("setImplementation", [validatorContractV2.address])
+            });
+
+            let res = await signer.call({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorArtifactV2.abi).encodeFunctionData("version")
+            });
+            const version = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("version", res);
+            expect(version[0], "validator version").to.equal("2.0.0");
+
+            res = await signer.call({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorArtifactV2.abi).encodeFunctionData("getOperator")
+            });
+            const op = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getOperator", res);
+            expect(op[0], "operator address").to.equal(nodeOperatorRegistryContract.address);
+
+            res = await signer.call({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorArtifactV2.abi).encodeFunctionData("getX")
+            });
+
+            let x = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getX", res);
+            expect(x[0], "validator version").to.equal(0);
+
+            await signer.sendTransaction({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorArtifactV2.abi)
+                    .encodeFunctionData("setX", [idx + 10])
+            });
+
+            res = await signer.call({
+                to: v[idx],
+                data: new ethers.utils.Interface(validatorArtifactV2.abi).encodeFunctionData("getX")
+            });
+
+            x = new ethers.utils.Interface(validatorArtifactV2.abi).decodeFunctionResult("getX", res);
+            expect(x[0], "validator version").to.equal(idx + 10);
+        }
+    });
+
+    it("Fail to upgrade validator factory proxy implementation", async function () {
+        // add a new node operator
+        await newValidator(1, user1Address);
+        const validatorArtifactV2: Artifact = await hardhat.artifacts.readArtifact("ValidatorV2");
+        const validatorContractV2 = await deployContract(
+            signer,
+            validatorArtifactV2,
+            []
+        );
+        const validatorProxyArtifact: Artifact = await hardhat.artifacts.readArtifact("ValidatorProxy");
+        const v = await validatorFactoryContract.getValidators();
+
+        // revert user1 is not the owner
+        await expect(user1.sendTransaction({
+            to: v[0],
+            data: new ethers.utils.Interface(validatorProxyArtifact.abi)
+                .encodeFunctionData("setImplementation", [validatorContractV2.address])
+        })).to.revertedWith("Ownable: caller is not the owner");
+    });
+});
+
+// generate fake data for validator
+function getValidatorFakeData (): { name: string; signerPubkey: string } {
+    return {
+        name: "node1",
+        signerPubkey: ethers.utils.hexZeroPad("0x01", 64)
+    };
+}
+
+// create a new validator
+async function newValidator (_id: number, userAddress: string, signer?: Signer) {
+    const { name, signerPubkey } = getValidatorFakeData();
+
+    // add new node operator
+    expect(await nodeOperatorRegistryContract.addOperator(
+        name,
+        userAddress,
+        signerPubkey
+    )).to.emit(nodeOperatorRegistryContract, "NewOperator").withArgs(
+        _id, name, signerPubkey, 1
+    );
+    return { name, signerPubkey };
+}
+
+// convert a string to ether
+function toEth (amount: string): BigNumber {
+    return ethers.utils.parseEther(amount);
+}

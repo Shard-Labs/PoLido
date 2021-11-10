@@ -10,6 +10,7 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/ILido.sol";
+import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 Shardlabs.
@@ -178,7 +179,6 @@ contract NodeOperatorRegistry is
         validatorFactory = _validatorFactory;
         stakeManager = _stakeManager;
         polygonERC20 = _polygonERC20;
-
         minAmountStake = 10 * 10**18;
         minHeimdallFees = 20 * 10**18;
         slashingDelay = 2**13;
@@ -191,6 +191,8 @@ contract NodeOperatorRegistry is
         _setupRole(DAO_ROLE, msg.sender);
         _setupRole(MANAGER_ROLE, msg.sender);
     }
+
+    // Todo: add a setCommisionRate function
 
     /// @notice Add a new node operator to the system.
     /// @dev The operator life cycle starts when we call the addOperator
@@ -518,6 +520,7 @@ contract NodeOperatorRegistry is
         emit Unjail(operatorId);
     }
 
+    // Todo: remove upper bound for heimdall fees
     /// @notice Allows to top up heimdall fees.
     /// @dev the operator's owner can topUp the heimdall fees by calling the
     /// topUpForFee, but before that he/she need to approve the amount of heimdall
@@ -574,7 +577,7 @@ contract NodeOperatorRegistry is
     /// @dev the operator's owner can claim the heimdall fees.
     /// func, after that the operator status is set to EXIT.
     /// @param _accumFeeAmount accumulated heimdall fees
-    /// @param _index index
+    /// @param _index index 
     /// @param _proof proof
     function claimFee(
         uint256 _accumFeeAmount,
@@ -765,7 +768,7 @@ contract NodeOperatorRegistry is
 
         emit UpdateCommissionRate(_operatorId, _newCommissionRate);
     }
-
+    // Todo: we finished here
     /// @notice Allows to update the stake amount and heimdall fees
     /// @param _minAmountStake min amount to stake
     /// @param _minHeimdallFees min amount of heimdall fees
@@ -853,6 +856,33 @@ contract NodeOperatorRegistry is
 
         uint256 operatorId = operatorOwners[_owner];
         return operators[operatorId];
+    }
+
+    /// @notice Allows to get a node operator by msg.sender.
+    /// @return Returns validatorProxy address.
+    function getOwnerNodeOperatorValidatorProxy()
+        external
+        view
+        returns (address)
+    {
+        return operators[operatorOwners[msg.sender]].validatorProxy;
+    }
+
+    /// @notice Allows to get a node operator by msg.sender.
+    /// @param _full if true return the name of the operator else set to empty string.
+    /// @return Returns node operator.
+    function getNodeOperatorByUser(bool _full)
+        external
+        view
+        returns (NodeOperator memory)
+    {
+        uint256 operatorId = operatorOwners[msg.sender];
+        NodeOperator memory opts = operators[operatorId];
+        if (!_full) {
+            opts.name = "";
+            return opts;
+        }
+        return opts;
     }
 
     /// @notice Allows to get a node operator by _operatorId.

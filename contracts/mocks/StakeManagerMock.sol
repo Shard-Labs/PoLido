@@ -3,6 +3,7 @@
 pragma solidity 0.8.7;
 
 import "../interfaces/IStakeManager.sol";
+import "../helpers/ERC721Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract StakeManagerMock is IStakeManager {
@@ -14,6 +15,7 @@ contract StakeManagerMock is IStakeManager {
     }
 
     State private state;
+    address stakeNFT;
 
     event StakeFor(
         address _user,
@@ -31,9 +33,9 @@ contract StakeManagerMock is IStakeManager {
     event UpdateCommissionRate(uint256 validatorId, uint256 newCommissionRate);
     event Unjail(uint256 validatorId);
 
-    constructor(address _token) {
+    constructor(address _token, address _stakeNFT) {
         state.token = _token;
-        state.id = 0;
+        stakeNFT = _stakeNFT;
     }
 
     function stakeFor(
@@ -189,6 +191,11 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function NFTContract() external view override returns (address) {
-        return address(0);
+        return stakeNFT;
+    }
+
+    /// @notice Returns the validator accumulated rewards on stake manager.
+    function validatorReward(uint256) external pure override returns (uint256) {
+        return 1000;
     }
 }
