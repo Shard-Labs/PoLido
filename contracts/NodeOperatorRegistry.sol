@@ -4,13 +4,11 @@ pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/ILido.sol";
-import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 Shardlabs.
@@ -32,31 +30,69 @@ contract NodeOperatorRegistry is
         EXIT
     }
 
+    /// @notice The node operator struct
+    /// @param status node operator status(INACTIVE, ACTIVE, CLAIMED, UNSTAKED, EXIT).
+    /// @param name node operator name.
+    /// @param rewardAddress Validator public key used for access control and receive rewards.
+    /// @param validatorId validator id of this node operator on the polygon stake manager.
+    /// @param signerPubkey public key used on heimdall.
+    /// @param validatorShare validator share contract used to delegate for on polygon.
+    /// @param validatorProxy the validator proxy, the owner of the validator.
+    /// @param commissionRate the commission rate applied by the operator on polygon.
+    /// @param slashed the number of times this operator was slashed, will be decreased after the slashedTimestamp + slashingDelay < block.timestamp.
+    /// @param slashedTimestamp the timestamp when the operator was slashed.
+    /// @param statusUpdatedTimestamp the timestamp when the operator updated the status (ex: INACTIVE -> ACTIVE)
+    /// @param maxDelegateLimit max delegation limit that LidoMatic contract will delegate to this operator each time delegate function is called.
+    struct NodeOperator {
+        NodeOperatorStatus status;
+        string name;
+        address rewardAddress;
+        bytes signerPubkey;
+        address validatorShare;
+        address validatorProxy;
+        uint256 validatorId;
+        uint256 commissionRate;
+        uint256 slashed;
+        uint256 slashedTimestamp;
+        uint256 statusUpdatedTimestamp;
+        uint256 maxDelegateLimit;
+        uint256 amountStaked;
+    }
+
+    /// @notice all the roles.
+    bytes32 public constant ADD_OPERATOR_ROLE = keccak256("LIDO_ADD_OPERATOR");
+    bytes32 public constant REMOVE_OPERATOR_ROLE =
+        keccak256("LIDO_REMOVE_OPERATOR");
+    bytes32 public constant PAUSE_OPERATOR_ROLE =
+        keccak256("LIDO_PAUSE_OPERATOR");
+    bytes32 public constant MANAGER_ROLE = keccak256("LIDO_MANAGER");
+    bytes32 public constant DAO_ROLE = keccak256("LIDO_DAO");
+
     /// @notice contract version.
     string public version;
     /// @notice total node operators.
-    uint256 public totalNodeOperator;
+    uint256 private totalNodeOperator;
     /// @notice total inactive node operators.
-    uint256 public totalInactiveNodeOperator;
+    uint256 private totalInactiveNodeOperator;
     /// @notice total active node operators.
-    uint256 public totalActiveNodeOperator;
+    uint256 private totalActiveNodeOperator;
     /// @notice total stopped node operators.
-    uint256 public totalStoppedNodeOperator;
+    uint256 private totalStoppedNodeOperator;
     /// @notice total unstaked node operators.
-    uint256 public totalUnstakedNodeOperator;
+    uint256 private totalUnstakedNodeOperator;
     /// @notice total claimed node operators.
-    uint256 public totalClaimedNodeOperator;
+    uint256 private totalClaimedNodeOperator;
     /// @notice total exited node operators.
-    uint256 public totalExitNodeOperator;
+    uint256 private totalExitNodeOperator;
 
     /// @notice validatorFactory address.
-    address public validatorFactory;
+    address private validatorFactory;
     /// @notice stakeManager address.
-    address public stakeManager;
+    address private stakeManager;
     /// @notice polygonERC20 token (Matic) address.
-    address public polygonERC20;
+    address private polygonERC20;
     /// @notice lido address.
-    address public lido;
+    address private lido;
 
     /// @notice min amount allowed to stake per validator.
     uint256 public minAmountStake;
@@ -77,50 +113,19 @@ contract NodeOperatorRegistry is
     uint256 public slashingDelay;
 
     /// @notice default max delgation limit.
-    uint256 public defaultMaxDelegateLimit;
-
-    /// @notice Mapping of all node operators. Mapping is used to be able to extend the struct.
-    mapping(uint256 => NodeOperator) public operators;
+    uint256 public defaultMaxDelegateLimit;    
+    
     /// @notice This stores the operators ids.
-    uint256[] public operatorIds;
+    uint256[] private operatorIds;
+
     /// @notice Mapping of all owners with node operator id. Mapping is used to be able to
     /// extend the struct.
-    mapping(address => uint256) public operatorOwners;
+    mapping(address => uint256) private operatorOwners;
 
-    /// @notice all the roles.
-    bytes32 public constant ADD_OPERATOR_ROLE = keccak256("ADD_OPERATOR");
-    bytes32 public constant REMOVE_OPERATOR_ROLE = keccak256("REMOVE_OPERATOR");
-    bytes32 public constant PAUSE_OPERATOR_ROLE = keccak256("PAUSE_OPERATOR");
-    bytes32 public constant MANAGER_ROLE = keccak256("MANAGER");
-    bytes32 public constant DAO_ROLE = keccak256("DAO");
+    /// @notice Mapping of all node operators. Mapping is used to be able to extend the struct.
+    mapping(uint256 => NodeOperator) private operators;
 
-    /// @notice The node operator struct
-    /// @param status node operator status(INACTIVE, ACTIVE, CLAIMED, UNSTAKED, EXIT).
-    /// @param name node operator name.
-    /// @param rewardAddress Validator public key used for access control and receive rewards.
-    /// @param validatorId validator id of this node operator on the polygon stake manager.
-    /// @param signerPubkey public key used on heimdall.
-    /// @param validatorShare validator share contract used to delegate for on polygon.
-    /// @param validatorProxy the validator proxy, the owner of the validator.
-    /// @param commissionRate the commission rate applied by the operator on polygon.
-    /// @param slashed the number of times this operator was slashed, will be decreased after the slashedTimestamp + slashingDelay < block.timestamp.
-    /// @param slashedTimestamp the timestamp when the operator was slashed.
-    /// @param statusUpdatedTimestamp the timestamp when the operator updated the status (ex: INACTIVE -> ACTIVE)
-    /// @param maxDelegateLimit max delegation limit that LidoMatic contract will delegate to this operator each time delegate function is called.
-    struct NodeOperator {
-        NodeOperatorStatus status;
-        string name;
-        address rewardAddress;
-        uint256 validatorId;
-        bytes signerPubkey;
-        address validatorShare;
-        address validatorProxy;
-        uint256 commissionRate;
-        uint256 slashed;
-        uint256 slashedTimestamp;
-        uint256 statusUpdatedTimestamp;
-        uint256 maxDelegateLimit;
-    }
+    /// --------------------------- Modifiers-----------------------------------
 
     /// @notice Check if the msg.sender has permission.
     /// @param _role role needed to call function.
@@ -160,6 +165,8 @@ contract NodeOperatorRegistry is
         _;
     }
 
+    /// -------------------------- initialize ----------------------------------
+
     /// @notice Initialize the NodeOperator contract.
     function initialize(
         address _validatorFactory,
@@ -179,6 +186,7 @@ contract NodeOperatorRegistry is
         validatorFactory = _validatorFactory;
         stakeManager = _stakeManager;
         polygonERC20 = _polygonERC20;
+
         minAmountStake = 10 * 10**18;
         minHeimdallFees = 20 * 10**18;
         slashingDelay = 2**13;
@@ -192,7 +200,7 @@ contract NodeOperatorRegistry is
         _setupRole(MANAGER_ROLE, msg.sender);
     }
 
-    // Todo: add a setCommisionRate function
+    /// ----------------------------- API --------------------------------------
 
     /// @notice Add a new node operator to the system.
     /// @dev The operator life cycle starts when we call the addOperator
@@ -232,7 +240,8 @@ contract NodeOperatorRegistry is
             slashed: 0,
             slashedTimestamp: 0,
             statusUpdatedTimestamp: block.timestamp,
-            maxDelegateLimit: defaultMaxDelegateLimit
+            maxDelegateLimit: defaultMaxDelegateLimit,
+            amountStaked: 0
         });
 
         operatorIds.push(operatorId);
@@ -287,8 +296,9 @@ contract NodeOperatorRegistry is
     {
         NodeOperator storage no = operators[_operatorId];
         NodeOperatorStatus status = no.status;
-        require(
-            status == NodeOperatorStatus.EXIT,
+        checkStatus(
+            status,
+            NodeOperatorStatus.EXIT,
             "The Operator status isn't EXIT"
         );
 
@@ -314,12 +324,11 @@ contract NodeOperatorRegistry is
     /// @notice Allows a validator that was already staked on the polygon stake manager
     /// to join the Lido system.
     function joinOperator() external override whenNotPaused {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.INACTIVE,
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.INACTIVE,
             "The Operator status isn't INACTIVE"
         );
 
@@ -329,6 +338,7 @@ contract NodeOperatorRegistry is
         require(validatorId != 0, "Validator id equal to ZERO");
 
         IStakeManager.Validator memory poValidator = sm.validators(validatorId);
+
         require(
             poValidator.status == IStakeManager.Status.Active,
             "Validator isn't ACTIVE"
@@ -347,6 +357,7 @@ contract NodeOperatorRegistry is
             no.commissionRate
         );
 
+        no.amountStaked = sm.validatorStake(no.validatorId);
         no.status = NodeOperatorStatus.ACTIVE;
         no.validatorId = validatorId;
         no.statusUpdatedTimestamp = block.timestamp;
@@ -375,16 +386,15 @@ contract NodeOperatorRegistry is
         checkStakeAmount(_amount)
         checkHeimdallFees(_heimdallFee)
     {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.INACTIVE,
+
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.INACTIVE,
             "The Operator status isn't INACTIVE"
         );
 
-        // stake a validator
         (no.validatorId, no.validatorShare) = IValidator(no.validatorProxy)
             .stake(
                 msg.sender,
@@ -395,11 +405,10 @@ contract NodeOperatorRegistry is
                 no.commissionRate
             );
 
-        // update the operator status to ACTIVE.
+        no.amountStaked += _amount;
         no.status = NodeOperatorStatus.ACTIVE;
         no.statusUpdatedTimestamp = block.timestamp;
 
-        // update global
         totalInactiveNodeOperator--;
         totalActiveNodeOperator++;
 
@@ -422,22 +431,25 @@ contract NodeOperatorRegistry is
         if (_amount == 0 && !_restakeRewards) {
             revert("Amount is ZERO");
         }
-
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator not exists");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.ACTIVE,
+
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.ACTIVE,
             "The operator status isn't ACTIVE"
         );
 
-        IValidator(no.validatorProxy).restake(
+        (bool ok, uint256 newAmount) = IValidator(no.validatorProxy).restake(
             msg.sender,
             no.validatorId,
             _amount,
-            false
+            false,
+            no.amountStaked
         );
+        require(ok, "Could not restake the operator was slashed");
+
+        no.amountStaked = newAmount;
 
         emit RestakeOperator(operatorId, _amount, _restakeRewards);
     }
@@ -446,14 +458,15 @@ contract NodeOperatorRegistry is
     /// @dev when the operators's owner wants to quite the Lido system he can call
     /// the unstake func, in this case, the operator status is set to UNSTAKED.
     function unstake() external override whenNotPaused {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.ACTIVE,
+
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.ACTIVE,
             "The operator status isn't ACTIVE"
         );
+
         IValidator(no.validatorProxy).unstake(no.validatorId);
 
         // request withdraw from validatorShare
@@ -470,12 +483,12 @@ contract NodeOperatorRegistry is
     /// @notice Allows the operator's owner to migrate the validator ownership to rewardAddress.
     /// This can be done only in the case where this operator was stopped by the DAO.
     function migrate() external override {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.STOPPED,
+
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.STOPPED,
             "The Operator status isn't STOPPED"
         );
 
@@ -500,13 +513,12 @@ contract NodeOperatorRegistry is
     /// to back ACTIVE.
     function unjail() external override whenNotPaused {
         require(allowsUnjail, "Unjail is disabled");
-
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.UNSTAKED,
+
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.UNSTAKED,
             "The Operator status isn't UNSTAKED"
         );
 
@@ -520,7 +532,6 @@ contract NodeOperatorRegistry is
         emit Unjail(operatorId);
     }
 
-    // Todo: remove upper bound for heimdall fees
     /// @notice Allows to top up heimdall fees.
     /// @dev the operator's owner can topUp the heimdall fees by calling the
     /// topUpForFee, but before that he/she need to approve the amount of heimdall
@@ -532,12 +543,12 @@ contract NodeOperatorRegistry is
         whenNotPaused
         checkHeimdallFees(_heimdallFee)
     {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exists");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.ACTIVE,
+
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.ACTIVE,
             "The operator status isn't ACTIVE"
         );
 
@@ -551,12 +562,12 @@ contract NodeOperatorRegistry is
     /// the owner can transfer back his staked balance by calling
     /// unstakeClaim, after that the operator status is set to CLAIMED
     function unstakeClaim() external override whenNotPaused {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.UNSTAKED,
+
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.UNSTAKED,
             "The Operator status isn't UNSTAKED"
         );
 
@@ -567,6 +578,7 @@ contract NodeOperatorRegistry is
 
         no.status = NodeOperatorStatus.CLAIMED;
         no.statusUpdatedTimestamp = block.timestamp;
+        no.amountStaked = 0;
         totalUnstakedNodeOperator--;
         totalClaimedNodeOperator++;
 
@@ -577,19 +589,19 @@ contract NodeOperatorRegistry is
     /// @dev the operator's owner can claim the heimdall fees.
     /// func, after that the operator status is set to EXIT.
     /// @param _accumFeeAmount accumulated heimdall fees
-    /// @param _index index 
+    /// @param _index index
     /// @param _proof proof
     function claimFee(
         uint256 _accumFeeAmount,
         uint256 _index,
         bytes memory _proof
     ) external override whenNotPaused {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.CLAIMED,
+
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.CLAIMED,
             "The Operator status isn't CLAIMED"
         );
 
@@ -611,12 +623,11 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows the operator's owner to withdraw rewards.
     function withdrawRewards() external override whenNotPaused {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator memory no = operators[operatorId];
-        require(
-            no.status == NodeOperatorStatus.ACTIVE,
+        checkStatus(
+            no.status,
+            NodeOperatorStatus.ACTIVE,
             "The Operator status isn't ACTIVE"
         );
 
@@ -636,13 +647,11 @@ contract NodeOperatorRegistry is
         override
         whenNotPaused
     {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
         require(
             no.status <= NodeOperatorStatus.ACTIVE,
-            "The Operator status not ACTIVE"
+            "The Operator status isn't ACTIVE"
         );
 
         if (no.status == NodeOperatorStatus.ACTIVE) {
@@ -664,15 +673,8 @@ contract NodeOperatorRegistry is
         override
         whenNotPaused
     {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
-        require(
-            no.status <= NodeOperatorStatus.ACTIVE,
-            "The Operator status isn't ACTIVE"
-        );
-
         no.name = _name;
 
         emit NewName(operatorId, _name);
@@ -686,9 +688,7 @@ contract NodeOperatorRegistry is
         whenNotPaused
         checkIfRewardAddressIsUsed(_rewardAddress)
     {
-        uint256 operatorId = operatorOwners[msg.sender];
-        require(operatorId != 0, "The Operator doesn't exist");
-
+        uint256 operatorId = getOperatorId(msg.sender);
         NodeOperator storage no = operators[operatorId];
         no.rewardAddress = _rewardAddress;
 
@@ -768,7 +768,7 @@ contract NodeOperatorRegistry is
 
         emit UpdateCommissionRate(_operatorId, _newCommissionRate);
     }
-    // Todo: we finished here
+
     /// @notice Allows to update the stake amount and heimdall fees
     /// @param _minAmountStake min amount to stake
     /// @param _minHeimdallFees min amount of heimdall fees
@@ -776,8 +776,8 @@ contract NodeOperatorRegistry is
         uint256 _minAmountStake,
         uint256 _minHeimdallFees
     ) external override userHasRole(DAO_ROLE) {
-        require(_minAmountStake >= 20 * 10**18, "Invalid amount");
-        require(_minHeimdallFees >= 10 * 10**18, "Invalid heimdallFees");
+        require(_minAmountStake >= minAmountStake, "Invalid amount");
+        require(_minHeimdallFees >= minHeimdallFees, "Invalid heimdallFees");
 
         minAmountStake = _minAmountStake;
         minHeimdallFees = _minHeimdallFees;
@@ -858,33 +858,6 @@ contract NodeOperatorRegistry is
         return operators[operatorId];
     }
 
-    /// @notice Allows to get a node operator by msg.sender.
-    /// @return Returns validatorProxy address.
-    function getOwnerNodeOperatorValidatorProxy()
-        external
-        view
-        returns (address)
-    {
-        return operators[operatorOwners[msg.sender]].validatorProxy;
-    }
-
-    /// @notice Allows to get a node operator by msg.sender.
-    /// @param _full if true return the name of the operator else set to empty string.
-    /// @return Returns node operator.
-    function getNodeOperatorByUser(bool _full)
-        external
-        view
-        returns (NodeOperator memory)
-    {
-        uint256 operatorId = operatorOwners[msg.sender];
-        NodeOperator memory opts = operators[operatorId];
-        if (!_full) {
-            opts.name = "";
-            return opts;
-        }
-        return opts;
-    }
-
     /// @notice Allows to get a node operator by _operatorId.
     /// @param _operatorId the id of the operator.
     /// @return Returns a node operator.
@@ -911,6 +884,11 @@ contract NodeOperatorRegistry is
         return polygonERC20;
     }
 
+    /// @notice Get the lido contract address.
+    function getLido() external view override returns (address) {
+        return lido;
+    }
+
     /// @notice Get the global state
     function getState()
         external
@@ -935,6 +913,11 @@ contract NodeOperatorRegistry is
         _totalExitNodeOperator = totalExitNodeOperator;
     }
 
+    /// @notice Get operatorIds.
+    function getOperatorIds() external view returns (uint256[] memory) {
+        return operatorIds;
+    }
+
     /// @notice Get validator total stake.
     /// @param _rewardAddress reward address.
     /// @return Returns the total staked by the validator.
@@ -953,6 +936,64 @@ contract NodeOperatorRegistry is
 
         NodeOperator memory no = operators[operatorId];
         return IStakeManager(stakeManager).validatorStake(no.validatorId);
+    }
+
+    /// @notice Allows listing all the operator's status by checking if the local stakedAmount
+    /// is not equal to the stakedAmount on stake manager.
+    function getIfOperatorsWasSlashed() external view override returns (bool[] memory) {
+        IStakeManager sm = IStakeManager(stakeManager);
+        uint256 length = operatorIds.length;
+        bool[] memory slashedOperatorIds = new bool[](length);
+
+        for (uint256 idx = 0; idx < length; idx++) {
+            uint256 operatorId = operatorIds[idx];
+            NodeOperator memory no = operators[operatorId];
+
+            if (no.status == NodeOperatorStatus.ACTIVE) {
+                uint256 amountStakedSM = sm.validatorStake(no.validatorId);
+                if (no.amountStaked != amountStakedSM) {
+                    slashedOperatorIds[idx] = true;
+                    continue;
+                }
+            }
+            slashedOperatorIds[idx] = false;
+        }
+        return slashedOperatorIds;
+    }
+
+    /// @notice Allows slashing all the operators if the local stakedAmount is not equal
+    /// to the stakedAmount on stake manager.
+    function slashOperators(bool[] memory _slashedOperatorIds) external override {
+        IStakeManager sm = IStakeManager(stakeManager);
+        uint256 length = _slashedOperatorIds.length;
+
+        require(length == operatorIds.length, "slahed operators length");
+        uint256[] memory _operatorIds = operatorIds;
+
+        for (uint256 idx = 0; idx < length; idx++) {
+            if (_slashedOperatorIds[idx]) {
+                uint256 operatorId = _operatorIds[idx];
+                NodeOperator storage no = operators[operatorId];
+                if (!(no.status == NodeOperatorStatus.ACTIVE)) {
+                    continue;
+                }
+                uint256 amountStakedSM = sm.validatorStake(no.validatorId);
+                uint256 slashedTimestamp = no.slashedTimestamp;
+
+                if (no.amountStaked != amountStakedSM) {
+                    no.slashed++;
+                    no.slashedTimestamp += slashedTimestamp != 0
+                        ? slashingDelay
+                        : block.timestamp + slashingDelay;
+                    no.amountStaked = amountStakedSM;
+                } else if (
+                    slashedTimestamp != 0 &&
+                    no.slashedTimestamp < block.timestamp
+                ) {
+                    no.slashedTimestamp = 0;
+                }
+            }
+        }
     }
 
     /// @notice Allows to get a list of operatorInfo for all active operators.
@@ -974,7 +1015,7 @@ contract NodeOperatorRegistry is
 
         for (uint256 idx = 0; idx < length; idx++) {
             uint256 operatorId = operatorIds[idx];
-            NodeOperator memory no = operators[operatorId];
+            NodeOperator storage no = operators[operatorId];
 
             if (no.status == NodeOperatorStatus.ACTIVE) {
                 operatorInfos[index] = Operator.OperatorInfo({
@@ -982,7 +1023,7 @@ contract NodeOperatorRegistry is
                     validatorShare: no.validatorShare,
                     maxDelegateLimit: no.maxDelegateLimit,
                     rewardPercentage: _rewardData
-                        ? _getRewardPercentage(no.slashed)
+                        ? _getRewardPercentage(no.slashedTimestamp)
                         : 0,
                     rewardAddress: no.rewardAddress
                 });
@@ -1006,25 +1047,46 @@ contract NodeOperatorRegistry is
         }
 
         uint256 operatorId = operatorOwners[_rewardAddress];
-        if (operatorId != 0) {
+        if (operatorId == 0) {
             return 0;
         }
 
         NodeOperator memory no = operators[operatorId];
-        return _getRewardPercentage(no.slashed);
+        return _getRewardPercentage(no.slashedTimestamp);
     }
 
-    function _getRewardPercentage(uint256 _slashedCounter)
+    function _getRewardPercentage(uint256 _slashedTimestamp)
         private
-        pure
+        view
         returns (uint8)
     {
-        if (_slashedCounter == 0) {
+        if (_slashedTimestamp == 0 || _slashedTimestamp <= block.timestamp) {
             return 100;
         }
-        uint8 percentage = uint8(100 - ((_slashedCounter * 10) / 100));
-        return percentage > 50 ? percentage : 50;
+
+        uint256 t = _slashedTimestamp - block.timestamp;
+        uint256 penalty = ((t / slashingDelay) + (t == slashingDelay ? 0 : 1)) *
+            10;
+        uint8 p = penalty > 100 ? 100 : uint8(penalty);
+        uint8 percentage = 100 - p;
+        return percentage > 0 ? percentage : 1;
     }
+
+    function getOperatorId(address _user) private view returns (uint256) {
+        uint256 operatorId = operatorOwners[_user];
+        require(operatorId != 0, "The Operator doesn't exist");
+        return operatorId;
+    }
+
+    function checkStatus(
+        NodeOperatorStatus status,
+        NodeOperatorStatus target,
+        string memory message
+    ) private pure {
+        require(status == target, message);
+    }
+
+    /// -------------------------------Events-----------------------------------
 
     /// @notice A new node operator was added.
     /// @param operatorId node operator id.

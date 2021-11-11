@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
+// todo: INFO[3] delete
 import "hardhat/console.sol";
 import "./ValidatorProxy.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
@@ -23,6 +24,7 @@ contract ValidatorFactory is
 
     ValidatorFactoryState internal state;
 
+    // todo: INFO[1] delete struct and create flat vars.
     /// @notice State struct
     struct ValidatorFactoryState {
         address operator;
@@ -34,12 +36,14 @@ contract ValidatorFactory is
 
     event CreateValidator(address validator);
     event SetOperatorContract(address operator);
+    // todo: INFO[5] use this
     event SetValidatorImplementation(address validatorImplementation);
 
     // ====================================================================
     // =========================== MODIFIERS ==============================
     // ====================================================================
 
+    // todo: INFO[3] use onlyOwner from OwnableUpgradeable.
     /// @notice Check if the msg.sender is the owner.
     modifier isOwner() {
         require(owner() == msg.sender, "Permission not found");
