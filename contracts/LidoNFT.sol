@@ -12,11 +12,9 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
 
     mapping(address => uint256[]) public owner2Tokens;
     mapping(uint256 => uint256) public token2Index;
-    mapping(uint256 => bool) public indexExists; // Probably delete
 
     mapping(address => uint256[]) public address2Approved;
     mapping(uint256 => uint256) public tokenId2ApprovedIndex;
-    mapping(uint256 => bool) public approvalExists;
 
     // check if lido contract is the caller
     modifier isLido() {
@@ -52,7 +50,7 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
         // Retrieve the old owners approved token array
         // Retrieve the index of that token inside the old approved token array
         // Delete the tokenId at the retrieved index from the old approved array
-        if (approvalExists[tokenId]) {
+        if (getApproved(tokenId) != address(0)) {
             uint256 approvedIndex = tokenId2ApprovedIndex[tokenId];
             address oldApprovedAddress = getApproved(tokenId);
             uint256[] storage oldApprovedTokens = address2Approved[
@@ -72,7 +70,6 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
 
         approvedTokens.push(tokenId);
         tokenId2ApprovedIndex[tokenId] = approvedTokens.length - 1;
-        approvalExists[tokenId] = true;
     }
 
     function _beforeTokenTransfer(
@@ -88,7 +85,6 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
 
             ownerTokens.push(tokenId);
             token2Index[tokenId] = ownerTokens.length - 1;
-            indexExists[tokenId] = true; // Possibly unused
         }
         // Burning
         else if (to == address(0)) {
@@ -97,11 +93,10 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
             uint256 tokenIndex = token2Index[tokenId];
             delete ownerTokens[tokenIndex];
 
-            indexExists[tokenId] = false;
             token2Index[tokenId] = 0; // Possibly a problem
 
             // DRY - Repeated Logic
-            if (approvalExists[tokenId]) {
+            if (getApproved(tokenId) != address(0)) {
                 uint256[] storage approvedTokens = address2Approved[
                     getApproved(tokenId)
                 ];
@@ -109,13 +104,12 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
 
                 delete approvedTokens[approvedIndex];
                 tokenId2ApprovedIndex[tokenId] = 0;
-                approvalExists[tokenId] = false;
             }
         }
         // Transferring
         else if (from != to) {
             // DRY - Extract
-            if (approvalExists[tokenId]) {
+            if (getApproved(tokenId) != address(0)) {
                 uint256[] storage lastApprovedTokens = address2Approved[
                     getApproved(tokenId)
                 ];
@@ -123,7 +117,6 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
 
                 delete lastApprovedTokens[approvedIndex];
                 tokenId2ApprovedIndex[tokenId] = 0;
-                approvalExists[tokenId] = false;
             }
 
             uint256[] storage senderTokens = owner2Tokens[from];
