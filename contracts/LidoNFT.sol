@@ -51,13 +51,7 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
         // Retrieve the index of that token inside the old approved token array
         // Delete the tokenId at the retrieved index from the old approved array
         if (getApproved(tokenId) != address(0)) {
-            uint256 approvedIndex = tokenId2ApprovedIndex[tokenId];
-            address oldApprovedAddress = getApproved(tokenId);
-            uint256[] storage oldApprovedTokens = address2Approved[
-                oldApprovedAddress
-            ];
-
-            delete oldApprovedTokens[approvedIndex];
+            _removeApproval(tokenId);
         }
 
         super.approve(to, tokenId);
@@ -93,30 +87,16 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
             uint256 tokenIndex = token2Index[tokenId];
             delete ownerTokens[tokenIndex];
 
-            token2Index[tokenId] = 0; // Possibly a problem
+            token2Index[tokenId] = 0;
 
-            // DRY - Repeated Logic
             if (getApproved(tokenId) != address(0)) {
-                uint256[] storage approvedTokens = address2Approved[
-                    getApproved(tokenId)
-                ];
-                uint256 approvedIndex = tokenId2ApprovedIndex[tokenId];
-
-                delete approvedTokens[approvedIndex];
-                tokenId2ApprovedIndex[tokenId] = 0;
+                _removeApproval(tokenId);
             }
         }
         // Transferring
         else if (from != to) {
-            // DRY - Extract
             if (getApproved(tokenId) != address(0)) {
-                uint256[] storage lastApprovedTokens = address2Approved[
-                    getApproved(tokenId)
-                ];
-                uint256 approvedIndex = tokenId2ApprovedIndex[tokenId];
-
-                delete lastApprovedTokens[approvedIndex];
-                tokenId2ApprovedIndex[tokenId] = 0;
+                _removeApproval(tokenId);
             }
 
             uint256[] storage senderTokens = owner2Tokens[from];
@@ -160,5 +140,15 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
         returns (uint256[] memory)
     {
         return address2Approved[_address];
+    }
+
+    function _removeApproval(uint256 _tokenId) internal {
+        uint256[] storage lastApprovedTokens = address2Approved[
+            getApproved(_tokenId)
+        ];
+        uint256 approvedIndex = tokenId2ApprovedIndex[_tokenId];
+
+        delete lastApprovedTokens[approvedIndex];
+        tokenId2ApprovedIndex[_tokenId] = 0;
     }
 }
