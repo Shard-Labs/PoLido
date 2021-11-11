@@ -14,7 +14,8 @@ contract ValidatorProxy is Ownable, Proxy {
     // ====================================================================
     // =========================== FUNCTIONS ==============================
     // ====================================================================
-
+    // todo: INFO[1] update the doc with a better description about this contract.
+    // todo: INFO[2] change from _newImplementation to _implementation
     constructor(
         address _admin,
         address _newImplementation,

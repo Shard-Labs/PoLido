@@ -71,7 +71,9 @@ contract Validator is IERC721Receiver, IValidator {
 
         uint256 validatorId = stakeManager.getValidatorId(address(this));
         address validatorShare = stakeManager.getValidatorContract(validatorId);
-        stakeManager.updateCommissionRate(validatorId, _commissionRate);
+        if (_commissionRate > 0) {
+            stakeManager.updateCommissionRate(validatorId, _commissionRate);
+        }
 
         return (validatorId, validatorShare);
     }
@@ -81,12 +83,15 @@ contract Validator is IERC721Receiver, IValidator {
     /// @param _validatorId validator id.
     /// @param _amount amount to stake.
     /// @param _stakeRewards restake rewards.
+    /// @param amountStaked total amount staked by the operator in stake manager.
+    /// @return return a bool and the new total amount staked in stake manager.
     function restake(
         address _sender,
         uint256 _validatorId,
         uint256 _amount,
-        bool _stakeRewards
-    ) external override isOperator {
+        bool _stakeRewards,
+        uint256 amountStaked
+    ) external override isOperator returns (bool, uint256){
         INodeOperatorRegistry no = getOperator();
         IStakeManager stakeManager = IStakeManager(no.getStakeManager());
 
@@ -95,8 +100,13 @@ contract Validator is IERC721Receiver, IValidator {
             polygonERC20.safeTransferFrom(_sender, address(this), _amount);
             polygonERC20.safeApprove(address(stakeManager), _amount);
         }
+        if (stakeManager.validatorStake(_validatorId) != amountStaked) {
+            return (false, 0);
+        }
 
         stakeManager.restake(_validatorId, _amount, _stakeRewards);
+
+        return (true, stakeManager.validatorStake(_validatorId));
     }
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
@@ -248,7 +258,7 @@ contract Validator is IERC721Receiver, IValidator {
 
     /// @notice Allows to get the version of the validator implementation.
     /// @return Returns the version.
-    function version() external pure virtual returns (string memory) {
+    function version() external pure returns (string memory) {
         return "1.0.0";
     }   
 
