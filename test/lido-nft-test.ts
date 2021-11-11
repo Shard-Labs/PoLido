@@ -137,5 +137,48 @@ describe("LidoNFT", () => {
             expect(ownedExpected).to.eql(ownedTokens);
             expect(approvedExpected).to.eql(approvedTokens);
         });
+
+        it("Should remove token from approved and owned arrays after burning", async () => {
+            const lidoNft1 = lidoNFT.connect(accounts[0]);
+            await lidoNft1.approve(lido.address, 2);
+            await lidoNft1.approve(lido.address, 3);
+
+            const lidoNft2 = lidoNFT.connect(accounts[1]);
+            await lidoNft2.approve(lido.address, 4);
+            await lidoNft2.approve(lido.address, 5);
+            await lidoNft2.approve(lido.address, 6);
+
+            await lidoNFT.burn(2);
+            await lidoNFT.burn(3);
+            await lidoNFT.burn(6);
+
+            const ownedTokens = (await lidoNFT.getOwnedTokens(accounts[0].address)).map(tokenId => tokenId.toNumber());
+            const approvedTokens = (await lidoNFT.getApprovedTokens(lido.address)).map(tokenId => tokenId.toNumber());
+
+            const ownedExpected = [0, 0];
+            const approvedExpected = [0, 0, 4, 5, 0];
+
+            expect(ownedExpected).to.eql(ownedTokens);
+            expect(approvedExpected).to.eql(approvedTokens);
+        });
+
+        it("Should remove token from the old approve array after the new approval", async () => {
+            const lidoNft1 = lidoNFT.connect(accounts[0]);
+            await lidoNft1.approve(lido.address, 2);
+            await lidoNft1.approve(lido.address, 3);
+
+            await lidoNft1.approve(accounts[5].address, 2);
+
+            const approvedLidoExpected = [0, 3];
+            const approvedAcc5Expected = [2];
+
+            const approvedLido = (await lidoNFT.getApprovedTokens(lido.address)).map(tokenId => tokenId.toNumber());
+            const approvedAcc5 = (await lidoNFT.getApprovedTokens(accounts[5].address)).map(tokenId => tokenId.toNumber());
+
+            expect(approvedLido).to.eql(approvedLidoExpected);
+            expect(approvedAcc5).to.eql(approvedAcc5Expected);
+        });
+
+        // Test approving and the calling transfer function
     });
 });
