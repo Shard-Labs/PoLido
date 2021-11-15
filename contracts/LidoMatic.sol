@@ -11,9 +11,13 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/ILidoNFT.sol";
 
+// todo: calculate totalDelegated dynamically if the slashing is on, else fetch the value form the global variable
+// todo: Add a function that returns totalPooledMatic
+// todo: totalPooled is updated during delegation, slashing, unstaking and claiming
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    // todo: Delete those 3
     uint256 public DelegationDelay;
     // percentage to delegate to a validator whene it's not trusted.
     uint256 public DelegationMin;
@@ -39,13 +43,16 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     uint256 public minValidatorBalance;
     bool public paused;
 
-    // mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
+    // todo: remove mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
+
+    // todo: Map to RequestWithdraw[] instead of RequestWithdraw
+    // todo: Change the required logic to make it work
     mapping(uint256 => RequestWithdraw) public token2WithdrawRequest;
 
     mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
-    mapping(address => uint256) public validator2Nonce; // DELETE before deploying to production
-    mapping(address => uint256) public user2Nonce;
+    mapping(address => uint256) public validator2Nonce; // todo: DELETE before deploying to production
+    mapping(address => uint256) public user2Nonce; // todo: Delete this
 
     bytes32 public constant DAO = keccak256("DAO");
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
@@ -79,6 +86,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         _;
     }
 
+    // Document the remaining arguments
     /**
      * @param _token - Address of MATIC token on Ethereum Mainnet
      * @param _nodeOperator - Address of the node operator
@@ -108,6 +116,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         insurance = _insurance;
         lidoNFT = _lidoNFT;
 
+        // todo: Retrieve delegationDelay from stakeManager
         DelegationDelay = 2**13;
         DelegationMin = 10;
         RewardMin = 80;
@@ -121,6 +130,55 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Requires that msg.sender has approved _amount of MATIC to this contract
      * @param _amount - Amount of MATIC sent from msg.sender to this contract
      * @return Amount of StMATIC shares generated
+     */
+    /**
+     * validator1 = 5
+     * validator2 = 75
+     * -- SUBMIT CALL
+     * _amount = 10
+     * totalShares = 60
+     * totalPooledMatic = 100
+     * totalBuffered = 20
+     * totalDelegated = 80
+     * lockedAmountMatic = 0
+     * amountToMint = 6 -> STMATIC_BALANCE(msg.sender) = 6
+     * ----
+     * totalBuffered = 30
+     * totalShares = 66
+     *
+     * -- WITHDRAW CALL (2)
+     * STMATIC_BALANCE(msg.sender) = 4
+     * totalShares = 66
+     * totalPooledMatic = 80 + 30
+     * balanceInMatic = 2 * 110 / 66 = 3
+     * lockedAmountStMatic = 2
+     * lockedAmountMatic = 3
+     *
+     * -- WITHDRAW CALL (4)
+     * STMATIC_BALANCE(msg.sender) = 0
+     * totalShares = 66
+     * totalPooledMatic = 80 + 30
+     * balanceInMatic = 4 * 110 / 66 = 6
+     * lockedAmountStMatic = 6
+     * lockedAmountMatic = 9
+     *
+     * -- SUBMIT (5) (ignoring lockedAmountMatic)
+     * _amount = 5
+     * totalShares = 66
+     * totalPooledMatic = 110
+     * totalBuffered = 30
+     * totalDelegated = 80
+     * lockedAmountMatic = 10
+     * amountToMint = 3 -> STMATIC_BALANCE(msg.sender) = 3
+     *
+     * -- SUBMIT (5) (not ignoring lockedAmountMatic)
+     * _amount = 5
+     * totalShares = 66 - 6 = 60
+     * totalPooledMatic = 110 - 10 = 100
+     * totalBuffered = 30
+     * totalDelegated = 80
+     * lockedAmountMatic = 10
+     * amountToMint = 3 -> STMATIC_BALANCE(msg.sender) = 3
      */
     function submit(uint256 _amount) external returns (uint256) {
         require(_amount > 0, "Invalid amount");
@@ -156,8 +214,9 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     function requestWithdraw(uint256 _amount) external notPaused {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
-
+        // todo: move this inside of a loop
         uint256 tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
+        // todo: use safeTransferFrom 
         require(
             IERC20Upgradeable(address(this)).transferFrom(
                 msg.sender,
@@ -174,7 +233,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         lockedAmountStMatic += _amount;
         lockedAmountMatic += totalAmount2WithdrawInMatic;
 
+        // todo: make greater or equal
         if (totalDelegated > currentAmount2WithdrawInMatic) {
+            // todo: Mint token in each while loop iteration
+            // todo: Add decrementTotalDelegated function that is only callable by nodeOperatorRegistry, param _amount 
             while (currentAmount2WithdrawInMatic != 0) {
                 if (lastWithdrawnValidatorId > operatorShares.length - 1) {
                     lastWithdrawnValidatorId = 0;
@@ -186,19 +248,39 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
                 uint256 validatorBalance = IValidatorShare(validatorShare)
                     .activeAmount();
-
-                uint256 allowedAmount2Withdraw = validatorBalance -
-                    minValidatorBalance;
+                
+                // todo: check if validatorbalance is lower than minValidatorBalance
+                // In case if it is lower, return 0
+                uint256 allowedAmount2Withdraw = validatorBalance - minValidatorBalance;
 
                 uint256 amount2WithdrawFromValidator = (allowedAmount2Withdraw >
                     currentAmount2WithdrawInMatic)
                     ? currentAmount2WithdrawInMatic
                     : allowedAmount2Withdraw;
-
+                
+                // todo: move it above checking the amount2WithdrawFromValidator
+                // todo: add a counter to count each validator check, 
+                // if all of them had been checked and none of them has more than minValidatorBalance revert
                 if (amount2WithdrawFromValidator == 0) {
+                    // todo: increment lastWithdrawnValidatorId
                     continue;
                 }
 
+                // Amount of StMATIC to burn based on withdrawal from current validator
+                /**
+                 * _amount = 10 StMATIC
+                 * totalAmount2WithdrawInMatic = 8 Matic
+                 * validators [] = [2 Matic, 8 Matic]
+                 * currentAmount2WithdrawInMatic = 8 Matic
+                 * amount2WithdrawFromValidator = 2 Matic
+                 * amount2Burn = 10 * 2 / 8 = 2 StMatic
+                 * totalBurned = 2 StMatic
+                 * currentAmount2WithdrawInMatic = 6 Matic
+                 * -----
+                 * currentAmount2WithdrawInMatic = 6 Matic
+                 * amount2WithdrawFromValidator = 6 Matic
+                 * amount2Burn = 10 * 6 / 8 = 7 + 1 = 8 StMatic
+                 */
                 uint256 amount2Burn = (_amount * amount2WithdrawFromValidator) /
                     totalAmount2WithdrawInMatic;
 
@@ -213,6 +295,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 totalBurned += amount2Burn;
 
                 // Burn the remainder, if any, in the last step
+                // todo: check this
                 if (
                     currentAmount2WithdrawInMatic -
                         amount2WithdrawFromValidator ==
@@ -227,7 +310,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     IValidatorShare(validatorShare).unbondNonces(address(this)),
                     block.timestamp,
                     validatorShare,
-                    true
+                    true // Probably we don't need this one
                 );
 
                 currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
@@ -265,6 +348,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             "No operator shares, cannot delegate"
         );
 
+        // Add a require for totalBuffered >= reservedFunds
+
         uint256 availableAmountToDelegate = totalBuffered - reservedFunds;
         uint256 maxDelegateLimitsSum;
         uint256 remainder;
@@ -278,10 +363,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             ? maxDelegateLimitsSum
             : availableAmountToDelegate;
 
+        // todo: use safeApprove
         IERC20Upgradeable(token).approve(
             address(stakeManager),
             totalToDelegatedAmount
         );
+
 
         uint256 amountDelegated;
         for (uint256 i = 0; i < operatorShares.length; i++) {
@@ -302,10 +389,11 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             amountDelegated += amountToDelegatePerOperator;
         }
 
-        remainder = availableAmountToDelegate - amountDelegated;
+        remainder = availableAmountToDelegate - amountDelegated; 
         totalDelegated += amountDelegated;
         totalBuffered = remainder + reservedFunds;
-
+        
+        // todo: merge this into a for loop above
         // Update minValidatorBalance to 10% of the highest staked
         for (uint256 i = 0; i < operatorShares.length; i++) {
             uint256 minValidatorBalanceCurrent = (IValidatorShare(
@@ -321,6 +409,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         }
     }
 
+    // todo: add @param _tokenId
     /**
      * @dev Claims tokens from validator share and sends them to the
      * user if his request is in the userToWithdrawRequest
@@ -331,9 +420,11 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             ILidoNFT(lidoNFT).isApprovedOrOwner(msg.sender, _tokenId),
             "Not owner"
         );
-
+        // todo: move nft token burning here
+        // todo: rename to userRequest
         RequestWithdraw storage userRequests = token2WithdrawRequest[_tokenId];
 
+        // todo: remove this require
         require(userRequests.active, "No active withdrawals");
         require(
             block.timestamp >=
@@ -342,6 +433,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         // Amount in Matic requested by the user
+        // todo: remove amountToClaim, read directly from structure
         uint256 amountToClaim = userRequests.amountToClaim;
 
         if (userRequests.validatorAddress != address(0)) {
@@ -366,11 +458,13 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         ILidoNFT(lidoNFT).burn(_tokenId);
 
         lockedAmountMatic -= amountToClaim;
-        lockedAmountStMatic -= amountToBurn;
+        lockedAmountStMatic -= amountToBurn; // todo: probably replace with balanceOf(address(this))
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amountToClaim);
 
-        userRequests.active = false;
+        //todo: delete userRequests;
+
+        userRequests.active = false; // todo: delete
     }
 
     /**
@@ -384,9 +478,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
         }
 
+        // todo: change this value to be the 10% of totalRewards
         uint256 totalRewards = IERC20Upgradeable(token).balanceOf(
             address(this)
-        ) - totalBuffered;
+        ) - totalBuffered);
 
         require(
             totalRewards > rewardDistributionLowerBound,
@@ -399,9 +494,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         IERC20Upgradeable(token).safeTransfer(dao, daoRewards);
         IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
-
+        
+        // todo: Probably remove but include the required information in the getOperatorShares() function call
         Operator.OperatorReward[] memory operators = nodeOperator
             .getOperatorRewardAddresses();
+
+        // todo: Probably remove
         require(
             operators.length == operatorShares.length,
             "Operators Length doesn't match"
@@ -410,6 +508,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256[] memory ratios = new uint256[](operatorShares.length);
         uint256 totalRatio = 0;
 
+        // todo: Retrieve RewardMin from NodeOperator with getOperatorRewardAddresses
         for (uint256 idx = 0; idx < operators.length; idx++) {
             uint256 rewardRatio = operators[idx].penality ? RewardMin : 100;
             ratios[idx] = rewardRatio;
@@ -456,14 +555,14 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
     }
 
+    // todo: add @param _tokenId
     /**
-     * @notice This will be included in the cron job
      * @dev Claims tokens from validator share and sends them to the
      * LidoMatic contract
      */
     function claimTokens2LidoMatic(uint256 _tokenId) public {
         RequestWithdraw storage lidoRequests = token2WithdrawRequest[_tokenId];
-
+        // todo: add this as a global variable
         ILidoNFT lidoFNTContract = ILidoNFT(lidoNFT);
         require(
             lidoFNTContract.ownerOf(_tokenId) == address(this),
@@ -471,7 +570,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         // Return from function if request has already been processed or withdrawal delay isnt fulfilled
-        require(lidoRequests.active, "No active withdrawals");
+        require(lidoRequests.active, "No active withdrawals"); // todo: remove
 
         require(
             block.timestamp >=
@@ -488,21 +587,25 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         totalBuffered += lidoRequests.amountToClaim;
 
         // Update delegated amount for a validator
-        // Not sure if this part is necessary because the validator is unstaked
         validator2DelegatedAmount[lidoRequests.validatorAddress] -= lidoRequests
             .amountToClaim;
 
+        // todo: reduce totalDelegated
+
         // Wrap up the request
-        lidoRequests.active = false;
+        lidoRequests.active = false; //todo: remove
 
         // burn nft
-        lidoFNTContract.burn(_tokenId);
+        lidoFNTContract.burn(_tokenId); //todo: burn it after the require that checks if this address is the owner of _tokenId
     }
 
     /**
      * @notice Only PAUSE_ROLE can call this function. This function puts certain functionalities on pause.
      * @param _pause - Determines if the contract will be paused (true) or unpaused (false)
      */
+     // todo: replace PAUSE_ROLE with ADMIN
+     // todo: apply paused modifier everywhere
+     // todo: replace this with PausableUpgradable
     function pause(bool _pause) external auth(PAUSE_ROLE) {
         paused = _pause;
     }
@@ -606,6 +709,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @dev Helper function for that returns total pooled MATIC
      * @return Total pooled MATIC
      */
+     //todo: modify this function to calculate totalPooled
     function getTotalStakeAcrossAllValidators() public view returns (uint256) {
         uint256 totalStake;
 
@@ -636,6 +740,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         if (totalDelegated == 0) return _balance;
 
         uint256 totalShares = totalSupply();
+        // todo: create a new function to calculate totalPooled, this only takes delegated amount into consideration
         uint256 totalPooledMATIC = getTotalStakeAcrossAllValidators();
 
         uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
@@ -664,6 +769,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     /////                                                    ///
     ////////////////////////////////////////////////////////////
 
+    // todo: create setFees, check if values add up to 100
     /**
      * @dev Function that sets new dao fee
      * @notice Callable only by dao
@@ -761,6 +867,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
      * @notice Only callable by dao role
      * @param _rewardMin in percent to delegate to a non trusted validator.
      */
+     // todo: This will probably be removed in the future 
     function setRewardBound(uint256 _rewardMin) external auth(DAO) {
         require(_rewardMin <= 100, "invalid min reward value");
         RewardMin = _rewardMin;
