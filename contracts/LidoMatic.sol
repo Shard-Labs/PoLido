@@ -17,13 +17,6 @@ import "./interfaces/ILidoNFT.sol";
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    // todo: Delete those 3
-    uint256 public DelegationDelay;
-    // percentage to delegate to a validator whene it's not trusted.
-    uint256 public DelegationMin;
-    // percentage of rewards a validator will take if he was slashed.
-    uint256 public RewardMin;
-
     INodeOperatorRegistry public nodeOperator;
     FeeDistribution public entityFees;
     IStakeManager public stakeManager;
@@ -50,8 +43,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
     mapping(address => uint256) public validator2DelegatedAmount;
     mapping(address => uint256) public user2Shares;
-    mapping(address => uint256) public validator2Nonce; // todo: DELETE before deploying to production
-    mapping(address => uint256) public user2Nonce; // todo: Delete this
 
     bytes32 public constant DAO = keccak256("DAO");
     bytes32 public constant PAUSE_ROLE = keccak256("PAUSE_ROLE");
@@ -60,7 +51,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     bytes32 public constant SET_TREASURY = keccak256("SET_TREASURY");
 
     struct RequestWithdraw {
-        uint256 amountToBurn; // StMatic
+        uint256 amountToBurn;
         uint256 validatorNonce;
         uint256 requestTime;
         address validatorAddress;
@@ -113,11 +104,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         token = _token;
         insurance = _insurance;
         lidoNFT = _lidoNFT;
-
-        // todo: Retrieve delegationDelay from stakeManager
-        DelegationDelay = 2**13;
-        DelegationMin = 10;
-        RewardMin = 80;
 
         minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(5, 5, 90);
@@ -223,8 +209,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     type(uint256).max
                 );
 
-                user2Nonce[msg.sender]++;
-
                 totalBurned += amount2Burn;
 
                 // Burn the remainder, if any, in the last step
@@ -294,7 +278,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             : availableAmountToDelegate;
 
         // todo: use safeApprove
-        IERC20Upgradeable(token).approve(
+        IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
             totalToDelegatedAmount
         );
@@ -436,7 +420,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         // todo: Retrieve RewardMin from NodeOperator with getOperatorRewardAddresses
         for (uint256 idx = 0; idx < operators.length; idx++) {
-            uint256 rewardRatio = operators[idx].penality ? RewardMin : 100;
+            uint256 rewardRatio = operators[idx].penality ? 80 : 100;
             ratios[idx] = rewardRatio;
             totalRatio += rewardRatio;
         }
@@ -469,8 +453,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
-
-        user2Nonce[address(this)]++;
 
         token2WithdrawRequest[tokenId] = RequestWithdraw(
             uint256(0),
@@ -693,21 +675,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         return balanceInMATIC;
     }
 
-    /**
-     * @dev Function that converts users StMATIC to MATIC
-     * @return Users balance in MATIC
-     */
-    function getUserBalanceInMATIC() public view returns (uint256) {
-        uint256 userShares = balanceOf(msg.sender);
-        uint256 totalShares = totalSupply();
-        uint256 totalPooledMATIC = getTotalPooledMatic();
-
-        uint256 userBalanceInMATIC = (userShares * totalPooledMATIC) /
-            totalShares;
-
-        return userBalanceInMATIC;
-    }
-
     ////////////////////////////////////////////////////////////
     /////                                                    ///
     /////                 ***Setters***                      ///
@@ -790,32 +757,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 _rewardDistributionLowerBound
     ) external auth(DAO) {
         rewardDistributionLowerBound = _rewardDistributionLowerBound;
-    }
-
-    /**
-     * @dev Function that sets the delegation stats
-     * @notice Only callable by dao role
-     * @param _delay the delay that should wait to trust a validator
-     * @param _delegatMin in percent to delegate to a non trusted validator.
-     */
-    function setDelegationBound(uint256 _delay, uint256 _delegatMin)
-        external
-        auth(DAO)
-    {
-        require(_delegatMin <= 100, "invalid min reward value");
-        DelegationDelay = _delay;
-        DelegationMin = _delegatMin;
-    }
-
-    /**
-     * @dev Function that sets the min rewards
-     * @notice Only callable by dao role
-     * @param _rewardMin in percent to delegate to a non trusted validator.
-     */
-    // todo: This will probably be removed in the future
-    function setRewardBound(uint256 _rewardMin) external auth(DAO) {
-        require(_rewardMin <= 100, "invalid min reward value");
-        RewardMin = _rewardMin;
     }
 
     /**
