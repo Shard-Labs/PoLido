@@ -33,7 +33,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     address public insurance;
     address public token;
     uint256 public lastWithdrawnValidatorId;
-    uint256 public totalDelegated;
     uint256 public totalBuffered;
     uint256 public delegationLowerBound;
     uint256 public rewardDistributionLowerBound;
@@ -139,6 +138,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             _amount
         );
 
+        uint256 totalDelegated = getTotalStakeAcrossAllValidators();
+
         // Reduce totalShares by amount of StMatic locked in the LidoMatic contract
         // This StMatic shouldn't be considered in minting new tokens
         // because it is about to be burned after the WITHDRAWAL_DELAY expires
@@ -177,6 +178,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         uint256 totalBurned;
         uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
         uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
+        uint256 totalDelegated = getTotalStakeAcrossAllValidators();
 
         lockedAmountStMatic += _amount;
         lockedAmountMatic += totalAmount2WithdrawInMatic;
@@ -212,21 +214,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                     continue;
                 }
 
-                // Amount of StMATIC to burn based on withdrawal from current validator
-                /**
-                 * _amount = 10 StMATIC
-                 * totalAmount2WithdrawInMatic = 8 Matic
-                 * validators [] = [2 Matic, 8 Matic]
-                 * currentAmount2WithdrawInMatic = 8 Matic
-                 * amount2WithdrawFromValidator = 2 Matic
-                 * amount2Burn = 10 * 2 / 8 = 2 StMatic
-                 * totalBurned = 2 StMatic
-                 * currentAmount2WithdrawInMatic = 6 Matic
-                 * -----
-                 * currentAmount2WithdrawInMatic = 6 Matic
-                 * amount2WithdrawFromValidator = 6 Matic
-                 * amount2Burn = 10 * 6 / 8 = 7 + 1 = 8 StMatic
-                 */
                 uint256 amount2Burn = (_amount * amount2WithdrawFromValidator) /
                     totalAmount2WithdrawInMatic;
 
@@ -293,7 +280,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         );
 
         // Add a require for totalBuffered >= reservedFunds
-
         uint256 availableAmountToDelegate = totalBuffered - reservedFunds;
         uint256 maxDelegateLimitsSum;
         uint256 remainder;
@@ -333,7 +319,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         }
 
         remainder = availableAmountToDelegate - amountDelegated;
-        totalDelegated += amountDelegated;
         totalBuffered = remainder + reservedFunds;
 
         // todo: merge this into a for loop above
@@ -384,8 +369,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 userRequests.validatorAddress,
                 userRequests.validatorNonce
             );
-
-            totalDelegated -= amountToClaim;
 
             validator2DelegatedAmount[
                 userRequests.validatorAddress
@@ -699,7 +682,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         view
         returns (uint256)
     {
-        if (totalDelegated == 0) return _balance;
+        if (getTotalStakeAcrossAllValidators() == 0) return _balance;
 
         uint256 totalShares = totalSupply();
         // todo: create a new function to calculate totalPooled, this only takes delegated amount into consideration
