@@ -4,32 +4,56 @@ pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts/proxy/Proxy.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IValidatorProxy.sol";
 
 /// @title ValidatorProxy
 /// @author 2021 Shardlabs.
-contract ValidatorProxy is Ownable, Proxy {
-    address private implementation;
-    address private operator;
+/// @notice The validator proxy contract is a proxy used as a validator owner in the
+/// stakeManager. Each time a new operator is added a new validator proxy is created
+/// by the validator factory and assigned to the operator. Later we can use it to
+/// stake the validator on the stakeManager and manage it.
+contract ValidatorProxy is IValidatorProxy, Proxy {
+    address public implementation;
+    address public operator;
+    address public validatorFactory;
 
-    // ====================================================================
-    // =========================== FUNCTIONS ==============================
-    // ====================================================================
-    // todo: INFO[1] update the doc with a better description about this contract.
-    // todo: INFO[2] change from _newImplementation to _implementation
     constructor(
-        address _admin,
         address _newImplementation,
-        address _operator
+        address _operator,
+        address _validatorFactory
     ) {
         implementation = _newImplementation;
         operator = _operator;
-        transferOwnership(_admin);
+        validatorFactory = _validatorFactory;
     }
 
-    /// @notice Allows admin to upgrade the validator implementation
-    /// @param _newImplementation set a new implementation
-    function setImplementation(address _newImplementation) external onlyOwner {
-        implementation = _newImplementation;
+    /// @notice check if the msg.sender is the validator factory.
+    modifier isValidatorFactory() {
+        require(
+            msg.sender == validatorFactory,
+            "Caller is not the validator factory"
+        );
+        _;
+    }
+
+    /// @notice Allows the validatorFactory to set the validator implementation.
+    /// @param _newValidatorImplementation set a new implementation
+    function setValidatorImplementation(address _newValidatorImplementation)
+        external
+        override
+        isValidatorFactory
+    {
+        implementation = _newValidatorImplementation;
+    }
+
+    /// @notice Allows the validatorFactory to set the operator implementation.
+    /// @param _newOperator set a new operator.
+    function setOperator(address _newOperator)
+        external
+        override
+        isValidatorFactory
+    {
+        operator = _newOperator;
     }
 
     /// @notice Allows to get the contract implementation address.
@@ -42,11 +66,5 @@ contract ValidatorProxy is Ownable, Proxy {
         returns (address)
     {
         return implementation;
-    }
-
-    /// @notice Allows admin to set the operator address
-    /// @param _newoperator set a new operator.
-    function setOperator(address _newoperator) external onlyOwner {
-        operator = _newoperator;
     }
 }
