@@ -82,12 +82,6 @@ contract LidoMatic is
         uint8 insurance;
     }
 
-    /** Modifiers */
-    modifier auth(bytes32 _role) {
-        require(hasRole(_role, msg.sender), "Not authorized");
-        _;
-    }
-
     // Document the remaining arguments
     /**
      * @param _token - Address of MATIC token on Ethereum Mainnet
@@ -561,7 +555,7 @@ contract LidoMatic is
     /**
      * @dev Flips the pause state
      */
-    function togglePause() external auth(DEFAULT_ADMIN_ROLE) {
+    function togglePause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         paused() ? _unpause() : _pause();
     }
 
@@ -730,7 +724,7 @@ contract LidoMatic is
         uint8 _daoFee,
         uint8 _operatorsFee,
         uint8 _insuranceFee
-    ) external auth(DAO) {
+    ) external onlyRole(DAO) {
         require(
             _daoFee + _operatorsFee + _insuranceFee == 100,
             "sum(fee)!=100"
@@ -745,7 +739,7 @@ contract LidoMatic is
      * @notice Callable only by dao
      * @param _address - New dao address
      */
-    function setDaoAddress(address _address) external auth(DAO) {
+    function setDaoAddress(address _address) external onlyRole(DAO) {
         dao = _address;
     }
 
@@ -754,7 +748,7 @@ contract LidoMatic is
      * @notice Callable only by dao
      * @param _address - New insurance address
      */
-    function setInsuranceAddress(address _address) external auth(DAO) {
+    function setInsuranceAddress(address _address) external onlyRole(DAO) {
         insurance = _address;
     }
 
@@ -763,7 +757,7 @@ contract LidoMatic is
      * @notice Only callable by dao
      * @param _address - New node operator address
      */
-    function setNodeOperatorAddress(address _address) external auth(DAO) {
+    function setNodeOperatorAddress(address _address) external onlyRole(DAO) {
         nodeOperator = INodeOperatorRegistry(_address);
     }
 
@@ -774,7 +768,7 @@ contract LidoMatic is
      */
     function setDelegationLowerBound(uint256 _delegationLowerBound)
         external
-        auth(DAO)
+        onlyRole(DAO)
     {
         delegationLowerBound = _delegationLowerBound;
     }
@@ -786,7 +780,7 @@ contract LidoMatic is
      */
     function setRewardDistributionLowerBound(
         uint256 _rewardDistributionLowerBound
-    ) external auth(DAO) {
+    ) external onlyRole(DAO) {
         rewardDistributionLowerBound = _rewardDistributionLowerBound;
     }
 
@@ -794,7 +788,7 @@ contract LidoMatic is
      * @dev Function that sets the lidoNFT address
      * @param _lidoNFT new lidoNFT address
      */
-    function setLidoNFT(address _lidoNFT) external auth(DAO) {
+    function setLidoNFT(address _lidoNFT) external onlyRole(DAO) {
         lidoNFT = _lidoNFT;
     }
 }
