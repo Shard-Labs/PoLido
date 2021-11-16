@@ -149,17 +149,15 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     function requestWithdraw(uint256 _amount) external notPaused {
         Operator.OperatorShare[] memory operatorShares = nodeOperator
             .getOperatorShares();
-        // todo: move this inside of a loop
-        uint256 tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
-        // todo: use safeTransferFrom
-        require(
-            IERC20Upgradeable(address(this)).transferFrom(
-                msg.sender,
-                address(this),
-                _amount
-            ),
-            "Transferring StMatic failed"
+
+        IERC20Upgradeable(address(this)).safeTransferFrom(
+            msg.sender,
+            address(this),
+            _amount
         );
+
+        uint256 tokenId;
+        uint256 operatorsTraverseCount;
 
         uint256 totalBurned;
         uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
@@ -169,8 +167,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         lockedAmountStMatic += _amount;
         lockedAmountMatic += totalAmount2WithdrawInMatic;
 
-        if (totalDelegated > currentAmount2WithdrawInMatic) {
+        if (totalDelegated >= currentAmount2WithdrawInMatic) {
             while (currentAmount2WithdrawInMatic != 0) {
+                require(
+                    operatorsTraverseCount < operatorShares.length,
+                    "_amount > allowed"
+                );
                 if (lastWithdrawnValidatorId > operatorShares.length - 1) {
                     lastWithdrawnValidatorId = 0;
                 }
@@ -186,6 +188,11 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 // In case if it is lower, return 0
                 uint256 allowedAmount2Withdraw = validatorBalance -
                     minValidatorBalance;
+
+                if (allowedAmount2Withdraw == 0) {
+                    operatorsTraverseCount++;
+                    continue;
+                }
 
                 uint256 amount2WithdrawFromValidator = (allowedAmount2Withdraw >
                     currentAmount2WithdrawInMatic)
@@ -214,12 +221,13 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 // Burn the remainder, if any, in the last step
                 // todo: check this
                 if (
-                    currentAmount2WithdrawInMatic -
-                        amount2WithdrawFromValidator ==
-                    0
+                    currentAmount2WithdrawInMatic ==
+                    amount2WithdrawFromValidator
                 ) {
                     amount2Burn += (_amount - totalBurned);
                 }
+
+                tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
 
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     amount2Burn,
@@ -232,8 +240,11 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
                 currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
 
                 lastWithdrawnValidatorId++;
+                operatorsTraverseCount++;
             }
         } else {
+            tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
+
             token2WithdrawRequest[tokenId] = RequestWithdraw(
                 _amount,
                 0,
