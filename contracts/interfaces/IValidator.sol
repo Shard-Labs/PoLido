@@ -30,12 +30,14 @@ interface IValidator {
     /// @param validatorId validator id.
     /// @param amount amount to stake.
     /// @param stakeRewards restake rewards.
+    /// @param amountStaked total amount staked by the operator in stake manager.
     function restake(
         address _sender,
         uint256 validatorId,
         uint256 amount,
-        bool stakeRewards
-    ) external;
+        bool stakeRewards,
+        uint256 amountStaked
+    ) external returns (bool, uint256);
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId

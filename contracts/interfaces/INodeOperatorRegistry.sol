@@ -142,20 +142,24 @@ interface INodeOperatorRegistry {
     function setVersion(string memory _version) external;
 
     /// @notice Allows an operator's owner to get the validator proxy address.
-    function getOwnerValidatorProxy() external returns (address);
+    function getOwnerValidatorProxy() external view returns (address);
 
     /// @notice Allows to get the validatorFactory address.
-    function getValidatorFactory() external returns (address);
+    function getValidatorFactory() external view returns (address);
 
     /// @notice Allows to get the stake manager address.
-    function getStakeManager() external returns (address);
+    function getStakeManager() external view returns (address);
 
     /// @notice Allows to get the Matic address.
-    function getPolygonERC20() external returns (address);
+    function getPolygonERC20() external view returns (address);
+
+    /// @notice Allows to get the lido address.
+    function getLido() external view returns (address);
 
     /// @notice Allows to get stats.
     function getState()
         external
+        view
         returns (
             uint256 _totalNodeOperator,
             uint256 _totalInactiveNodeOperator,
@@ -168,11 +172,20 @@ interface INodeOperatorRegistry {
 
     /// @notice Allows to get all the active operators info.
     function getOperatorInfos(bool _rewardData)
-        external view
+        external
         returns (Operator.OperatorInfo[] memory);
 
     /// @notice Allows to get reward percentage per operator.
     function getRewardPercentage(address _rewardAddress)
         external
+        view
         returns (uint8);
+
+    /// @notice Allows slashing all the operators if the local stakedAmount is not equal
+    /// to the stakedAmount on stake manager.
+    function slashOperators(bool[] memory _slashedOperatorIds) external;
+
+    /// @notice Allows listing all the operator's status by checking if the local stakedAmount
+    /// is not equal to the stakedAmount on stake manager.
+    function getIfOperatorsWasSlashed() external view returns (bool[] memory);
 }
