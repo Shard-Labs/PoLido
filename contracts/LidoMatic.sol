@@ -271,7 +271,7 @@ contract LidoMatic is
      */
     function delegate() external whenNotPaused {
         require(
-            totalBuffered > delegationLowerBound,
+            totalBuffered > delegationLowerBound + reservedFunds,
             "Amount to delegate lower than minimum"
         );
         Operator.OperatorShare[] memory operatorShares = nodeOperator
@@ -282,7 +282,6 @@ contract LidoMatic is
             "No operator shares, cannot delegate"
         );
 
-        // Add a require for totalBuffered >= reservedFunds
         uint256 availableAmountToDelegate = totalBuffered - reservedFunds;
         uint256 maxDelegateLimitsSum;
         uint256 remainder;
@@ -291,18 +290,20 @@ contract LidoMatic is
             maxDelegateLimitsSum += operatorShares[i].maxDelegateLimit;
         }
 
+        require(maxDelegateLimitsSum > 0, "maxDelegateLimitsSum=0");
+
         uint256 totalToDelegatedAmount = maxDelegateLimitsSum <=
             availableAmountToDelegate
             ? maxDelegateLimitsSum
             : availableAmountToDelegate;
 
-        // todo: use safeApprove
         IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
             totalToDelegatedAmount
         );
 
         uint256 amountDelegated;
+
         for (uint256 i = 0; i < operatorShares.length; i++) {
             uint256 amountToDelegatePerOperator = (operatorShares[i]
                 .maxDelegateLimit * totalToDelegatedAmount) /
