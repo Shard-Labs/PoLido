@@ -15,6 +15,24 @@ import "./interfaces/ILidoNFT.sol";
 // todo: Add a function that returns totalPooledMatic
 // todo: totalPooled is updated during delegation, slashing, unstaking and claiming
 contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
+    event SubmitEvent(address indexed _from, uint256 indexed _amount);
+    event RequestWithdrawEvent(address indexed _from, uint256 indexed _amount);
+    event DistributeRewardsEvent(uint256 indexed _amount);
+    event WithdrawTotalDelegatedEvent(
+        address indexed _from,
+        uint256 indexed _amount
+    );
+    event DelegateEvent(
+        uint256 indexed _amountDelegated,
+        uint256 indexed _remainder
+    );
+    event ClaimTokensEvent(
+        address indexed _from,
+        uint256 indexed _id,
+        uint256 indexed _amountClaimed,
+        uint256 _amountBurned
+    );
+
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     INodeOperatorRegistry public nodeOperator;
@@ -139,6 +157,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         totalBuffered += _amount;
 
+        emit SubmitEvent(msg.sender, _amount);
+
         return amountToMint;
     }
 
@@ -255,6 +275,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
             reservedFunds += currentAmount2WithdrawInMatic;
         }
+
+        emit RequestWithdrawEvent(msg.sender, _amount);
     }
 
     /**
@@ -315,6 +337,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         remainder = availableAmountToDelegate - amountDelegated;
         totalBuffered = remainder + reservedFunds;
+
+        emit DelegateEvent(amountDelegated, remainder);
 
         // todo: merge this into a for loop above
         // Update minValidatorBalance to 10% of the highest staked
@@ -385,7 +409,12 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         //todo: delete userRequests;
 
-        userRequests.active = false; // todo: delete
+        emit ClaimTokensEvent(
+            msg.sender,
+            _tokenId,
+            amountToClaim,
+            amountToBurn
+        );
     }
 
     /**
@@ -409,6 +438,10 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             "Amount to distribute lower than minimum"
         );
 
+        uint256 balanceBeforeDistribution = IERC20Upgradeable(token).balanceOf(
+            address(this)
+        );
+
         uint256 daoRewards = (totalRewards * entityFees.dao) / 100;
         uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
         uint256 operatorsRewards = (totalRewards * entityFees.operators) / 100;
@@ -419,12 +452,6 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         // todo: Probably remove but include the required information in the getOperatorShares() function call
         Operator.OperatorReward[] memory operators = nodeOperator
             .getOperatorRewardAddresses();
-
-        // todo: Probably remove
-        require(
-            operators.length == operatorShares.length,
-            "Operators Length doesn't match"
-        );
 
         uint256[] memory ratios = new uint256[](operatorShares.length);
         uint256 totalRatio = 0;
@@ -443,10 +470,15 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             );
         }
 
+        uint256 currentBalance = IERC20Upgradeable(address(this)).balanceOf(
+            address(this)
+        );
+        uint256 totalDistributed = balanceBeforeDistribution - currentBalance;
+
         // Add the remainder to totalBuffered
-        uint256 remainder = IERC20Upgradeable(token).balanceOf(address(this)) -
-            totalBuffered;
-        totalBuffered += remainder;
+        totalBuffered += (currentBalance - totalBuffered);
+
+        emit DistributeRewardsEvent(totalDistributed);
     }
 
     /**
@@ -472,6 +504,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
             _validatorShare,
             true
         );
+
+        emit WithdrawTotalDelegatedEvent(_validatorShare, stakedAmount);
     }
 
     // todo: add @param _tokenId
@@ -525,6 +559,8 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         // burn nft
         lidoFNTContract.burn(_tokenId); //todo: burn it after the require that checks if this address is the owner of _tokenId
+
+        emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
     }
 
     /**
