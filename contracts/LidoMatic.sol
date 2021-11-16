@@ -77,9 +77,9 @@ contract LidoMatic is
     }
 
     struct FeeDistribution {
-        uint256 dao;
-        uint256 operators;
-        uint256 insurance;
+        uint8 dao;
+        uint8 operators;
+        uint8 insurance;
     }
 
     /** Modifiers */
@@ -719,32 +719,25 @@ contract LidoMatic is
     /////                                                    ///
     ////////////////////////////////////////////////////////////
 
-    // todo: create setFees, check if values add up to 100
     /**
-     * @dev Function that sets new dao fee
+     * @dev Function that sets entity fees
      * @notice Callable only by dao
-     * @param _fee - New fee in %
+     * @param _daoFee - DAO fee in %
+     * @param _operatorsFee - Operator fees in %
+     * @param _insuranceFee - Insurance fee in %
      */
-    function setDaoFee(uint256 _fee) external auth(DAO) {
-        entityFees.dao = _fee;
-    }
-
-    /**
-     * @dev Function that sets new operators fee
-     * @notice Callable only by dao
-     * @param _fee - New fee in %
-     */
-    function setOperatorsFee(uint256 _fee) external auth(DAO) {
-        entityFees.operators = _fee;
-    }
-
-    /**
-     * @dev Function that sets new insurance fee
-     * @notice Callable only by dao
-     * @param _fee - New fee in %
-     */
-    function setInsuranceFee(uint256 _fee) external auth(DAO) {
-        entityFees.insurance = _fee;
+    function setFees(
+        uint8 _daoFee,
+        uint8 _operatorsFee,
+        uint8 _insuranceFee
+    ) external auth(DAO) {
+        require(
+            _daoFee + _operatorsFee + _insuranceFee == 100,
+            "sum(fee)!=100"
+        );
+        entityFees.dao = _daoFee;
+        entityFees.operators = _operatorsFee;
+        entityFees.insurance = _insuranceFee;
     }
 
     /**
