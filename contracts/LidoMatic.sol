@@ -143,9 +143,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
         // This StMatic shouldn't be considered in minting new tokens
         // because it is about to be burned after the WITHDRAWAL_DELAY expires
         uint256 totalShares = totalSupply() - lockedAmountStMatic;
-        uint256 totalPooledMatic = totalBuffered +
-            totalDelegated -
-            lockedAmountMatic;
+        uint256 totalPooledMatic = getTotalPooledMatic();
         uint256 amountToMint = totalDelegated != 0
             ? (_amount * totalShares) / totalPooledMatic
             : _amount;
@@ -682,6 +680,16 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     }
 
     /**
+     * @dev Function that calculates total pooled Matic
+     * @return Total pooled Matic
+     */
+    function getTotalPooledMatic() public view returns (uint256) {
+        uint256 totalStaked = getTotalStakeAcrossAllValidators();
+
+        return (totalStaked + totalBuffered) - lockedAmountMatic;
+    }
+
+    /**
      * @dev Function that converts arbitrary StMatic to Matic
      * @param _balance - Balance in StMatic
      * @return Balance in Matic
@@ -695,7 +703,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
 
         uint256 totalShares = totalSupply();
         // todo: create a new function to calculate totalPooled, this only takes delegated amount into consideration
-        uint256 totalPooledMATIC = getTotalStakeAcrossAllValidators();
+        uint256 totalPooledMATIC = getTotalPooledMatic();
 
         uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
 
@@ -709,7 +717,7 @@ contract LidoMatic is AccessControlUpgradeable, ERC20Upgradeable {
     function getUserBalanceInMATIC() public view returns (uint256) {
         uint256 userShares = balanceOf(msg.sender);
         uint256 totalShares = totalSupply();
-        uint256 totalPooledMATIC = getTotalStakeAcrossAllValidators();
+        uint256 totalPooledMATIC = getTotalPooledMatic();
 
         uint256 userBalanceInMATIC = (userShares * totalPooledMATIC) /
             totalShares;
