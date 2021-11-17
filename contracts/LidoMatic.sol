@@ -347,6 +347,7 @@ contract LidoMatic is
     /**
      * @dev Claims tokens from validator share and sends them to the
      * user if his request is in the userToWithdrawRequest
+     * @param _tokenId - Id of the token that wants to be claimed
      */
     function claimTokens(uint256 _tokenId) external whenNotPaused {
         // check if the token is owner by the msg.sender.
@@ -356,45 +357,43 @@ contract LidoMatic is
         );
         // todo: move nft token burning here
         // todo: rename to userRequest
-        RequestWithdraw storage userRequests = token2WithdrawRequest[_tokenId];
+        RequestWithdraw storage usersRequest = token2WithdrawRequest[_tokenId];
 
         // todo: remove this require
-        require(userRequests.active, "No active withdrawals");
         require(
             block.timestamp >=
                 userRequests.requestTime + stakeManager.withdrawalDelay(),
             "Not able to claim yet"
         );
 
+        ILidoNFT(lidoNFT).burn(_tokenId);
+
         uint256 amountToClaim = convertStMaticToMatic(
-            userRequests.amountToBurn
+            usersRequest.amountToBurn
         );
 
-        if (userRequests.validatorAddress != address(0)) {
+        if (usersRequest.validatorAddress != address(0)) {
             unstakeClaimTokens_new(
-                userRequests.validatorAddress,
-                userRequests.validatorNonce
+                usersRequest.validatorAddress,
+                usersRequest.validatorNonce
             );
 
             validator2DelegatedAmount[
-                userRequests.validatorAddress
+                usersRequest.validatorAddress
             ] -= amountToClaim;
         } else {
             reservedFunds -= amountToClaim;
             totalBuffered -= amountToClaim;
         }
 
-        uint256 amountToBurn = userRequests.amountToBurn;
+        uint256 amountToBurn = usersRequest.amountToBurn;
 
         _burn(address(this), amountToBurn);
-        ILidoNFT(lidoNFT).burn(_tokenId);
 
         lockedAmountMatic -= amountToClaim;
         lockedAmountStMatic -= amountToBurn; // todo: probably replace with balanceOf(address(this))
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amountToClaim);
-
-        //todo: delete userRequests;
 
         emit ClaimTokensEvent(
             msg.sender,
