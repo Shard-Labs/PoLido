@@ -414,10 +414,9 @@ contract LidoMatic is
             IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
         }
 
-        // todo: change this value to be the 10% of totalRewards
-        uint256 totalRewards = IERC20Upgradeable(token).balanceOf(
+        uint256 totalRewards = (IERC20Upgradeable(token).balanceOf(
             address(this)
-        ) - totalBuffered;
+        ) - totalBuffered) * 1 / 10;
 
         require(
             totalRewards > rewardDistributionLowerBound,
