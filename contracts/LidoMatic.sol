@@ -43,8 +43,8 @@ contract LidoMatic is
     INodeOperatorRegistry public nodeOperator;
     FeeDistribution public entityFees;
     IStakeManager public stakeManager;
+    ILidoNFT public lidoNFT;
 
-    address public lidoNFT;
     address public dao;
     address public insurance;
     address public token;
@@ -73,7 +73,6 @@ contract LidoMatic is
         uint256 validatorNonce;
         uint256 requestTime;
         address validatorAddress;
-        bool active;
     }
 
     struct FeeDistribution {
@@ -104,10 +103,10 @@ contract LidoMatic is
 
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
         stakeManager = IStakeManager(_stakeManager);
+        lidoNFT = ILidoNFT(_lidoNFT);
         dao = _dao;
         token = _token;
         insurance = _insurance;
-        lidoNFT = _lidoNFT;
 
         minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(5, 5, 90);
@@ -233,14 +232,13 @@ contract LidoMatic is
                     amount2Burn += (_amount - totalBurned);
                 }
 
-                tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
+                tokenId = lidoNFT.mint(msg.sender);
 
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     amount2Burn,
                     IValidatorShare(validatorShare).unbondNonces(address(this)),
                     block.timestamp,
-                    validatorShare,
-                    true // Probably we don't need this one
+                    validatorShare
                 );
 
                 currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
@@ -249,14 +247,13 @@ contract LidoMatic is
                 operatorsTraverseCount++;
             }
         } else {
-            tokenId = ILidoNFT(lidoNFT).mint(msg.sender);
+            tokenId = lidoNFT.mint(msg.sender);
 
             token2WithdrawRequest[tokenId] = RequestWithdraw(
                 _amount,
                 0,
                 block.timestamp,
-                address(0),
-                true
+                address(0)
             );
 
             reservedFunds += currentAmount2WithdrawInMatic;
@@ -352,7 +349,7 @@ contract LidoMatic is
     function claimTokens(uint256 _tokenId) external whenNotPaused {
         // check if the token is owner by the msg.sender.
         require(
-            ILidoNFT(lidoNFT).isApprovedOrOwner(msg.sender, _tokenId),
+            lidoNFT.isApprovedOrOwner(msg.sender, _tokenId),
             "Not owner"
         );
         // todo: move nft token burning here
@@ -362,11 +359,11 @@ contract LidoMatic is
         // todo: remove this require
         require(
             block.timestamp >=
-                userRequests.requestTime + stakeManager.withdrawalDelay(),
+                usersRequest.requestTime + stakeManager.withdrawalDelay(),
             "Not able to claim yet"
         );
 
-        ILidoNFT(lidoNFT).burn(_tokenId);
+        lidoNFT.burn(_tokenId);
 
         uint256 amountToClaim = convertStMaticToMatic(
             usersRequest.amountToBurn
@@ -414,9 +411,9 @@ contract LidoMatic is
             IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
         }
 
-        uint256 totalRewards = (IERC20Upgradeable(token).balanceOf(
+        uint256 totalRewards = ((IERC20Upgradeable(token).balanceOf(
             address(this)
-        ) - totalBuffered) * 1 / 10;
+        ) - totalBuffered) * 1) / 10;
 
         require(
             totalRewards > rewardDistributionLowerBound,
@@ -477,7 +474,7 @@ contract LidoMatic is
     {
         require(msg.sender == address(nodeOperator), "Not a node operator");
 
-        uint256 tokenId = ILidoNFT(lidoNFT).mint(address(this));
+        uint256 tokenId = lidoNFT.mint(address(this));
 
         (uint256 stakedAmount, ) = getTotalStake(
             IValidatorShare(_validatorShare)
@@ -489,8 +486,7 @@ contract LidoMatic is
             uint256(0),
             IValidatorShare(_validatorShare).unbondNonces(address(this)),
             block.timestamp,
-            _validatorShare,
-            true
+            _validatorShare
         );
 
         emit WithdrawTotalDelegatedEvent(_validatorShare, stakedAmount);
@@ -500,18 +496,17 @@ contract LidoMatic is
     /**
      * @dev Claims tokens from validator share and sends them to the
      * LidoMatic contract
+     * @param _tokenId - Id of the token that is supposed to be claimed
      */
-    function claimTokens2LidoMatic(uint256 _tokenId) public whenNotPaused {
+    function claimTokens2LidoMatic(uint256 _tokenId) external whenNotPaused {
         RequestWithdraw storage lidoRequests = token2WithdrawRequest[_tokenId];
-        // todo: add this as a global variable
-        ILidoNFT lidoFNTContract = ILidoNFT(lidoNFT);
+
         require(
-            lidoFNTContract.ownerOf(_tokenId) == address(this),
+            lidoNFT.ownerOf(_tokenId) == address(this),
             "Not owner of the NFT"
         );
 
-        // Return from function if request has already been processed or withdrawal delay isnt fulfilled
-        require(lidoRequests.active, "No active withdrawals"); // todo: remove
+        lidoNFT.burn(_tokenId);
 
         require(
             block.timestamp >=
@@ -539,14 +534,6 @@ contract LidoMatic is
         validator2DelegatedAmount[
             lidoRequests.validatorAddress
         ] -= claimedAmount;
-
-        // todo: reduce totalDelegated
-
-        // Wrap up the request
-        lidoRequests.active = false; //todo: remove
-
-        // burn nft
-        lidoFNTContract.burn(_tokenId); //todo: burn it after the require that checks if this address is the owner of _tokenId
 
         emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
     }
@@ -788,6 +775,6 @@ contract LidoMatic is
      * @param _lidoNFT new lidoNFT address
      */
     function setLidoNFT(address _lidoNFT) external onlyRole(DAO) {
-        lidoNFT = _lidoNFT;
+        lidoNFT = ILidoNFT(_lidoNFT);
     }
 }
