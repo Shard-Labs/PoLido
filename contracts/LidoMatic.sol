@@ -45,6 +45,7 @@ contract LidoMatic is
     IStakeManager public stakeManager;
     ILidoNFT public lidoNFT;
 
+    string public version;
     address public dao;
     address public insurance;
     address public token;
@@ -627,7 +628,7 @@ contract LidoMatic is
      * @return Liquid rewards of this contract
      */
     function getLiquidRewards(IValidatorShare _validatorShare)
-        public
+        external
         view
         returns (uint256)
     {
@@ -776,5 +777,13 @@ contract LidoMatic is
      */
     function setLidoNFT(address _lidoNFT) external onlyRole(DAO) {
         lidoNFT = ILidoNFT(_lidoNFT);
+    }
+
+    /**
+     * @dev Function that sets the new version
+     * @param _version - New version that will be set
+     */
+    function setVersion(string calldata _version) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        version = _version;
     }
 }
