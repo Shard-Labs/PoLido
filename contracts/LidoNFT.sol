@@ -13,6 +13,7 @@ contract LidoNFT is
     // lido contract
     address public lido;
     uint256 public tokenIdIndex;
+    string public version;
 
     mapping(address => uint256[]) public owner2Tokens;
     mapping(uint256 => uint256) public token2Index;
@@ -138,6 +139,12 @@ contract LidoNFT is
     /// @notice Set LidoMatic contract
     function setLido(address _lido) external onlyOwner {
         lido = _lido;
+    }
+
+    /// @notice Set LidoNFT version
+    /// @param _version - New version that will be set
+    function setVersion(string calldata _version) external onlyOwner {
+        version = _version;
     }
 
     /// @notice Retrieve owned tokens by address
