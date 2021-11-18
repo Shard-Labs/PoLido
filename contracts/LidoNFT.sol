@@ -2,10 +2,14 @@
 pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
 
-contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
+contract LidoNFT is
+    OwnableUpgradeable,
+    ERC721Upgradeable,
+    ERC721PausableUpgradeable
+{
     // lido contract
     address public lido;
     uint256 public tokenIdIndex;
@@ -26,17 +30,24 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
         public
         initializer
     {
-        __Ownable_init();
-        __ERC721_init(_name, _symbol);
-        __Pausable_init();
+        __Context_init_unchained();
+        __ERC165_init_unchained();
+        __Ownable_init_unchained();
+        __ERC721_init_unchained(_name, _symbol);
+        __Pausable_init_unchained();
+        __ERC721Pausable_init_unchained();
     }
 
     /// @notice Mint token.
     function mint(address _to) external isLido returns (uint256) {
-        tokenIdIndex++;
-        _mint(_to, tokenIdIndex);
+        uint256 currentIndex = tokenIdIndex;
+        currentIndex++;
 
-        return tokenIdIndex;
+        _mint(_to, currentIndex);
+
+        tokenIdIndex = currentIndex;
+
+        return currentIndex;
     }
 
     /// @notice Burn token.
@@ -70,7 +81,12 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
         address from,
         address to,
         uint256 tokenId
-    ) internal virtual override whenNotPaused {
+    )
+        internal
+        virtual
+        override(ERC721Upgradeable, ERC721PausableUpgradeable)
+        whenNotPaused
+    {
         super._beforeTokenTransfer(from, to, tokenId);
 
         // Minting
