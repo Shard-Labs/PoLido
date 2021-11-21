@@ -349,10 +349,7 @@ contract LidoMatic is
      */
     function claimTokens(uint256 _tokenId) external whenNotPaused {
         // check if the token is owner by the msg.sender.
-        require(
-            lidoNFT.isApprovedOrOwner(msg.sender, _tokenId),
-            "Not owner"
-        );
+        require(lidoNFT.isApprovedOrOwner(msg.sender, _tokenId), "Not owner");
         // todo: move nft token burning here
         // todo: rename to userRequest
         RequestWithdraw storage usersRequest = token2WithdrawRequest[_tokenId];
@@ -683,12 +680,13 @@ contract LidoMatic is
         view
         returns (uint256)
     {
-        if (getTotalStakeAcrossAllValidators() == 0) return _balance;
-
-        uint256 totalShares = totalSupply();
+        uint256 totalSharesTemp = totalSupply() - lockedAmountStMatic;
+        uint256 totalShares = totalSharesTemp == 0 ? 1 : totalSharesTemp;
         // todo: create a new function to calculate totalPooled, this only takes delegated amount into consideration
-        uint256 totalPooledMATIC = getTotalPooledMatic();
-
+        uint256 totalPooledMATICTemp = getTotalPooledMatic();
+        uint256 totalPooledMatic = totalPooledMATICTemp == 0
+            ? 1
+            : totalPooledMATICTemp;
         uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
 
         return balanceInMATIC;
@@ -783,7 +781,10 @@ contract LidoMatic is
      * @dev Function that sets the new version
      * @param _version - New version that will be set
      */
-    function setVersion(string calldata _version) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setVersion(string calldata _version)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         version = _version;
     }
 }
