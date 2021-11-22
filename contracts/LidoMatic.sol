@@ -128,16 +128,7 @@ contract LidoMatic is
             _amount
         );
 
-        uint256 totalDelegated = getTotalStakeAcrossAllValidators();
-
-        // Reduce totalShares by amount of StMatic locked in the LidoMatic contract
-        // This StMatic shouldn't be considered in minting new tokens
-        // because it is about to be burned after the WITHDRAWAL_DELAY expires
-        uint256 totalShares = totalSupply() - lockedAmountStMatic;
-        uint256 totalPooledMatic = getTotalPooledMatic();
-        uint256 amountToMint = totalDelegated != 0
-            ? (_amount * totalShares) / totalPooledMatic
-            : _amount;
+        uint256 amountToMint = convertMaticToStMatic(_amount);
 
         _mint(msg.sender, amountToMint);
 
@@ -680,16 +671,27 @@ contract LidoMatic is
         view
         returns (uint256)
     {
-        uint256 totalSharesTemp = totalSupply() - lockedAmountStMatic;
-        uint256 totalShares = totalSharesTemp == 0 ? 1 : totalSharesTemp;
+        uint256 totalShares = totalSupply() - lockedAmountStMatic;
+        totalShares = totalShares == 0 ? 1 : totalShares;
         // todo: create a new function to calculate totalPooled, this only takes delegated amount into consideration
-        uint256 totalPooledMATICTemp = getTotalPooledMatic();
-        uint256 totalPooledMatic = totalPooledMATICTemp == 0
-            ? 1
-            : totalPooledMATICTemp;
+        uint256 totalPooledMATIC = getTotalPooledMatic();
+        totalPooledMatic = totalPooledMATIC == 0 ? 1 : totalPooledMATIC
+        ;
         uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
 
         return balanceInMATIC;
+    }
+
+    function convertMaticToStMatic(uint256 _balance) public view returns(uint256) {
+        uint256 totalShares = totalSupply() - lockedAmountStMatic;
+        totalShares = totalShares == 0 ? 1 : totalShares;
+
+        uint256 totalPooledMatic = getTotalPooledMatic();
+        totalPooledMatic = totalPooledMatic == 0 ? 1 : totalPooledMatic;
+
+        uint256 balanceInStMatic = (_balance * totalShares) / totalPooledMatic;
+
+        return balanceInStMatic;
     }
 
     ////////////////////////////////////////////////////////////
