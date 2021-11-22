@@ -180,16 +180,15 @@ contract LidoMatic is
 
                 uint256 validatorBalance = IValidatorShare(validatorShare)
                     .activeAmount();
-
-                // todo: check if validatorbalance is lower than minValidatorBalance
-                // In case if it is lower, return 0
-                uint256 allowedAmount2Withdraw = validatorBalance -
-                    minValidatorBalance;
-
-                if (allowedAmount2Withdraw == 0) {
+                
+                if(validatorBalance <= minValidatorBalance) {
                     operatorsTraverseCount++;
+                    lastWithdrawnValidatorId++;
                     continue;
                 }
+
+                uint256 allowedAmount2Withdraw = validatorBalance -
+                    minValidatorBalance;
 
                 uint256 amount2WithdrawFromValidator = (allowedAmount2Withdraw >
                     currentAmount2WithdrawInMatic)
@@ -201,6 +200,8 @@ contract LidoMatic is
                 // if all of them had been checked and none of them has more than minValidatorBalance revert
                 if (amount2WithdrawFromValidator == 0) {
                     // todo: increment lastWithdrawnValidatorId
+                    lastWithdrawnValidatorId++;
+                    operatorsTraverseCount++;
                     continue;
                 }
 
@@ -215,8 +216,6 @@ contract LidoMatic is
 
                 totalBurned += amount2Burn;
 
-                // Burn the remainder, if any, in the last step
-                // todo: check this
                 if (
                     currentAmount2WithdrawInMatic ==
                     amount2WithdrawFromValidator
