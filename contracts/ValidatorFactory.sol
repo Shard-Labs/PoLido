@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./ValidatorProxy.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorProxy.sol";
@@ -12,7 +12,7 @@ import "./interfaces/IValidatorFactory.sol";
 /// @author 2021 Shardlabs.
 /// @notice The validator Factory is the contract that allows creating new validatorProxies
 // and managing them to update the operator and the validator implementation addresses.
-contract ValidatorFactory is IValidatorFactory, AccessControlUpgradeable {
+contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     /// @notice the list of all the validatorProxies.
     address[] public validators;
     /// @notice the contract version.
@@ -22,29 +22,15 @@ contract ValidatorFactory is IValidatorFactory, AccessControlUpgradeable {
     /// @notice the validator implementation address.
     address public validatorImplementation;
 
-    /// @notice Roles
-    bytes32 public constant DAO_ROLE = keccak256("DAO");
-    bytes32 public constant VERSION_ROLE = keccak256("VERSION");
-
     /// @notice Check if the operator contract is the msg.sender.
     modifier isOperator() {
         require(operator == msg.sender, "Caller is not the operator contract");
         _;
     }
 
-    /// @notice Check if the msg.sender has permission.
-    /// @param _role role needed to call function.
-    modifier userHasRole(bytes32 _role) {
-        require(hasRole(_role, msg.sender), "Permission not found");
-        _;
-    }
-
     /// @notice Initialize the NodeOperator contract.
     function initialize(address _validatorImplementation) public initializer {
-        __AccessControl_init();
-
-        _setupRole(DAO_ROLE, msg.sender);
-        _setupRole(VERSION_ROLE, msg.sender);
+        __Ownable_init();
 
         validatorImplementation = _validatorImplementation;
     }
@@ -88,7 +74,7 @@ contract ValidatorFactory is IValidatorFactory, AccessControlUpgradeable {
     function setOperator(address _newOperator)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyOwner
     {
         operator = _newOperator;
 
@@ -106,7 +92,7 @@ contract ValidatorFactory is IValidatorFactory, AccessControlUpgradeable {
     function setValidatorImplementation(address _validatorImplementation)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyOwner
     {
         validatorImplementation = _validatorImplementation;
 
@@ -122,7 +108,7 @@ contract ValidatorFactory is IValidatorFactory, AccessControlUpgradeable {
     /// @notice set contract version.
     function setVersion(string memory _version)
         external
-        userHasRole(VERSION_ROLE)
+        onlyOwner
     {
         version = _version;
     }
