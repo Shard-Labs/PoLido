@@ -8,4 +8,12 @@ import "../NodeOperatorRegistry.sol";
 /// @dev this contract is used only for test the upgradibility
 contract NodeOperatorRegistryV2 is NodeOperatorRegistry {
     uint256 x;
+
+    function setX(uint256 _x) public {
+        x = _x;
+    }
+
+    function getX() public view returns (uint256) {
+        return x;
+    }
 }
