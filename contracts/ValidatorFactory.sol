@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "./ValidatorProxy.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorProxy.sol";
@@ -12,11 +12,19 @@ import "./interfaces/IValidatorFactory.sol";
 /// @author 2021 Shardlabs.
 /// @notice The validator Factory is the contract that allows creating new validatorProxies
 // and managing them to update the operator and the validator implementation addresses.
-contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
+contract ValidatorFactory is IValidatorFactory, AccessControlUpgradeable {
+    /// @notice the list of all the validatorProxies.
     address[] public validators;
+    /// @notice the contract version.
     string public version;
+    /// @notice the node operator address.
     address public operator;
+    /// @notice the validator implementation address.
     address public validatorImplementation;
+
+    /// @notice Roles
+    bytes32 public constant DAO_ROLE = keccak256("DAO");
+    bytes32 public constant VERSION_ROLE = keccak256("VERSION");
 
     /// @notice Check if the operator contract is the msg.sender.
     modifier isOperator() {
@@ -24,9 +32,20 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
         _;
     }
 
+    /// @notice Check if the msg.sender has permission.
+    /// @param _role role needed to call function.
+    modifier userHasRole(bytes32 _role) {
+        require(hasRole(_role, msg.sender), "Permission not found");
+        _;
+    }
+
     /// @notice Initialize the NodeOperator contract.
     function initialize(address _validatorImplementation) public initializer {
-        __Ownable_init();
+        __AccessControl_init();
+
+        _setupRole(DAO_ROLE, msg.sender);
+        _setupRole(VERSION_ROLE, msg.sender);
+
         validatorImplementation = _validatorImplementation;
     }
 
@@ -41,7 +60,6 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
         );
 
         validators.push(proxy);
-        emit CreateValidator(proxy);
 
         return proxy;
     }
@@ -54,21 +72,24 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
             "Could not remove a zero address"
         );
 
-        bool found;
-        for (uint256 idx = 0; idx < validators.length - 1; idx++) {
+        uint256 length = validators.length;
+        for (uint256 idx = 0; idx < length; idx++) {
             if (_validatorProxy == validators[idx]) {
-                validators[idx] = validators[validators.length - 1];
-                found = true;
+                validators[idx] = validators[length - 1];
                 break;
             }
         }
-        require(found, "Invalid validator Proxy");
         validators.pop();
     }
 
-    /// @notice Allows to set the NodeOperatorRegistry address.
+    /// @notice Allows to set the NodeOperatorRegistry address and update all the validatorProxies
+    /// with the new address.
     /// @param _newOperator new operator address.
-    function setOperator(address _newOperator) external override onlyOwner {
+    function setOperator(address _newOperator)
+        external
+        override
+        userHasRole(DAO_ROLE)
+    {
         operator = _newOperator;
 
         uint256 length = validators.length;
@@ -79,12 +100,13 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
         emit SetOperatorContract(_newOperator);
     }
 
-    /// @notice Allows to set the validator implementation address.
+    /// @notice Allows to set the validator implementation address and update all the
+    /// validatorProxies with the new address.
     /// @param _validatorImplementation new validator implementation address.
     function setValidatorImplementation(address _validatorImplementation)
         external
         override
-        onlyOwner
+        userHasRole(DAO_ROLE)
     {
         validatorImplementation = _validatorImplementation;
 
@@ -98,7 +120,10 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     }
 
     /// @notice set contract version.
-    function setVersion(string memory _version) external onlyOwner {
+    function setVersion(string memory _version)
+        external
+        userHasRole(VERSION_ROLE)
+    {
         version = _version;
     }
 
@@ -108,7 +133,6 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
         return validators;
     }
 
-    event CreateValidator(address validator);
     event SetOperatorContract(address operator);
     event SetValidatorImplementation(address validatorImplementation);
 }
