@@ -13,8 +13,11 @@ import "./interfaces/IValidatorProxy.sol";
 /// by the validator factory and assigned to the operator. Later we can use it to
 /// stake the validator on the stakeManager and manage it.
 contract ValidatorProxy is IValidatorProxy, Proxy {
+    /// @notice the validator implementation address.
     address public implementation;
+    /// @notice the operator address.
     address public operator;
+    /// @notice validator factory address.
     address public validatorFactory;
 
     constructor(
