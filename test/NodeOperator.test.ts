@@ -254,7 +254,7 @@ describe("NodeOperator", function () {
             const no = await nodeOperatorRegistryContract["getNodeOperator(uint256)"].call(this, 1);
 
             // approve token to validator contract
-            await polygonERC20Contract.connect(user1).approve(no[6], toEth("30"));
+            await polygonERC20Contract.connect(user1).approve(no.validatorProxy, toEth("30"));
 
             // stake a node operator
             expect(await nodeOperatorRegistryContract.connect(user1)
@@ -1336,7 +1336,7 @@ describe("NodeOperator", function () {
             );
             await expect(
                 validatorFactoryContract.connect(user1).setValidatorImplementation(validatorContractV2.address)
-            ).revertedWith("Permission not found");
+            ).revertedWith("Ownable: caller is not the owner");
         });
 
         it("Success upgrade validator factory", async function () {
