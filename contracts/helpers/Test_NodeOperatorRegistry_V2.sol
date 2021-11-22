@@ -8,8 +8,4 @@ import "../NodeOperatorRegistry.sol";
 /// @dev this contract is used only for test the upgradibility
 contract NodeOperatorRegistryV2 is NodeOperatorRegistry {
     uint256 x;
-
-    function version() public pure override returns (string memory) {
-        return "2.0.0";
-    }
 }

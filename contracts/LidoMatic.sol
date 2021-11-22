@@ -144,8 +144,8 @@ contract LidoMatic is
      * @param _amount - Amount of StMATIC that is requested to withdraw
      */
     function requestWithdraw(uint256 _amount) external whenNotPaused {
-        Operator.OperatorShare[] memory operatorShares = nodeOperator
-            .getOperatorShares();
+        Operator.OperatorInfo[] memory operatorShares = nodeOperator
+            .getOperatorInfos(false);
 
         IERC20Upgradeable(address(this)).safeTransferFrom(
             msg.sender,
@@ -180,8 +180,8 @@ contract LidoMatic is
 
                 uint256 validatorBalance = IValidatorShare(validatorShare)
                     .activeAmount();
-                
-                if(validatorBalance <= minValidatorBalance) {
+
+                if (validatorBalance <= minValidatorBalance) {
                     operatorsTraverseCount++;
                     lastWithdrawnValidatorId++;
                     continue;
@@ -262,8 +262,8 @@ contract LidoMatic is
             totalBuffered > delegationLowerBound + reservedFunds,
             "Amount to delegate lower than minimum"
         );
-        Operator.OperatorShare[] memory operatorShares = nodeOperator
-            .getOperatorShares();
+        Operator.OperatorInfo[] memory operatorShares = nodeOperator
+            .getOperatorInfos(true);
 
         require(
             operatorShares.length > 0,
@@ -392,8 +392,8 @@ contract LidoMatic is
      * @dev Distributes rewards claimed from validator shares based on fees defined in entityFee
      */
     function distributeRewards() external whenNotPaused {
-        Operator.OperatorShare[] memory operatorShares = nodeOperator
-            .getOperatorShares();
+        Operator.OperatorInfo[] memory operatorShares = nodeOperator
+            .getOperatorInfos(false);
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
             IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
@@ -420,15 +420,15 @@ contract LidoMatic is
         IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
 
         // todo: Probably remove but include the required information in the getOperatorShares() function call
-        Operator.OperatorReward[] memory operators = nodeOperator
-            .getOperatorRewardAddresses();
+        Operator.OperatorInfo[] memory operators = nodeOperator
+            .getOperatorInfos(true);
 
         uint256[] memory ratios = new uint256[](operatorShares.length);
         uint256 totalRatio = 0;
 
         // todo: Retrieve RewardMin from NodeOperator with getOperatorRewardAddresses
         for (uint256 idx = 0; idx < operators.length; idx++) {
-            uint256 rewardRatio = operators[idx].penality ? 80 : 100;
+            uint256 rewardRatio = operators[idx].rewardPercentage;
             ratios[idx] = rewardRatio;
             totalRatio += rewardRatio;
         }
@@ -633,11 +633,12 @@ contract LidoMatic is
      * @return Total pooled MATIC
      */
     //todo: modify this function to calculate totalPooled
+    // todo: Investiga why this can't be view
     function getTotalStakeAcrossAllValidators() public view returns (uint256) {
         uint256 totalStake;
 
-        Operator.OperatorShare[] memory operatorShares = nodeOperator
-            .getOperatorShares();
+        Operator.OperatorInfo[] memory operatorShares = nodeOperator
+            .getOperatorInfos(false);
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
             (uint256 currValidatorShare, ) = getTotalStake(
@@ -674,14 +675,18 @@ contract LidoMatic is
         totalShares = totalShares == 0 ? 1 : totalShares;
         // todo: create a new function to calculate totalPooled, this only takes delegated amount into consideration
         uint256 totalPooledMATIC = getTotalPooledMatic();
-        totalPooledMatic = totalPooledMATIC == 0 ? 1 : totalPooledMATIC
-        ;
+        totalPooledMATIC = totalPooledMATIC == 0 ? 1 : totalPooledMATIC;
+
         uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
 
         return balanceInMATIC;
     }
 
-    function convertMaticToStMatic(uint256 _balance) public view returns(uint256) {
+    function convertMaticToStMatic(uint256 _balance)
+        public
+        view
+        returns (uint256)
+    {
         uint256 totalShares = totalSupply() - lockedAmountStMatic;
         totalShares = totalShares == 0 ? 1 : totalShares;
 

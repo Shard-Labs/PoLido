@@ -3,18 +3,11 @@
 pragma solidity 0.8.7;
 
 library Operator {
-    /// @notice OperatorShare struct
-    struct OperatorShare {
+    struct OperatorInfo {
         uint256 operatorId;
         address validatorShare;
-        uint256 slashed;
-        uint256 statusTimestamp;
         uint256 maxDelegateLimit;
-    }
-
-    /// @notice OperatorShare struct
-    struct OperatorReward {
+        uint8 rewardPercentage;
         address rewardAddress;
-        bool penality;
     }
 }

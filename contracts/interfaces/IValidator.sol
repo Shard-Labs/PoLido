@@ -51,15 +51,17 @@ interface IValidator {
     /// @dev Allows to withdraw rewards from the validator using the _validatorId. Only the
     /// owner can request withdraw in this the owner is this contract.
     /// @param _validatorId validator id.
-    function withdrawRewards(uint256 _validatorId) external returns (uint256);
+    /// @return Returns the amount transfered to the user.
+    function withdrawRewards(uint256 _validatorId, address _rewardAddress)
+        external
+        returns (uint256);
 
     /// @notice Allows to claim staked tokens on the stake Manager after the end of the
     /// withdraw delay
     /// @param _validatorId validator id.
-    /// @param _ownerRecipient user address used to transfer the staked tokens.
-    /// @return Returns the amount transfered to the user and rewards buffred on the
-    /// validator contract.
-    function unstakeClaim(address _ownerRecipient, uint256 _validatorId)
+    /// @param _rewardAddress user address used to transfer the staked tokens.
+    /// @return Returns the amount transfered to the user.
+    function unstakeClaim(uint256 _validatorId, address _rewardAddress)
         external
         returns (uint256);
 
@@ -76,7 +78,8 @@ interface IValidator {
     function claimFee(
         uint256 _accumFeeAmount,
         uint256 _index,
-        bytes memory _proof
+        bytes memory _proof,
+        address _ownerRecipient
     ) external;
 
     /// @notice Allows to update the commision rate of a validator
@@ -88,8 +91,23 @@ interface IValidator {
     ) external;
 
     /// @notice Allows to unjail a validator.
+    /// @param _validatorId operator id
     function unjail(uint256 _validatorId) external;
 
-    /// @notice Allows to get contract version.
-    function version() external returns (string memory);
+    /// @notice Allows to migrate the ownership to an other user.
+    /// @param _validatorId operator id.
+    /// @param _stakeManagerNFT stake manager nft contract.
+    /// @param _rewardAddress reward address.
+    function migrate(
+        uint256 _validatorId,
+        address _stakeManagerNFT,
+        address _rewardAddress
+    ) external;
+
+    function join(
+        uint256 _validatorId,
+        address _stakeManagerNFT,
+        address _rewardAddress,
+        uint256 _newCommissionRate
+    ) external;
 }
