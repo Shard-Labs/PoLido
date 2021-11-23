@@ -42,7 +42,7 @@ describe("Starting to test LidoMatic contract", () => {
 
         mockStakeManager = (await (
             await ethers.getContractFactory("StakeManagerMock")
-        ).deploy(mockERC20.address)) as StakeManagerMock;
+        ).deploy(mockERC20.address, lidoNFT.address)) as StakeManagerMock;
         await mockStakeManager.deployed();
 
         validator = (await (
