@@ -172,7 +172,7 @@ interface INodeOperatorRegistry {
 
     /// @notice Allows to get all the active operators info.
     function getOperatorInfos(bool _rewardData)
-        external
+        external view
         returns (Operator.OperatorInfo[] memory);
 
     /// @notice Allows to get reward percentage per operator.
@@ -188,8 +188,4 @@ interface INodeOperatorRegistry {
     /// @notice Allows listing all the operator's status by checking if the local stakedAmount
     /// is not equal to the stakedAmount on stake manager.
     function getIfOperatorsWasSlashed() external view returns (bool[] memory);
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> fix nodeOperator contract bugs found during tests and added slashing functions
