@@ -12,9 +12,6 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/ILidoNFT.sol";
 
-// todo: calculate totalDelegated dynamically if the slashing is on, else fetch the value form the global variable
-// todo: Add a function that returns totalPooledMatic
-// todo: totalPooled is updated during delegation, slashing, unstaking and claiming
 contract LidoMatic is
     ERC20Upgradeable,
     AccessControlUpgradeable,
@@ -58,14 +55,9 @@ contract LidoMatic is
     uint256 public lockedAmountMatic;
     uint256 public minValidatorBalance;
 
-    // todo: remove mapping(address => RequestWithdraw[]) public user2WithdrawRequest;
-
-    // todo: Map to RequestWithdraw[] instead of RequestWithdraw
-    // todo: Change the required logic to make it work
     mapping(uint256 => RequestWithdraw) public token2WithdrawRequest;
 
     mapping(address => uint256) public validator2DelegatedAmount;
-    mapping(address => uint256) public user2Shares;
 
     bytes32 public constant DAO = keccak256("DAO");
 
@@ -164,7 +156,10 @@ contract LidoMatic is
         lockedAmountStMatic += _amount;
         lockedAmountMatic += totalAmount2WithdrawInMatic;
 
-        if (totalDelegated >= currentAmount2WithdrawInMatic) {
+        if (
+            totalDelegated >= currentAmount2WithdrawInMatic &&
+            operatorShares.length > 0
+        ) {
             while (currentAmount2WithdrawInMatic != 0) {
                 require(
                     operatorsTraverseCount < operatorShares.length,
@@ -195,11 +190,7 @@ contract LidoMatic is
                     ? currentAmount2WithdrawInMatic
                     : allowedAmount2Withdraw;
 
-                // todo: move it above checking the amount2WithdrawFromValidator
-                // todo: add a counter to count each validator check,
-                // if all of them had been checked and none of them has more than minValidatorBalance revert
                 if (amount2WithdrawFromValidator == 0) {
-                    // todo: increment lastWithdrawnValidatorId
                     lastWithdrawnValidatorId++;
                     operatorsTraverseCount++;
                     continue;
@@ -315,8 +306,6 @@ contract LidoMatic is
 
         emit DelegateEvent(amountDelegated, remainder);
 
-        // todo: merge this into a for loop above
-        // Update minValidatorBalance to 10% of the highest staked
         for (uint256 i = 0; i < operatorShares.length; i++) {
             uint256 minValidatorBalanceCurrent = (IValidatorShare(
                 operatorShares[i].validatorShare
@@ -331,20 +320,15 @@ contract LidoMatic is
         }
     }
 
-    // todo: add @param _tokenId
     /**
      * @dev Claims tokens from validator share and sends them to the
      * user if his request is in the userToWithdrawRequest
      * @param _tokenId - Id of the token that wants to be claimed
      */
     function claimTokens(uint256 _tokenId) external whenNotPaused {
-        // check if the token is owner by the msg.sender.
         require(lidoNFT.isApprovedOrOwner(msg.sender, _tokenId), "Not owner");
-        // todo: move nft token burning here
-        // todo: rename to userRequest
         RequestWithdraw storage usersRequest = token2WithdrawRequest[_tokenId];
 
-        // todo: remove this require
         require(
             block.timestamp >=
                 usersRequest.requestTime + stakeManager.withdrawalDelay(),
@@ -376,7 +360,7 @@ contract LidoMatic is
         _burn(address(this), amountToBurn);
 
         lockedAmountMatic -= amountToClaim;
-        lockedAmountStMatic -= amountToBurn; // todo: probably replace with balanceOf(address(this))
+        lockedAmountStMatic -= amountToBurn;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amountToClaim);
 
@@ -393,7 +377,7 @@ contract LidoMatic is
      */
     function distributeRewards() external whenNotPaused {
         Operator.OperatorInfo[] memory operatorShares = nodeOperator
-            .getOperatorInfos(false);
+            .getOperatorInfos(true);
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
             IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
@@ -419,14 +403,12 @@ contract LidoMatic is
         IERC20Upgradeable(token).safeTransfer(dao, daoRewards);
         IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
 
-        // todo: Probably remove but include the required information in the getOperatorShares() function call
         Operator.OperatorInfo[] memory operators = nodeOperator
             .getOperatorInfos(true);
 
         uint256[] memory ratios = new uint256[](operatorShares.length);
         uint256 totalRatio = 0;
 
-        // todo: Retrieve RewardMin from NodeOperator with getOperatorRewardAddresses
         for (uint256 idx = 0; idx < operators.length; idx++) {
             uint256 rewardRatio = operators[idx].rewardPercentage;
             ratios[idx] = rewardRatio;
@@ -480,7 +462,6 @@ contract LidoMatic is
         emit WithdrawTotalDelegatedEvent(_validatorShare, stakedAmount);
     }
 
-    // todo: add @param _tokenId
     /**
      * @dev Claims tokens from validator share and sends them to the
      * LidoMatic contract
@@ -570,7 +551,7 @@ contract LidoMatic is
     /**
      * @dev API for delegated unstaking and claiming tokens from validatorShare
      * @param _validatorShare - Address of validatorShare contract
-     * @param _unbondNonce - TODO
+     * @param _unbondNonce - Unbond nonce
      */
     function unstakeClaimTokens_new(
         address _validatorShare,
@@ -632,8 +613,6 @@ contract LidoMatic is
      * @dev Helper function for that returns total pooled MATIC
      * @return Total pooled MATIC
      */
-    //todo: modify this function to calculate totalPooled
-    // todo: Investiga why this can't be view
     function getTotalStakeAcrossAllValidators() public view returns (uint256) {
         uint256 totalStake;
 
@@ -673,7 +652,7 @@ contract LidoMatic is
     {
         uint256 totalShares = totalSupply() - lockedAmountStMatic;
         totalShares = totalShares == 0 ? 1 : totalShares;
-        // todo: create a new function to calculate totalPooled, this only takes delegated amount into consideration
+
         uint256 totalPooledMATIC = getTotalPooledMatic();
         totalPooledMATIC = totalPooledMATIC == 0 ? 1 : totalPooledMATIC;
 
