@@ -23,6 +23,8 @@ describe("Starting to test LidoMatic contract", () => {
     let mockStakeManager: StakeManagerMock;
     let mockERC20: Polygon;
 
+    let increaseBlockTime: (amountInSeconds: number) => Promise<void>;
+
     let submit: (
         signer: SignerWithAddress,
         amount: BigNumberish
@@ -31,6 +33,11 @@ describe("Starting to test LidoMatic contract", () => {
     let requestWithdraw: (
         signer: SignerWithAddress,
         amount: BigNumberish
+    ) => Promise<void>;
+
+    let claimTokens: (
+        signer: SignerWithAddress,
+        tokenId: BigNumberish
     ) => Promise<void>;
 
     let addOperator: (
@@ -46,6 +53,16 @@ describe("Starting to test LidoMatic contract", () => {
     ) => Promise<void>;
 
     before(() => {
+        increaseBlockTime = async (amountInSeconds) => {
+            const currentBlockNumber = await ethers.provider.getBlockNumber();
+            const { timestamp } = await ethers.provider.getBlock(
+                currentBlockNumber
+            );
+            await ethers.provider.send("evm_mine", [
+                amountInSeconds + timestamp
+            ]);
+        };
+
         addOperator = async (name, rewardAddress, signerPubKey) => {
             await nodeOperatorRegistry.addOperator(
                 name,
@@ -58,8 +75,8 @@ describe("Starting to test LidoMatic contract", () => {
             const signerERC20 = mockERC20.connect(signer);
             await signerERC20.approve(lidoMatic.address, amount);
 
-            const testerLidoMatic = lidoMatic.connect(signer);
-            await testerLidoMatic.submit(amount);
+            const signerLidoMatic = lidoMatic.connect(signer);
+            await signerLidoMatic.submit(amount);
         };
 
         stake = async (amount, heimdallFee, owner) => {
@@ -71,6 +88,11 @@ describe("Starting to test LidoMatic contract", () => {
             const signerLidoMatic = lidoMatic.connect(signer);
             await signerLidoMatic.approve(lidoMatic.address, amount);
             await signerLidoMatic.requestWithdraw(amount);
+        };
+
+        claimTokens = async (signer, tokenId) => {
+            const signerLidoMatic = lidoMatic.connect(signer);
+            await signerLidoMatic.claimTokens(tokenId);
         };
     });
 
@@ -149,5 +171,17 @@ describe("Starting to test LidoMatic contract", () => {
         await requestWithdraw(testers[0], amount);
         const owned = await lidoNFT.getOwnedTokens(testers[0].address);
         expect(owned).length(1);
+    });
+
+    it("Should claim tokens successfully", async () => {
+        const amount = ethers.utils.parseEther("1");
+        await submit(testers[0], amount);
+        await requestWithdraw(testers[0], amount);
+        const owned = await lidoNFT.getOwnedTokens(testers[0].address);
+
+        const withdrawalDelay = await mockStakeManager.withdrawalDelay();
+        await increaseBlockTime(withdrawalDelay.toNumber());
+
+        await claimTokens(testers[0], owned[0]);
     });
 });
