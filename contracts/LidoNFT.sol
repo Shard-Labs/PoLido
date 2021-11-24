@@ -124,6 +124,24 @@ contract LidoNFT is OwnableUpgradeable, ERC721Upgradeable, PausableUpgradeable {
         lido = _lido;
     }
 
+    /// @notice Retrieve owned tokens by address
+    function getOwnedTokens(address _address)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return owner2Tokens[_address];
+    }
+
+    /// @notice Retrieve approved tokens by address
+    function getApprovedTokens(address _address)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        return address2Approved[_address];
+    }
+
     function _removeApproval(uint256 _tokenId) internal {
         uint256[] storage lastApprovedTokens = address2Approved[
             getApproved(_tokenId)
