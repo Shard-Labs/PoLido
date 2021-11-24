@@ -1,7 +1,7 @@
-import { BigNumberish } from '@ethersproject/bignumber';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { expect } from 'chai';
-import { ethers, upgrades } from 'hardhat';
+import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
+import { ethers, upgrades } from "hardhat";
 import {
     LidoMatic,
     LidoNFT,
@@ -9,10 +9,10 @@ import {
     Polygon,
     StakeManagerMock,
     Validator,
-    ValidatorFactory,
-} from '../typechain';
+    ValidatorFactory
+} from "../typechain";
 
-describe('Starting to test LidoMatic contract', () => {
+describe("Starting to test LidoMatic contract", () => {
     let deployer: SignerWithAddress;
     let testers: SignerWithAddress[] = [];
     let lidoMatic: LidoMatic;
@@ -22,18 +22,55 @@ describe('Starting to test LidoMatic contract', () => {
     let nodeOperatorRegistry: NodeOperatorRegistry;
     let mockStakeManager: StakeManagerMock;
     let mockERC20: Polygon;
+
     let submit: (
         signer: SignerWithAddress,
         amount: BigNumberish
     ) => Promise<void>;
 
+    let requestWithdraw: (
+        signer: SignerWithAddress,
+        amount: BigNumberish
+    ) => Promise<void>;
+
+    let addOperator: (
+        name: string,
+        rewardAddress: string,
+        signerPubKey: string
+    ) => Promise<void>;
+
+    let stake: (
+        amount: BigNumberish,
+        heimdallFee: BigNumberish,
+        owner: SignerWithAddress
+    ) => Promise<void>;
+
     before(() => {
-        submit = async (signer: SignerWithAddress, amount: BigNumberish) => {
+        addOperator = async (name, rewardAddress, signerPubKey) => {
+            await nodeOperatorRegistry.addOperator(
+                name,
+                rewardAddress,
+                signerPubKey
+            );
+        };
+
+        submit = async (signer, amount) => {
             const signerERC20 = mockERC20.connect(signer);
             await signerERC20.approve(lidoMatic.address, amount);
 
             const testerLidoMatic = lidoMatic.connect(signer);
             await testerLidoMatic.submit(amount);
+        };
+
+        stake = async (amount, heimdallFee, owner) => {
+            const ownerOperator = nodeOperatorRegistry.connect(owner);
+            await ownerOperator.stake(amount, heimdallFee);
+        };
+
+        requestWithdraw = async (signer, amount) => {
+            const signerLidoMatic = lidoMatic.connect(signer);
+            await signerLidoMatic.approve(lidoMatic.address, amount);
+            await signerLidoMatic.requestWithdraw(amount);
         };
     });
 
@@ -41,66 +78,76 @@ describe('Starting to test LidoMatic contract', () => {
         [deployer, ...testers] = await ethers.getSigners();
 
         mockERC20 = (await (
-            await ethers.getContractFactory('Polygon')
+            await ethers.getContractFactory("Polygon")
         ).deploy()) as Polygon;
         await mockERC20.deployed();
 
         lidoNFT = (await upgrades.deployProxy(
-            await ethers.getContractFactory('LidoNFT'),
-            ['LidoNFT', 'LN']
+            await ethers.getContractFactory("LidoNFT"),
+            ["LidoNFT", "LN"]
         )) as LidoNFT;
         await lidoNFT.deployed();
 
         await mockERC20.transfer(
             testers[0].address,
-            ethers.utils.parseEther('5')
+            ethers.utils.parseEther("5")
         );
 
         mockStakeManager = (await (
-            await ethers.getContractFactory('StakeManagerMock')
+            await ethers.getContractFactory("StakeManagerMock")
         ).deploy(mockERC20.address, lidoNFT.address)) as StakeManagerMock;
         await mockStakeManager.deployed();
 
         validator = (await (
-            await ethers.getContractFactory('Validator')
+            await ethers.getContractFactory("Validator")
         ).deploy()) as Validator;
         await validator.deployed();
 
         validatorFactory = (await upgrades.deployProxy(
-            await ethers.getContractFactory('ValidatorFactory'),
+            await ethers.getContractFactory("ValidatorFactory"),
             [validator.address]
         )) as ValidatorFactory;
         await validatorFactory.deployed();
 
         nodeOperatorRegistry = (await upgrades.deployProxy(
-            await ethers.getContractFactory('NodeOperatorRegistry'),
+            await ethers.getContractFactory("NodeOperatorRegistry"),
             [
                 validatorFactory.address,
                 mockStakeManager.address,
-                mockERC20.address,
+                mockERC20.address
             ]
         )) as NodeOperatorRegistry;
         await nodeOperatorRegistry.deployed();
 
         lidoMatic = (await upgrades.deployProxy(
-            await ethers.getContractFactory('LidoMatic'),
+            await ethers.getContractFactory("LidoMatic"),
             [
                 nodeOperatorRegistry.address,
                 mockERC20.address,
                 deployer.address,
                 deployer.address,
                 mockStakeManager.address,
-                lidoNFT.address,
+                lidoNFT.address
             ]
         )) as LidoMatic;
         await lidoMatic.deployed();
+
+        await lidoNFT.setLido(lidoMatic.address);
     });
 
-    it('Should submit successfully', async () => {
-        const amount = ethers.utils.parseEther('1');
+    it("Should submit successfully", async () => {
+        const amount = ethers.utils.parseEther("1");
         await submit(testers[0], amount);
 
         const testerBalance = await lidoMatic.balanceOf(testers[0].address);
         expect(testerBalance.eq(amount)).to.be.true;
+    });
+
+    it("Should request withdraw from the contract successfully", async () => {
+        const amount = ethers.utils.parseEther("1");
+        await submit(testers[0], amount);
+        await requestWithdraw(testers[0], amount);
+        const owned = await lidoNFT.getOwnedTokens(testers[0].address);
+        expect(owned).length(1);
     });
 });
