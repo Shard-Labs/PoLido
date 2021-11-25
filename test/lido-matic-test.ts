@@ -1,7 +1,7 @@
-import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { expect } from 'chai';
+import { ethers, upgrades } from 'hardhat';
 import {
     LidoMatic,
     LidoNFT,
@@ -9,10 +9,11 @@ import {
     Polygon,
     StakeManagerMock,
     Validator,
-    ValidatorFactory
-} from "../typechain";
+    ValidatorFactory,
+    MockStakingNFT,
+} from '../typechain';
 
-describe("Starting to test LidoMatic contract", () => {
+describe('Starting to test LidoMatic contract', () => {
     let deployer: SignerWithAddress;
     let testers: SignerWithAddress[] = [];
     let lidoMatic: LidoMatic;
@@ -43,7 +44,7 @@ describe("Starting to test LidoMatic contract", () => {
     let addOperator: (
         name: string,
         rewardAddress: string,
-        signerPubKey: string
+        signerPubKey: Uint8Array
     ) => Promise<void>;
 
     let stakeOperator: (
@@ -58,17 +59,9 @@ describe("Starting to test LidoMatic contract", () => {
             const { timestamp } = await ethers.provider.getBlock(
                 currentBlockNumber
             );
-            await ethers.provider.send("evm_mine", [
-                amountInSeconds + timestamp
+            await ethers.provider.send('evm_mine', [
+                amountInSeconds + timestamp,
             ]);
-        };
-
-        addOperator = async (name, rewardAddress, signerPubKey) => {
-            await nodeOperatorRegistry.addOperator(
-                name,
-                rewardAddress,
-                signerPubKey
-            );
         };
 
         submit = async (signer, amount) => {
@@ -100,27 +93,27 @@ describe("Starting to test LidoMatic contract", () => {
 
         stakeOperator = async (id, signer, maxDelegation) => {
             // get node operator
-            const no1 = await nodeOperatorRegistry["getNodeOperator(address)"](
+            const no1 = await nodeOperatorRegistry['getNodeOperator(address)'](
                 signer.address
             );
             // approve token to validator contract
             await mockERC20
                 .connect(signer)
-                .approve(no1.validatorProxy, ethers.utils.parseEther("100"));
+                .approve(no1.validatorProxy, ethers.utils.parseEther('100'));
 
             // stake a node operator
             await nodeOperatorRegistry
                 .connect(signer)
                 .stake(
-                    ethers.utils.parseEther("80"),
-                    ethers.utils.parseEther("20")
+                    ethers.utils.parseEther('80'),
+                    ethers.utils.parseEther('20')
                 );
             await nodeOperatorRegistry.setDefaultMaxDelegateLimit(
-                ethers.utils.parseEther("10000000000")
+                ethers.utils.parseEther('10000000000')
             );
             await nodeOperatorRegistry.setMaxDelegateLimit(
                 id,
-                ethers.utils.parseEther(maxDelegation || "0")
+                ethers.utils.parseEther(maxDelegation || '0')
             );
         };
     });
@@ -129,81 +122,99 @@ describe("Starting to test LidoMatic contract", () => {
         [deployer, ...testers] = await ethers.getSigners();
 
         mockERC20 = (await (
-            await ethers.getContractFactory("Polygon")
+            await ethers.getContractFactory('Polygon')
         ).deploy()) as Polygon;
         await mockERC20.deployed();
 
         lidoNFT = (await upgrades.deployProxy(
-            await ethers.getContractFactory("LidoNFT"),
-            ["LidoNFT", "LN"]
+            await ethers.getContractFactory('LidoNFT'),
+            ['LidoNFT', 'LN']
         )) as LidoNFT;
         await lidoNFT.deployed();
 
         await mockERC20.transfer(
             testers[0].address,
-            ethers.utils.parseEther("5")
+            ethers.utils.parseEther('200')
         );
 
         mockStakeManager = (await (
-            await ethers.getContractFactory("StakeManagerMock")
-        ).deploy(mockERC20.address, lidoNFT.address)) as StakeManagerMock;
+            await ethers.getContractFactory('StakeManagerMock')
+        ).deploy(
+            mockERC20.address,
+            ethers.constants.AddressZero
+        )) as StakeManagerMock;
         await mockStakeManager.deployed();
 
         validator = (await (
-            await ethers.getContractFactory("Validator")
+            await ethers.getContractFactory('Validator')
         ).deploy()) as Validator;
         await validator.deployed();
 
         validatorFactory = (await upgrades.deployProxy(
-            await ethers.getContractFactory("ValidatorFactory"),
+            await ethers.getContractFactory('ValidatorFactory'),
             [validator.address]
         )) as ValidatorFactory;
         await validatorFactory.deployed();
 
         nodeOperatorRegistry = (await upgrades.deployProxy(
-            await ethers.getContractFactory("NodeOperatorRegistry"),
+            await ethers.getContractFactory('NodeOperatorRegistry'),
             [
                 validatorFactory.address,
                 mockStakeManager.address,
-                mockERC20.address
+                mockERC20.address,
             ]
         )) as NodeOperatorRegistry;
         await nodeOperatorRegistry.deployed();
 
         lidoMatic = (await upgrades.deployProxy(
-            await ethers.getContractFactory("LidoMatic"),
+            await ethers.getContractFactory('LidoMatic'),
             [
                 nodeOperatorRegistry.address,
                 mockERC20.address,
                 deployer.address,
                 deployer.address,
                 mockStakeManager.address,
-                lidoNFT.address
+                lidoNFT.address,
             ]
         )) as LidoMatic;
         await lidoMatic.deployed();
 
         await lidoNFT.setLido(lidoMatic.address);
+        await validatorFactory.setOperator(nodeOperatorRegistry.address);
     });
 
-    it("Should submit successfully", async () => {
-        const amount = ethers.utils.parseEther("1");
+    it('Should submit successfully', async () => {
+        const amount = ethers.utils.parseEther('1');
         await submit(testers[0], amount);
 
         const testerBalance = await lidoMatic.balanceOf(testers[0].address);
         expect(testerBalance.eq(amount)).to.be.true;
     });
 
-    it("Should request withdraw from the contract successfully", async () => {
-        const amount = ethers.utils.parseEther("1");
+    it('Should request withdraw from the contract successfully', async () => {
+        const amount = ethers.utils.parseEther('1');
         await submit(testers[0], amount);
         await requestWithdraw(testers[0], amount);
         const owned = await lidoNFT.getOwnedTokens(testers[0].address);
         expect(owned).length(1);
     });
 
-    it("Should claim tokens successfully", async () => {
-        const amount = ethers.utils.parseEther("1");
+    it('Should request withdraw from the validators successfully', async () => {
+        await addOperator(
+            'BananaOperator',
+            testers[0].address,
+            ethers.utils.randomBytes(64)
+        );
+        await stakeOperator(1, testers[0]);
+        await submit(testers[0], ethers.utils.parseEther('0.01'));
+        await requestWithdraw(testers[0], ethers.utils.parseEther('0.005'));
+
+        const balance = await lidoNFT.balanceOf(testers[0].address);
+        expect(balance.eq(1)).to.be.true;
+    });
+
+    it('Should claim tokens successfully', async () => {
+        const amount = ethers.utils.parseEther('1');
         await submit(testers[0], amount);
         await requestWithdraw(testers[0], amount);
         const owned = await lidoNFT.getOwnedTokens(testers[0].address);
@@ -214,8 +225,10 @@ describe("Starting to test LidoMatic contract", () => {
         await claimTokens(testers[0], owned[0]);
     });
 
-    it("Should pause the contract successfully", async () => {
+    it('Should pause the contract successfully', async () => {
         await lidoMatic.togglePause();
-        await expect(lidoMatic.delegate()).to.be.revertedWith("Pausable: paused");
+        await expect(lidoMatic.delegate()).to.be.revertedWith(
+            'Pausable: paused'
+        );
     });
 });
