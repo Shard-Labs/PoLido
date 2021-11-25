@@ -5,30 +5,32 @@ pragma solidity 0.8.7;
 import "../interfaces/IStakeManager.sol";
 import "../helpers/ERC721Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../mocks/MockValidatorShare.sol";
 
 contract StakeManagerMock is IStakeManager {
     struct State {
         address token;
+        address stakeNFT;
         uint256 id;
         mapping(address => uint256) validators;
         mapping(uint256 => address) Owners;
         mapping(uint256 => uint256) stakedAmount;
         mapping(uint256 => address) signer;
+        mapping(uint256 => address) validatorShares;
     }
 
     State private state;
-    address stakeNFT;
 
     constructor(address _token, address _stakeNFT) {
         state.token = _token;
-        stakeNFT = _stakeNFT;
+        state.stakeNFT = _stakeNFT;
     }
 
     function stakeFor(
         address _user,
         uint256 _amount,
         uint256 _heimdallFee,
-        bool ,
+        bool,
         bytes memory _signerPubkey
     ) external override {
         uint256 id = state.id + 1;
@@ -42,6 +44,9 @@ contract StakeManagerMock is IStakeManager {
         state.id++;
         state.stakedAmount[id] = _amount;
         state.signer[id] = address(uint160(uint256(keccak256(_signerPubkey))));
+        state.validatorShares[id] = address(
+            new MockValidatorShare(state.token, address(this))
+        );
     }
 
     function restake(
@@ -52,7 +57,7 @@ contract StakeManagerMock is IStakeManager {
         IERC20(state.token).transferFrom(msg.sender, address(this), _amount);
     }
 
-    function unstake(uint256 ) external override {
+    function unstake(uint256) external override {
         delete state.validators[msg.sender];
     }
 
@@ -76,14 +81,10 @@ contract StakeManagerMock is IStakeManager {
         override
         returns (address)
     {
-        return state.Owners[_validatorId];
+        return state.validatorShares[_validatorId];
     }
 
-    function withdrawRewards(uint256)
-        external
-        override
-        returns (uint256)
-    {
+    function withdrawRewards(uint256) external override returns (uint256) {
         IERC20(state.token).transfer(msg.sender, 1000);
         return 1000;
     }
@@ -148,13 +149,13 @@ contract StakeManagerMock is IStakeManager {
     {
         return
             Validator({
-                amount: 0,
+                amount: state.stakedAmount[_validatorId],
                 reward: 0,
                 activationEpoch: 0,
                 deactivationEpoch: 0,
                 jailTime: 0,
                 signer: state.signer[_validatorId],
-                contractAddress: address(0),
+                contractAddress: state.validatorShares[_validatorId],
                 status: Status.Active,
                 commissionRate: 0,
                 lastCommissionUpdate: 0,
@@ -165,7 +166,7 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function NFTContract() external view override returns (address) {
-        return stakeNFT;
+        return state.stakeNFT;
     }
 
     /// @notice Returns the validator accumulated rewards on stake manager.
