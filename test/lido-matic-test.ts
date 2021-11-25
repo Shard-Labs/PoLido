@@ -46,10 +46,10 @@ describe("Starting to test LidoMatic contract", () => {
         signerPubKey: string
     ) => Promise<void>;
 
-    let stake: (
-        amount: BigNumberish,
-        heimdallFee: BigNumberish,
-        owner: SignerWithAddress
+    let stakeOperator: (
+        id: BigNumberish,
+        owner: SignerWithAddress,
+        maxDelegation?: string
     ) => Promise<void>;
 
     before(() => {
@@ -79,11 +79,6 @@ describe("Starting to test LidoMatic contract", () => {
             await signerLidoMatic.submit(amount);
         };
 
-        stake = async (amount, heimdallFee, owner) => {
-            const ownerOperator = nodeOperatorRegistry.connect(owner);
-            await ownerOperator.stake(amount, heimdallFee);
-        };
-
         requestWithdraw = async (signer, amount) => {
             const signerLidoMatic = lidoMatic.connect(signer);
             await signerLidoMatic.approve(lidoMatic.address, amount);
@@ -93,6 +88,40 @@ describe("Starting to test LidoMatic contract", () => {
         claimTokens = async (signer, tokenId) => {
             const signerLidoMatic = lidoMatic.connect(signer);
             await signerLidoMatic.claimTokens(tokenId);
+        };
+
+        addOperator = async (name, ownerAddress, heimdallPubKey) => {
+            await nodeOperatorRegistry.addOperator(
+                name,
+                ownerAddress,
+                heimdallPubKey
+            );
+        };
+
+        stakeOperator = async (id, signer, maxDelegation) => {
+            // get node operator
+            const no1 = await nodeOperatorRegistry["getNodeOperator(address)"](
+                signer.address
+            );
+            // approve token to validator contract
+            await mockERC20
+                .connect(signer)
+                .approve(no1.validatorProxy, ethers.utils.parseEther("100"));
+
+            // stake a node operator
+            await nodeOperatorRegistry
+                .connect(signer)
+                .stake(
+                    ethers.utils.parseEther("80"),
+                    ethers.utils.parseEther("20")
+                );
+            await nodeOperatorRegistry.setDefaultMaxDelegateLimit(
+                ethers.utils.parseEther("10000000000")
+            );
+            await nodeOperatorRegistry.setMaxDelegateLimit(
+                id,
+                ethers.utils.parseEther(maxDelegation || "0")
+            );
         };
     });
 
@@ -183,5 +212,10 @@ describe("Starting to test LidoMatic contract", () => {
         await increaseBlockTime(withdrawalDelay.toNumber());
 
         await claimTokens(testers[0], owned[0]);
+    });
+
+    it("Should pause the contract successfully", async () => {
+        await lidoMatic.togglePause();
+        await expect(lidoMatic.delegate()).to.be.revertedWith("Pausable: paused");
     });
 });
