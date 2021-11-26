@@ -10,8 +10,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
-import "hardhat/console.sol";
-
 /// @title ValidatorImplementation
 /// @author 2021 Shardlabs.
 /// @notice The validator contract is a simple implementation of the stakeManager API, the
