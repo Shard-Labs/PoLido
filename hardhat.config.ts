@@ -7,8 +7,8 @@ import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
-import "hardhat-gas-reporter";
-import "hardhat-contract-sizer";
+// import "hardhat-gas-reporter";
+// import "hardhat-contract-sizer";
 
 import {
     verify,
@@ -125,12 +125,12 @@ const config: HardhatUserConfig = {
     etherscan: {
         apiKey: ETHERSCAN_API_KEY
     },
-    contractSizer: {
-        alphaSort: true,
-        disambiguatePaths: false,
-        runOnCompile: true,
-        strict: true
-    }
+    // contractSizer: {
+    //     alphaSort: true,
+    //     disambiguatePaths: false,
+    //     runOnCompile: true,
+    //     strict: true
+    // }
 };
 
 export default config;

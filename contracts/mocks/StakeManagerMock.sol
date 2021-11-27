@@ -46,7 +46,7 @@ contract StakeManagerMock is IStakeManager {
         state.stakedAmount[id] = _amount;
         state.signer[id] = address(uint160(uint256(keccak256(_signerPubkey))));
         state.validatorShares[id] = address(
-            new MockValidatorShare(state.token, address(this))
+            new MockValidatorShare(state.token, address(this), id)
         );
     }
 
@@ -91,7 +91,10 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function unstakeClaim(uint256) external override {
-        IERC20(state.token).transfer(msg.sender, state.delegator2Amount[msg.sender]);
+        IERC20(state.token).transfer(
+            msg.sender,
+            state.delegator2Amount[msg.sender]
+        );
         state.delegator2Amount[msg.sender] = 0;
     }
 
@@ -132,8 +135,10 @@ contract StakeManagerMock is IStakeManager {
         address delegator
     ) external override returns (bool) {
         state.delegator2Amount[msg.sender] += amount;
-        return
-            IERC20(state.token).transferFrom(delegator, address(this), amount);
+        console.log("%s", amount);
+        IERC20(state.token).transferFrom(delegator, address(this), amount);
+        console.log("%s", amount);
+        return IERC20(state.token).transfer(msg.sender, amount);
     }
 
     function epoch() external pure override returns (uint256) {
