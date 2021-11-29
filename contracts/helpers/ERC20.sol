@@ -6,6 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract Polygon is ERC20 {
     constructor() ERC20("polygon", "POL") {
-        _mint(msg.sender, 1000000 ether);
+    }
+
+    function mint(uint256 _amount) external {
+        _mint(msg.sender, _amount);
     }
 }
