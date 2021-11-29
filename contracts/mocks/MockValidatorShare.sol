@@ -72,12 +72,18 @@ contract MockValidatorShare is IValidatorShare {
 
     function sellVoucher_new(uint256 _claimAmount, uint256) external override {
         uint256 unbondNonce = unbondNonces[msg.sender] + 1;
-
+        // console.log(
+        //     "%s %s %s",
+        //     _claimAmount,
+        //     user2Shares[msg.sender],
+        //     validatorId
+        // );
         require(
             _claimAmount <= user2Shares[msg.sender],
             "Invalid amount to claim"
         );
-
+        totalStaked -= (_claimAmount * totalStaked) / totalShares;
+        totalShares -= _claimAmount;
         unbondNonces[msg.sender] = unbondNonce;
         amount2Claim[msg.sender][unbondNonce] = _claimAmount;
         user2Shares[msg.sender] -= _claimAmount;
@@ -86,10 +92,19 @@ contract MockValidatorShare is IValidatorShare {
     function unstakeClaimTokens_new(uint256 _unbondNonce) external override {
         uint256 claimAmount = amount2Claim[msg.sender][_unbondNonce];
         uint256 amount2Transfer = (claimAmount * totalStaked) / totalShares;
-        totalShares -= claimAmount;
-        totalStaked -= amount2Transfer;
+        console.log(
+            "ClaimAmount: %s Amount2Transfer: %s",
+            claimAmount,
+            amount2Transfer
+        );
+        console.log("totalStaked: %s totalShares: %s",totalStaked,
+            totalShares);
+        // console.log(
+        //     "%s %s",
+        //     IERC20(token).balanceOf(address(this)),
+        //     amount2Transfer
+        // );
         //stakeManager.unstakeClaim(validatorId);
-        console.log("%s", IERC20(token).balanceOf(address(this)));
         IERC20(token).transfer(msg.sender, amount2Transfer);
     }
 

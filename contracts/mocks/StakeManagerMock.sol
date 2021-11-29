@@ -135,9 +135,7 @@ contract StakeManagerMock is IStakeManager {
         address delegator
     ) external override returns (bool) {
         state.delegator2Amount[msg.sender] += amount;
-        console.log("%s", amount);
         IERC20(state.token).transferFrom(delegator, address(this), amount);
-        console.log("%s", amount);
         return IERC20(state.token).transfer(msg.sender, amount);
     }
 

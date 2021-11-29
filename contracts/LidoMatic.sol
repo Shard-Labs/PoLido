@@ -153,13 +153,13 @@ contract LidoMatic is
         uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
 
-        lockedAmountStMatic += _amount;
-        lockedAmountMatic += totalAmount2WithdrawInMatic;
+        // lockedAmountStMatic += _amount;
 
         if (
             totalDelegated >= currentAmount2WithdrawInMatic &&
             operatorShares.length > 0
         ) {
+            lockedAmountMatic += totalAmount2WithdrawInMatic;
             while (currentAmount2WithdrawInMatic != 0) {
                 require(
                     operatorsTraverseCount < operatorShares.length,
@@ -185,10 +185,10 @@ contract LidoMatic is
                 uint256 allowedAmount2Withdraw = validatorBalance -
                     minValidatorBalance;
 
-                uint256 amount2WithdrawFromValidator = (allowedAmount2Withdraw >
-                    currentAmount2WithdrawInMatic)
-                    ? currentAmount2WithdrawInMatic
-                    : allowedAmount2Withdraw;
+                uint256 amount2WithdrawFromValidator = (allowedAmount2Withdraw <=
+                        currentAmount2WithdrawInMatic)
+                        ? allowedAmount2Withdraw
+                        : currentAmount2WithdrawInMatic;
 
                 if (amount2WithdrawFromValidator == 0) {
                     lastWithdrawnValidatorId++;
@@ -230,7 +230,6 @@ contract LidoMatic is
             }
         } else {
             tokenId = lidoNFT.mint(msg.sender);
-
             token2WithdrawRequest[tokenId] = RequestWithdraw(
                 _amount,
                 0,
@@ -300,7 +299,6 @@ contract LidoMatic is
 
             amountDelegated += amountToDelegatePerOperator;
         }
-
         remainder = availableAmountToDelegate - amountDelegated;
         totalBuffered = remainder + reservedFunds;
 
@@ -350,6 +348,8 @@ contract LidoMatic is
             validator2DelegatedAmount[
                 usersRequest.validatorAddress
             ] -= amountToClaim;
+
+            lockedAmountMatic -= amountToClaim;
         } else {
             reservedFunds -= amountToClaim;
             totalBuffered -= amountToClaim;
@@ -359,8 +359,7 @@ contract LidoMatic is
 
         _burn(address(this), amountToBurn);
 
-        lockedAmountMatic -= amountToClaim;
-        lockedAmountStMatic -= amountToBurn;
+        //lockedAmountStMatic -= amountToBurn;
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amountToClaim);
 
@@ -637,7 +636,7 @@ contract LidoMatic is
     function getTotalPooledMatic() public view returns (uint256) {
         uint256 totalStaked = getTotalStakeAcrossAllValidators();
 
-        return (totalStaked + totalBuffered) - lockedAmountMatic;
+        return (totalStaked + totalBuffered + lockedAmountMatic);
     }
 
     /**
@@ -650,7 +649,8 @@ contract LidoMatic is
         view
         returns (uint256)
     {
-        uint256 totalShares = totalSupply() - lockedAmountStMatic;
+        //uint256 totalShares = totalSupply() - lockedAmountStMatic;
+        uint256 totalShares = totalSupply();
         totalShares = totalShares == 0 ? 1 : totalShares;
 
         uint256 totalPooledMATIC = getTotalPooledMatic();
@@ -666,7 +666,8 @@ contract LidoMatic is
         view
         returns (uint256)
     {
-        uint256 totalShares = totalSupply() - lockedAmountStMatic;
+        //uint256 totalShares = totalSupply() - lockedAmountStMatic;
+        uint256 totalShares = totalSupply();
         totalShares = totalShares == 0 ? 1 : totalShares;
 
         uint256 totalPooledMatic = getTotalPooledMatic();
