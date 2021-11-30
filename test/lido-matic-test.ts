@@ -5,6 +5,7 @@ import { ethers, upgrades } from 'hardhat';
 import {
     LidoMatic,
     LidoNFT,
+    MockValidatorShare,
     NodeOperatorRegistry,
     Polygon,
     StakeManagerMock,
@@ -205,7 +206,7 @@ describe('Starting to test LidoMatic contract', () => {
         expect(owned).length(1);
     });
 
-    it('Should request withdraw from the validators successfully', async () => {
+    it('Should request withdraw from the contract when there is a staked operator but delegation didnt happen yet', async () => {
         const amount = ethers.utils.parseEther('100');
         const amount2Submit = ethers.utils.parseEther('0.05');
         await mint(testers[0], amount);
@@ -240,7 +241,11 @@ describe('Starting to test LidoMatic contract', () => {
             await mint(testers[i], submitAmountWei);
             await submit(testers[i], submitAmountWei);
         }
-        console.log(`SubmitAmounts: ${submitAmounts.map(a => ethers.utils.parseEther(a).toString())}`)
+        console.log(
+            `SubmitAmounts: ${submitAmounts.map((a) =>
+                ethers.utils.parseEther(a).toString()
+            )}`
+        );
         for (let i = 0; i < delegatorsAmount; i++) {
             withdrawAmounts.push(
                 (
@@ -255,7 +260,11 @@ describe('Starting to test LidoMatic contract', () => {
             await requestWithdraw(testers[i], withdrawAmountWei);
             ownedTokens.push(await lidoNFT.getOwnedTokens(testers[i].address));
         }
-        console.log(`WithdrawAmounts: ${withdrawAmounts.map(a => ethers.utils.parseEther(a).toString())}`)
+        console.log(
+            `WithdrawAmounts: ${withdrawAmounts.map((a) =>
+                ethers.utils.parseEther(a).toString()
+            )}`
+        );
 
         const withdrawalDelay = await mockStakeManager.withdrawalDelay();
         await increaseBlockTime(withdrawalDelay.toNumber());
@@ -353,7 +362,7 @@ describe('Starting to test LidoMatic contract', () => {
     });
 
     // n validator, n delegator test
-    it.only('Should delegate and claim from n delegators to m validators successfully', async () => {
+    it('Should delegate and claim from n delegators to m validators successfully', async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
         const withdrawAmounts: string[] = [];
@@ -384,6 +393,107 @@ describe('Starting to test LidoMatic contract', () => {
         }
 
         await lidoMatic.delegate();
+
+        console.log(
+            `SubmitAmounts: ${submitAmounts.map((a) =>
+                ethers.utils.parseEther(a).toString()
+            )}`
+        );
+
+        for (let i = 0; i < testersAmount; i++) {
+            withdrawAmounts.push(
+                (
+                    Math.random() * (Number(submitAmounts[i]) - minAmount) +
+                    minAmount
+                ).toFixed(3)
+            );
+            const withdrawAmountWei = ethers.utils.parseEther(
+                withdrawAmounts[i]
+            );
+            await requestWithdraw(testers[i], withdrawAmountWei);
+            ownedTokens.push(await lidoNFT.getOwnedTokens(testers[i].address));
+        }
+
+        console.log(
+            `WithdrawAmounts: ${withdrawAmounts.map((a) =>
+                ethers.utils.parseEther(a).toString()
+            )}`
+        );
+
+        console.log(
+            `AmountsToBurn: ${(
+                await Promise.all(
+                    ownedTokens[0].map((t) =>
+                        lidoMatic.token2WithdrawRequest(t)
+                    )
+                )
+            ).map((r) => r.amountToBurn.toString())}`
+        );
+
+        const withdrawalDelay = await mockStakeManager.withdrawalDelay();
+        await increaseBlockTime(withdrawalDelay.toNumber());
+
+        for (let i = 0; i < testersAmount; i++) {
+            for (let j = 0; j < ownedTokens[i].length; j++) {
+                await claimTokens(testers[i], ownedTokens[i][j]);
+            }
+            const balanceAfter = await mockERC20.balanceOf(testers[i].address);
+
+            expect(balanceAfter.eq(ethers.utils.parseEther(withdrawAmounts[i])))
+                .to.be.true;
+        }
+    });
+
+    it.only('Should return corresponding (less) amount of matic after the slashing happens', async () => {
+        const ownedTokens: BigNumber[][] = [];
+        const submitAmounts: string[] = [];
+        const withdrawAmounts: string[] = [];
+
+        const [minAmount, maxAmount] = [0.001, 0.1];
+        const delegatorsAmount = 1; //Math.floor(Math.random() * (10 - 1)) + 1;
+        const testersAmount = 1; //Math.floor(Math.random() * (10 - 1)) + 1;
+        for (let i = 0; i < delegatorsAmount; i++) {
+            await mint(testers[i], ethers.utils.parseEther('100'));
+
+            await addOperator(
+                `BananaOperator${i}`,
+                testers[i].address,
+                ethers.utils.randomBytes(64)
+            );
+
+            await stakeOperator(i + 1, testers[i], '10');
+        }
+
+        for (let i = 0; i < testersAmount; i++) {
+            submitAmounts.push(
+                (Math.random() * (maxAmount - minAmount) + minAmount).toFixed(3)
+            );
+            const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
+
+            await mint(testers[i], submitAmountWei);
+            await submit(testers[i], submitAmountWei);
+        }
+
+        await lidoMatic.delegate();
+
+        for (let i = 0; i < delegatorsAmount; i++) {
+            const validatorShareAddress = (
+                await nodeOperatorRegistry['getNodeOperator(uint256)'](i + 1)
+            ).validatorShare;
+
+            const MockValidatorShare = await ethers.getContractFactory(
+                'MockValidatorShare'
+            );
+            const validatorShare = MockValidatorShare.attach(
+                validatorShareAddress
+            ) as MockValidatorShare;
+
+            const validatorShareBalance = await mockERC20.balanceOf(
+                validatorShareAddress
+            );
+
+            await validatorShare.slash(validatorShareBalance.div(10));
+        }
 
         console.log(
             `SubmitAmounts: ${submitAmounts.map((a) =>
