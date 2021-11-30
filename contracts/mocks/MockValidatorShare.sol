@@ -11,13 +11,14 @@ import "hardhat/console.sol";
 contract MockValidatorShare is IValidatorShare {
     address public token;
 
-    uint256 public totalStaked;
     uint256 public totalShares;
     uint256 public override validatorId;
+    uint256 public withdrawPool;
 
     mapping(address => uint256) public override unbondNonces;
     mapping(address => mapping(uint256 => uint256)) public amount2Claim;
     mapping(address => uint256) public user2Shares;
+    mapping(address => mapping(uint256 => uint256)) public amountStakedDuringClaim;
 
     IStakeManager stakeManager;
 
@@ -56,11 +57,12 @@ contract MockValidatorShare is IValidatorShare {
         override
         returns (uint256)
     {
+        uint256 totalStaked = IERC20(token).balanceOf(address(this));
+
         user2Shares[msg.sender] += totalStaked != 0
             ? (_amount * totalShares) / totalStaked
             : _amount;
 
-        totalStaked += _amount;
         totalShares += _amount;
         require(
             stakeManager.delegationDeposit(validatorId, _amount, msg.sender),
@@ -82,23 +84,25 @@ contract MockValidatorShare is IValidatorShare {
             _claimAmount <= user2Shares[msg.sender],
             "Invalid amount to claim"
         );
-        totalStaked -= (_claimAmount * totalStaked) / totalShares;
-        totalShares -= _claimAmount;
+
+        withdrawPool += _claimAmount;
+
         unbondNonces[msg.sender] = unbondNonce;
         amount2Claim[msg.sender][unbondNonce] = _claimAmount;
+        amountStakedDuringClaim[msg.sender][unbondNonce] = IERC20(token).balanceOf(address(this));
         user2Shares[msg.sender] -= _claimAmount;
     }
 
     function unstakeClaimTokens_new(uint256 _unbondNonce) external override {
         uint256 claimAmount = amount2Claim[msg.sender][_unbondNonce];
-        uint256 amount2Transfer = (claimAmount * totalStaked) / totalShares;
+        uint256 amountStaked = amountStakedDuringClaim[msg.sender][_unbondNonce];
+        uint256 amount2Transfer = (claimAmount *
+            IERC20(token).balanceOf(address(this))) / amountStaked;
         console.log(
             "ClaimAmount: %s Amount2Transfer: %s",
             claimAmount,
             amount2Transfer
         );
-        console.log("totalStaked: %s totalShares: %s",totalStaked,
-            totalShares);
         // console.log(
         //     "%s %s",
         //     IERC20(token).balanceOf(address(this)),
@@ -106,6 +110,8 @@ contract MockValidatorShare is IValidatorShare {
         // );
         //stakeManager.unstakeClaim(validatorId);
         IERC20(token).transfer(msg.sender, amount2Transfer);
+        withdrawPool -= claimAmount;
+        totalShares -= claimAmount;
     }
 
     function getTotalStake(address)
@@ -114,7 +120,12 @@ contract MockValidatorShare is IValidatorShare {
         override
         returns (uint256, uint256)
     {
-        return (totalStaked, 1);
+        console.log(
+            "Validator balance: %s",
+            IERC20(token).balanceOf(address(this))
+        );
+
+        return (IERC20(token).balanceOf(address(this)), 1);
     }
 
     function owner() external pure override returns (address) {
@@ -141,12 +152,11 @@ contract MockValidatorShare is IValidatorShare {
         return;
     }
 
-    function slash(
-        uint256,
-        uint256,
-        uint256
-    ) external pure override returns (uint256) {
-        return 1;
+    function slash(uint256 _amount) external override {
+        IERC20(token).transfer(
+            0x3cBbF9bFE20d28E7e04103C42aBF622E9362Dfa8,
+            _amount
+        );
     }
 
     function updateDelegation(bool) external pure override {
@@ -162,6 +172,6 @@ contract MockValidatorShare is IValidatorShare {
     }
 
     function activeAmount() external view override returns (uint256) {
-        return totalStaked;
+        return IERC20(token).balanceOf(address(this));
     }
 }
