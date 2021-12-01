@@ -241,11 +241,7 @@ describe('Starting to test LidoMatic contract', () => {
             await mint(testers[i], submitAmountWei);
             await submit(testers[i], submitAmountWei);
         }
-        console.log(
-            `SubmitAmounts: ${submitAmounts.map((a) =>
-                ethers.utils.parseEther(a).toString()
-            )}`
-        );
+
         for (let i = 0; i < delegatorsAmount; i++) {
             withdrawAmounts.push(
                 (
@@ -260,11 +256,6 @@ describe('Starting to test LidoMatic contract', () => {
             await requestWithdraw(testers[i], withdrawAmountWei);
             ownedTokens.push(await lidoNFT.getOwnedTokens(testers[i].address));
         }
-        console.log(
-            `WithdrawAmounts: ${withdrawAmounts.map((a) =>
-                ethers.utils.parseEther(a).toString()
-            )}`
-        );
 
         const withdrawalDelay = await mockStakeManager.withdrawalDelay();
         await increaseBlockTime(withdrawalDelay.toNumber());
@@ -394,12 +385,6 @@ describe('Starting to test LidoMatic contract', () => {
 
         await lidoMatic.delegate();
 
-        console.log(
-            `SubmitAmounts: ${submitAmounts.map((a) =>
-                ethers.utils.parseEther(a).toString()
-            )}`
-        );
-
         for (let i = 0; i < testersAmount; i++) {
             withdrawAmounts.push(
                 (
@@ -413,22 +398,6 @@ describe('Starting to test LidoMatic contract', () => {
             await requestWithdraw(testers[i], withdrawAmountWei);
             ownedTokens.push(await lidoNFT.getOwnedTokens(testers[i].address));
         }
-
-        console.log(
-            `WithdrawAmounts: ${withdrawAmounts.map((a) =>
-                ethers.utils.parseEther(a).toString()
-            )}`
-        );
-
-        console.log(
-            `AmountsToBurn: ${(
-                await Promise.all(
-                    ownedTokens[0].map((t) =>
-                        lidoMatic.token2WithdrawRequest(t)
-                    )
-                )
-            ).map((r) => r.amountToBurn.toString())}`
-        );
 
         const withdrawalDelay = await mockStakeManager.withdrawalDelay();
         await increaseBlockTime(withdrawalDelay.toNumber());
@@ -495,11 +464,11 @@ describe('Starting to test LidoMatic contract', () => {
             await validatorShare.slash(validatorShareBalance.div(10));
         }
 
-        console.log(
-            `SubmitAmounts: ${submitAmounts.map((a) =>
-                ethers.utils.parseEther(a).toString()
-            )}`
-        );
+        // console.log(
+        //     `SubmitAmounts: ${submitAmounts.map((a) =>
+        //         ethers.utils.parseEther(a).toString()
+        //     )}`
+        // );
 
         for (let i = 0; i < testersAmount; i++) {
             withdrawAmounts.push(
@@ -515,21 +484,21 @@ describe('Starting to test LidoMatic contract', () => {
             ownedTokens.push(await lidoNFT.getOwnedTokens(testers[i].address));
         }
 
-        console.log(
-            `WithdrawAmounts: ${withdrawAmounts.map((a) =>
-                ethers.utils.parseEther(a).toString()
-            )}`
-        );
+        // console.log(
+        //     `WithdrawAmounts: ${withdrawAmounts.map((a) =>
+        //         ethers.utils.parseEther(a).toString()
+        //     )}`
+        // );
 
-        console.log(
-            `AmountsToBurn: ${(
-                await Promise.all(
-                    ownedTokens[0].map((t) =>
-                        lidoMatic.token2WithdrawRequest(t)
-                    )
-                )
-            ).map((r) => r.amountToBurn.toString())}`
-        );
+        // console.log(
+        //     `AmountsToBurn: ${(
+        //         await Promise.all(
+        //             ownedTokens[0].map((t) =>
+        //                 lidoMatic.token2WithdrawRequest(t)
+        //             )
+        //         )
+        //     ).map((r) => r.amountToBurn.toString())}`
+        // );
 
         const withdrawalDelay = await mockStakeManager.withdrawalDelay();
         await increaseBlockTime(withdrawalDelay.toNumber());
@@ -540,8 +509,11 @@ describe('Starting to test LidoMatic contract', () => {
             }
             const balanceAfter = await mockERC20.balanceOf(testers[i].address);
 
-            expect(balanceAfter.eq(ethers.utils.parseEther(withdrawAmounts[i]).mul(9).div(10)))
-                .to.be.true;
+            expect(
+                balanceAfter.eq(
+                    ethers.utils.parseEther(withdrawAmounts[i]).mul(9).div(10)
+                )
+            ).to.be.true;
         }
     });
 

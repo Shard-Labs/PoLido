@@ -12,14 +12,14 @@ contract MockValidatorShare is IValidatorShare {
     address public token;
 
     uint256 public totalShares;
-    uint256 public override validatorId;
     uint256 public withdrawPool;
+    uint256 public totalStaked;
+    uint256 public totalWithdrawPoolShares;
+    uint256 public override validatorId;
 
-    mapping(address => uint256) public override unbondNonces;
-    mapping(address => mapping(uint256 => uint256)) public amount2Claim;
-    mapping(address => uint256) public user2Shares;
     mapping(address => mapping(uint256 => uint256))
-        public amountStakedDuringClaim;
+        public user2WithdrawPoolShare;
+    mapping(address => uint256) public override unbondNonces;
 
     IStakeManager stakeManager;
 
@@ -58,13 +58,14 @@ contract MockValidatorShare is IValidatorShare {
         override
         returns (uint256)
     {
-        uint256 totalStaked = IERC20(token).balanceOf(address(this));
+        uint256 totalAmount = IERC20(token).balanceOf(address(this));
 
-        user2Shares[msg.sender] += totalStaked != 0
-            ? (_amount * totalShares) / totalStaked
+        uint256 shares = totalAmount != 0
+            ? (_amount * totalShares) / totalAmount
             : _amount;
 
-        totalShares += _amount;
+        totalShares += shares;
+        totalStaked += _amount;
         require(
             stakeManager.delegationDeposit(validatorId, _amount, msg.sender),
             "deposit failed"
@@ -75,46 +76,26 @@ contract MockValidatorShare is IValidatorShare {
 
     function sellVoucher_new(uint256 _claimAmount, uint256) external override {
         uint256 unbondNonce = unbondNonces[msg.sender] + 1;
-        // console.log(
-        //     "%s %s %s",
-        //     _claimAmount,
-        //     user2Shares[msg.sender],
-        //     validatorId
-        // );
-        require(
-            _claimAmount <= user2Shares[msg.sender],
-            "Invalid amount to claim"
-        );
 
         withdrawPool += _claimAmount;
+        totalWithdrawPoolShares += _claimAmount;
+        totalStaked -= _claimAmount;
 
         unbondNonces[msg.sender] = unbondNonce;
-        amount2Claim[msg.sender][unbondNonce] = _claimAmount;
-        amountStakedDuringClaim[msg.sender][unbondNonce] = IERC20(token)
-            .balanceOf(address(this));
-        user2Shares[msg.sender] -= _claimAmount;
+        user2WithdrawPoolShare[msg.sender][unbondNonce] = _claimAmount;
     }
 
     function unstakeClaimTokens_new(uint256 _unbondNonce) external override {
-        uint256 claimAmount = amount2Claim[msg.sender][_unbondNonce];
-        uint256 amountStaked = amountStakedDuringClaim[msg.sender][
+        uint256 withdrawPoolShare = user2WithdrawPoolShare[msg.sender][
             _unbondNonce
         ];
-        uint256 amount2Transfer = claimAmount;
-        console.log(
-            "ClaimAmount: %s, Amount2Transfer: %s, AmountStaked: %s",
-            claimAmount,
-            amount2Transfer,
-            amountStaked
-        );
-        console.log(
-            "Balance: %s",
-            IERC20(token).balanceOf(address(this))
-        );
-        //stakeManager.unstakeClaim(validatorId);
+        uint256 amount2Transfer = (withdrawPoolShare * withdrawPool) /
+            totalWithdrawPoolShares;
+
+        withdrawPool -= withdrawPoolShare;
+        totalShares -= withdrawPoolShare;
+        totalWithdrawPoolShares -= withdrawPoolShare;
         IERC20(token).transfer(msg.sender, amount2Transfer);
-        withdrawPool -= claimAmount;
-        totalShares -= claimAmount;
     }
 
     function getTotalStake(address)
@@ -123,12 +104,8 @@ contract MockValidatorShare is IValidatorShare {
         override
         returns (uint256, uint256)
     {
-        console.log(
-            "Validator balance: %s",
-            IERC20(token).balanceOf(address(this))
-        );
-
-        return (IERC20(token).balanceOf(address(this)), 1);
+        //getTotalStake returns totalStake of msg.sender but we need withdrawPool
+        return (totalStaked, 1);
     }
 
     function owner() external pure override returns (address) {
@@ -160,6 +137,9 @@ contract MockValidatorShare is IValidatorShare {
             0x3cBbF9bFE20d28E7e04103C42aBF622E9362Dfa8,
             _amount
         );
+        uint256 totalAmount = withdrawPool + totalStaked;
+        withdrawPool -= (_amount * withdrawPool) / totalAmount;
+        totalStaked -= (_amount * totalStaked) / totalAmount;
     }
 
     function updateDelegation(bool) external pure override {
@@ -175,6 +155,6 @@ contract MockValidatorShare is IValidatorShare {
     }
 
     function activeAmount() external view override returns (uint256) {
-        return IERC20(token).balanceOf(address(this));
+        return totalStaked;
     }
 }
