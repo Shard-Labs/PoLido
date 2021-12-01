@@ -60,7 +60,7 @@ contract LidoMatic is
     bytes32 public constant DAO = keccak256("DAO");
 
     struct RequestWithdraw {
-        uint256 amountToBurn;
+        uint256 amount2WithdrawFromLidoMatic;
         uint256 validatorNonce;
         uint256 requestTime;
         address validatorAddress;
@@ -111,7 +111,7 @@ contract LidoMatic is
      */
     function submit(uint256 _amount) external whenNotPaused returns (uint256) {
         require(_amount > 0, "Invalid amount");
-
+        console.log("Submit of: %s Matic from: %s", _amount, msg.sender);
         IERC20Upgradeable(token).safeTransferFrom(
             msg.sender,
             address(this),
@@ -137,24 +137,11 @@ contract LidoMatic is
         Operator.OperatorInfo[] memory operatorShares = nodeOperator
             .getOperatorInfos(false);
 
-        IERC20Upgradeable(address(this)).safeTransferFrom(
-            msg.sender,
-            address(this),
-            _amount
-        );
-
         uint256 tokenId;
-        uint256 totalBurned;
-        console.log("Requesting Withdraw of: %s StMatic", _amount);
         uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
         uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
-        console.log(
-            "currentAmount2WithdrawInMatic: %s",
-            currentAmount2WithdrawInMatic
-        );
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
-        console.log("Total delegated: %s", totalDelegated);
 
         uint256 allowedAmount2RequestFromValidators;
 
@@ -170,14 +157,23 @@ contract LidoMatic is
                 totalDelegated -
                 minValidatorBalance *
                 operatorShares.length;
-        }
-        else {
+        } else {
             require(
-                totalBuffered >=
-                    currentAmount2WithdrawInMatic,
+                totalBuffered >= currentAmount2WithdrawInMatic,
                 "Too much to withdraw"
             );
         }
+
+        console.log(
+            "Requesting withdraw of: %s shares (StMatic) from: %s",
+            _amount,
+            msg.sender
+        );
+
+        console.log(
+            "Requested amount equals to: %s of Matic",
+            currentAmount2WithdrawInMatic
+        );
 
         while (currentAmount2WithdrawInMatic != 0) {
             tokenId = lidoNFT.mint(msg.sender);
@@ -207,26 +203,14 @@ contract LidoMatic is
                         ? allowedAmount2Withdraw
                         : currentAmount2WithdrawInMatic;
 
-                uint256 amount2Burn = (_amount * amount2WithdrawFromValidator) /
-                    totalAmount2WithdrawInMatic;
-
                 sellVoucher_new(
                     validatorShare,
                     amount2WithdrawFromValidator,
                     type(uint256).max
                 );
 
-                totalBurned += amount2Burn;
-
-                if (
-                    currentAmount2WithdrawInMatic ==
-                    amount2WithdrawFromValidator
-                ) {
-                    amount2Burn += (_amount - totalBurned);
-                }
-
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
-                    amount2Burn,
+                    0,
                     IValidatorShare(validatorShare).unbondNonces(address(this)),
                     block.timestamp,
                     validatorShare
@@ -236,10 +220,6 @@ contract LidoMatic is
                 currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
                 lastWithdrawnValidatorId++;
             } else {
-                console.log(
-                    "Requesting from contract: %s",
-                    currentAmount2WithdrawInMatic
-                );
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     currentAmount2WithdrawInMatic,
                     0,
@@ -251,7 +231,12 @@ contract LidoMatic is
                 currentAmount2WithdrawInMatic = 0;
             }
         }
-
+        console.log(
+            "msg.sender balance: %s",
+            IERC20Upgradeable(address(this)).balanceOf(msg.sender)
+        );
+        console.log("Burning: %s StMatic", _amount);
+        _burn(msg.sender, _amount);
         emit RequestWithdrawEvent(msg.sender, _amount);
     }
 
@@ -287,11 +272,7 @@ contract LidoMatic is
             ? maxDelegateLimitsSum
             : availableAmountToDelegate;
 
-        console.log(
-            "Delegated: %s, Remainder: %s",
-            totalToDelegatedAmount,
-            remainder
-        );
+        console.log("Total delegated amount: %s", totalToDelegatedAmount);
 
         IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
@@ -304,6 +285,12 @@ contract LidoMatic is
             uint256 amountToDelegatePerOperator = (operatorShares[i]
                 .maxDelegateLimit * totalToDelegatedAmount) /
                 maxDelegateLimitsSum;
+
+            console.log(
+                "Delegated: %s to validatorShare: %s",
+                amountToDelegatePerOperator,
+                i + 1
+            );
 
             buyVoucher(
                 operatorShares[i].validatorShare,
@@ -319,9 +306,10 @@ contract LidoMatic is
         emit DelegateEvent(amountDelegated, remainder);
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
-            uint256 minValidatorBalanceCurrent = (IValidatorShare(
+            (uint256 validatorShare, ) = IValidatorShare(
                 operatorShares[i].validatorShare
-            ).activeAmount() * 10) / 100;
+            ).getTotalStake(operatorShares[i].validatorShare);
+            uint256 minValidatorBalanceCurrent = (validatorShare * 10) / 100;
 
             if (
                 minValidatorBalanceCurrent != 0 &&
@@ -330,6 +318,7 @@ contract LidoMatic is
                 minValidatorBalance = minValidatorBalanceCurrent;
             }
         }
+        console.log("MinValidatorBalance: %s", minValidatorBalance);
     }
 
     /**
@@ -347,10 +336,7 @@ contract LidoMatic is
             "Not able to claim yet"
         );
 
-        uint256 amountToBurn = usersRequest.amountToBurn;
-
         lidoNFT.burn(_tokenId);
-        _burn(address(this), amountToBurn);
 
         uint256 amountToClaim;
 
@@ -368,7 +354,8 @@ contract LidoMatic is
                 IERC20Upgradeable(token).balanceOf(address(this)) -
                 balanceBeforeClaim;
         } else {
-            amountToClaim = amountToBurn;
+            amountToClaim = usersRequest.amount2WithdrawFromLidoMatic;
+            console.log("Claiming from LidoMatic: %s", amountToClaim);
 
             reservedFunds -= amountToClaim;
             totalBuffered -= amountToClaim;
@@ -376,12 +363,7 @@ contract LidoMatic is
 
         IERC20Upgradeable(token).safeTransfer(msg.sender, amountToClaim);
 
-        emit ClaimTokensEvent(
-            msg.sender,
-            _tokenId,
-            amountToClaim,
-            amountToBurn
-        );
+        emit ClaimTokensEvent(msg.sender, _tokenId, amountToClaim, 0);
     }
 
     /**
@@ -643,8 +625,7 @@ contract LidoMatic is
      */
     function getTotalPooledMatic() public view returns (uint256) {
         uint256 totalStaked = getTotalStakeAcrossAllValidators();
-        console.log("TotalBuffered: %s", totalBuffered);
-        return totalStaked + totalBuffered;
+        return totalStaked + totalBuffered - reservedFunds;
     }
 
     /**
@@ -664,14 +645,6 @@ contract LidoMatic is
         totalPooledMATIC = totalPooledMATIC == 0 ? 1 : totalPooledMATIC;
 
         uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
-
-        console.log("_balance: %s", _balance);
-        console.log(
-            "totalShares: %s, totalPooledMATIC: %s, balanceInMATIC: %s",
-            totalShares,
-            totalPooledMATIC,
-            balanceInMATIC
-        );
 
         return balanceInMATIC;
     }
