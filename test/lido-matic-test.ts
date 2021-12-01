@@ -444,14 +444,14 @@ describe('Starting to test LidoMatic contract', () => {
         }
     });
 
-    it.only('Should return corresponding (less) amount of matic after the slashing happens', async () => {
+    it('Requesting withdraw after slashing should result in lower balance', async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
         const withdrawAmounts: string[] = [];
 
         const [minAmount, maxAmount] = [0.001, 0.1];
-        const delegatorsAmount = 1; //Math.floor(Math.random() * (10 - 1)) + 1;
-        const testersAmount = 1; //Math.floor(Math.random() * (10 - 1)) + 1;
+        const delegatorsAmount = Math.floor(Math.random() * (10 - 1)) + 1;
+        const testersAmount = Math.floor(Math.random() * (10 - 1)) + 1;
         for (let i = 0; i < delegatorsAmount; i++) {
             await mint(testers[i], ethers.utils.parseEther('100'));
 
@@ -540,7 +540,7 @@ describe('Starting to test LidoMatic contract', () => {
             }
             const balanceAfter = await mockERC20.balanceOf(testers[i].address);
 
-            expect(balanceAfter.eq(ethers.utils.parseEther(withdrawAmounts[i])))
+            expect(balanceAfter.eq(ethers.utils.parseEther(withdrawAmounts[i]).mul(9).div(10)))
                 .to.be.true;
         }
     });
