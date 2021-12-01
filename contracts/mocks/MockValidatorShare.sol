@@ -18,7 +18,8 @@ contract MockValidatorShare is IValidatorShare {
     mapping(address => uint256) public override unbondNonces;
     mapping(address => mapping(uint256 => uint256)) public amount2Claim;
     mapping(address => uint256) public user2Shares;
-    mapping(address => mapping(uint256 => uint256)) public amountStakedDuringClaim;
+    mapping(address => mapping(uint256 => uint256))
+        public amountStakedDuringClaim;
 
     IStakeManager stakeManager;
 
@@ -89,25 +90,27 @@ contract MockValidatorShare is IValidatorShare {
 
         unbondNonces[msg.sender] = unbondNonce;
         amount2Claim[msg.sender][unbondNonce] = _claimAmount;
-        amountStakedDuringClaim[msg.sender][unbondNonce] = IERC20(token).balanceOf(address(this));
+        amountStakedDuringClaim[msg.sender][unbondNonce] = IERC20(token)
+            .balanceOf(address(this));
         user2Shares[msg.sender] -= _claimAmount;
     }
 
     function unstakeClaimTokens_new(uint256 _unbondNonce) external override {
         uint256 claimAmount = amount2Claim[msg.sender][_unbondNonce];
-        uint256 amountStaked = amountStakedDuringClaim[msg.sender][_unbondNonce];
-        uint256 amount2Transfer = (claimAmount *
-            IERC20(token).balanceOf(address(this))) / amountStaked;
+        uint256 amountStaked = amountStakedDuringClaim[msg.sender][
+            _unbondNonce
+        ];
+        uint256 amount2Transfer = claimAmount;
         console.log(
-            "ClaimAmount: %s Amount2Transfer: %s",
+            "ClaimAmount: %s, Amount2Transfer: %s, AmountStaked: %s",
             claimAmount,
-            amount2Transfer
+            amount2Transfer,
+            amountStaked
         );
-        // console.log(
-        //     "%s %s",
-        //     IERC20(token).balanceOf(address(this)),
-        //     amount2Transfer
-        // );
+        console.log(
+            "Balance: %s",
+            IERC20(token).balanceOf(address(this))
+        );
         //stakeManager.unstakeClaim(validatorId);
         IERC20(token).transfer(msg.sender, amount2Transfer);
         withdrawPool -= claimAmount;
