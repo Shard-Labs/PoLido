@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IValidatorShare.sol";
 import "../interfaces/IStakeManager.sol";
 
+import "hardhat/console.sol";
+
 contract MockValidatorShare is IValidatorShare {
     address public token;
 
@@ -34,7 +36,8 @@ contract MockValidatorShare is IValidatorShare {
     function withdrawRewards() external override {
         IERC20(token).transfer(
             msg.sender,
-            IERC20(token).balanceOf(address(this))
+            IERC20(token).balanceOf(address(this)) -
+                (totalStaked + withdrawPool)
         );
     }
 

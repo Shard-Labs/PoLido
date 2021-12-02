@@ -98,7 +98,7 @@ contract LidoMatic is
         insurance = _insurance;
 
         minValidatorBalance = type(uint256).max;
-        entityFees = FeeDistribution(5, 5, 90);
+        entityFees = FeeDistribution(25, 50, 25);
     }
 
     /**
@@ -198,7 +198,7 @@ contract LidoMatic is
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     0,
                     IValidatorShare(validatorShare).unbondNonces(address(this)),
-                    block.timestamp,
+                    stakeManager.epoch() + stakeManager.withdrawalDelay(),
                     validatorShare
                 );
 
@@ -209,7 +209,7 @@ contract LidoMatic is
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     currentAmount2WithdrawInMatic,
                     0,
-                    block.timestamp,
+                    stakeManager.epoch() + stakeManager.withdrawalDelay(),
                     address(0)
                 );
 
@@ -278,6 +278,8 @@ contract LidoMatic is
 
         emit DelegateEvent(amountDelegated, remainder);
 
+        minValidatorBalance = type(uint256).max;
+
         for (uint256 i = 0; i < operatorShares.length; i++) {
             (uint256 validatorShare, ) = IValidatorShare(
                 operatorShares[i].validatorShare
@@ -303,8 +305,7 @@ contract LidoMatic is
         RequestWithdraw storage usersRequest = token2WithdrawRequest[_tokenId];
 
         require(
-            block.timestamp >=
-                usersRequest.requestTime + stakeManager.withdrawalDelay(),
+            stakeManager.epoch() >= usersRequest.requestTime,
             "Not able to claim yet"
         );
 
@@ -341,11 +342,11 @@ contract LidoMatic is
      * @dev Distributes rewards claimed from validator shares based on fees defined in entityFee
      */
     function distributeRewards() external whenNotPaused {
-        Operator.OperatorInfo[] memory operatorShares = nodeOperator
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperator
             .getOperatorInfos(true);
 
-        for (uint256 i = 0; i < operatorShares.length; i++) {
-            IValidatorShare(operatorShares[i].validatorShare).withdrawRewards();
+        for (uint256 i = 0; i < operatorInfos.length; i++) {
+            IValidatorShare(operatorInfos[i].validatorShare).withdrawRewards();
         }
 
         uint256 totalRewards = ((IERC20Upgradeable(token).balanceOf(
@@ -368,28 +369,26 @@ contract LidoMatic is
         IERC20Upgradeable(token).safeTransfer(dao, daoRewards);
         IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
 
-        Operator.OperatorInfo[] memory operators = nodeOperator
-            .getOperatorInfos(true);
-
-        uint256[] memory ratios = new uint256[](operatorShares.length);
+        uint256[] memory ratios = new uint256[](operatorInfos.length);
         uint256 totalRatio = 0;
 
-        for (uint256 idx = 0; idx < operators.length; idx++) {
-            uint256 rewardRatio = operators[idx].rewardPercentage;
+        for (uint256 idx = 0; idx < operatorInfos.length; idx++) {
+            uint256 rewardRatio = operatorInfos[idx].rewardPercentage;
             ratios[idx] = rewardRatio;
             totalRatio += rewardRatio;
         }
 
-        for (uint256 i = 0; i < operators.length; i++) {
+        for (uint256 i = 0; i < operatorInfos.length; i++) {
             IERC20Upgradeable(token).safeTransfer(
-                operators[i].rewardAddress,
+                operatorInfos[i].rewardAddress,
                 (operatorsRewards * ratios[i]) / totalRatio
             );
         }
 
-        uint256 currentBalance = IERC20Upgradeable(address(this)).balanceOf(
+        uint256 currentBalance = IERC20Upgradeable(token).balanceOf(
             address(this)
         );
+
         uint256 totalDistributed = balanceBeforeDistribution - currentBalance;
 
         // Add the remainder to totalBuffered
@@ -403,10 +402,7 @@ contract LidoMatic is
      * @dev Withdraws funds from unstaked validator
      * @param _validatorShare - Address of the validator share that will be withdrawn
      */
-    function withdrawTotalDelegated(address _validatorShare)
-        external
-        whenNotPaused
-    {
+    function withdrawTotalDelegated(address _validatorShare) external {
         require(msg.sender == address(nodeOperator), "Not a node operator");
 
         uint256 tokenId = lidoNFT.mint(address(this));
@@ -415,12 +411,16 @@ contract LidoMatic is
             IValidatorShare(_validatorShare)
         );
 
+        if (stakedAmount == 0) {
+            return;
+        }
+
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
         token2WithdrawRequest[tokenId] = RequestWithdraw(
             uint256(0),
             IValidatorShare(_validatorShare).unbondNonces(address(this)),
-            block.timestamp,
+            stakeManager.epoch() + stakeManager.withdrawalDelay(),
             _validatorShare
         );
 
@@ -443,8 +443,7 @@ contract LidoMatic is
         lidoNFT.burn(_tokenId);
 
         require(
-            block.timestamp >=
-                lidoRequests.requestTime + stakeManager.withdrawalDelay(),
+            stakeManager.epoch() >= lidoRequests.requestTime,
             "Not able to claim yet"
         );
 
