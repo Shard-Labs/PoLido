@@ -58,6 +58,11 @@ describe('Starting to test LidoMatic contract', () => {
         amount: BigNumberish
     ) => Promise<void>;
 
+    let slash: (
+        validatorId: BigNumberish,
+        percentage: BigNumberish
+    ) => Promise<void>;
+
     before(() => {
         mint = async (signer, amount) => {
             const signerERC = mockERC20.connect(signer);
@@ -91,6 +96,33 @@ describe('Starting to test LidoMatic contract', () => {
         claimTokens = async (signer, tokenId) => {
             const signerLidoMatic = lidoMatic.connect(signer);
             await signerLidoMatic.claimTokens(tokenId);
+        };
+
+        slash = async (validatorId, percentage) => {
+            if (percentage <= 0 || percentage > 100) {
+                throw new RangeError('Percentage not in valid range');
+            }
+
+            const validatorShareAddress = (
+                await nodeOperatorRegistry['getNodeOperator(uint256)'](
+                    validatorId
+                )
+            ).validatorShare;
+
+            const MockValidatorShare = await ethers.getContractFactory(
+                'MockValidatorShare'
+            );
+            const validatorShare = MockValidatorShare.attach(
+                validatorShareAddress
+            ) as MockValidatorShare;
+
+            const validatorShareBalance = await mockERC20.balanceOf(
+                validatorShareAddress
+            );
+
+            await validatorShare.slash(
+                validatorShareBalance.mul(percentage).div(100)
+            );
         };
 
         addOperator = async (name, ownerAddress, heimdallPubKey) => {
@@ -413,7 +445,7 @@ describe('Starting to test LidoMatic contract', () => {
         }
     });
 
-    it('Requesting withdraw after slashing should result in lower balance', async () => {
+    it('Requesting withdraw AFTER slashing should result in lower balance', async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
         const withdrawAmounts: string[] = [];
@@ -446,29 +478,8 @@ describe('Starting to test LidoMatic contract', () => {
         await lidoMatic.delegate();
 
         for (let i = 0; i < delegatorsAmount; i++) {
-            const validatorShareAddress = (
-                await nodeOperatorRegistry['getNodeOperator(uint256)'](i + 1)
-            ).validatorShare;
-
-            const MockValidatorShare = await ethers.getContractFactory(
-                'MockValidatorShare'
-            );
-            const validatorShare = MockValidatorShare.attach(
-                validatorShareAddress
-            ) as MockValidatorShare;
-
-            const validatorShareBalance = await mockERC20.balanceOf(
-                validatorShareAddress
-            );
-
-            await validatorShare.slash(validatorShareBalance.div(10));
+            await slash(i + 1, 10);
         }
-
-        // console.log(
-        //     `SubmitAmounts: ${submitAmounts.map((a) =>
-        //         ethers.utils.parseEther(a).toString()
-        //     )}`
-        // );
 
         for (let i = 0; i < testersAmount; i++) {
             withdrawAmounts.push(
@@ -484,21 +495,72 @@ describe('Starting to test LidoMatic contract', () => {
             ownedTokens.push(await lidoNFT.getOwnedTokens(testers[i].address));
         }
 
-        // console.log(
-        //     `WithdrawAmounts: ${withdrawAmounts.map((a) =>
-        //         ethers.utils.parseEther(a).toString()
-        //     )}`
-        // );
+        const withdrawalDelay = await mockStakeManager.withdrawalDelay();
+        await increaseBlockTime(withdrawalDelay.toNumber());
 
-        // console.log(
-        //     `AmountsToBurn: ${(
-        //         await Promise.all(
-        //             ownedTokens[0].map((t) =>
-        //                 lidoMatic.token2WithdrawRequest(t)
-        //             )
-        //         )
-        //     ).map((r) => r.amountToBurn.toString())}`
-        // );
+        for (let i = 0; i < testersAmount; i++) {
+            for (let j = 0; j < ownedTokens[i].length; j++) {
+                await claimTokens(testers[i], ownedTokens[i][j]);
+            }
+            const balanceAfter = await mockERC20.balanceOf(testers[i].address);
+
+            expect(
+                balanceAfter.eq(
+                    ethers.utils.parseEther(withdrawAmounts[i]).mul(9).div(10)
+                )
+            ).to.be.true;
+        }
+    });
+
+    it('Requesting withdraw BEFORE slashing should result in a lower balance withdrawal', async () => {
+        const ownedTokens: BigNumber[][] = [];
+        const submitAmounts: string[] = [];
+        const withdrawAmounts: string[] = [];
+
+        const [minAmount, maxAmount] = [0.001, 0.1];
+        const delegatorsAmount = Math.floor(Math.random() * (10 - 1)) + 1;
+        const testersAmount = Math.floor(Math.random() * (10 - 1)) + 1;
+        for (let i = 0; i < delegatorsAmount; i++) {
+            await mint(testers[i], ethers.utils.parseEther('100'));
+
+            await addOperator(
+                `BananaOperator${i}`,
+                testers[i].address,
+                ethers.utils.randomBytes(64)
+            );
+
+            await stakeOperator(i + 1, testers[i], '10');
+        }
+
+        for (let i = 0; i < testersAmount; i++) {
+            submitAmounts.push(
+                (Math.random() * (maxAmount - minAmount) + minAmount).toFixed(3)
+            );
+            const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
+
+            await mint(testers[i], submitAmountWei);
+            await submit(testers[i], submitAmountWei);
+        }
+
+        await lidoMatic.delegate();
+
+        for (let i = 0; i < testersAmount; i++) {
+            withdrawAmounts.push(
+                (
+                    Math.random() * (Number(submitAmounts[i]) - minAmount) +
+                    minAmount
+                ).toFixed(3)
+            );
+            const withdrawAmountWei = ethers.utils.parseEther(
+                withdrawAmounts[i]
+            );
+            await requestWithdraw(testers[i], withdrawAmountWei);
+            ownedTokens.push(await lidoNFT.getOwnedTokens(testers[i].address));
+        }
+
+        for (let i = 0; i < delegatorsAmount; i++) {
+            await slash(i + 1, 10);
+        }
 
         const withdrawalDelay = await mockStakeManager.withdrawalDelay();
         await increaseBlockTime(withdrawalDelay.toNumber());
