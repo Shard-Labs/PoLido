@@ -18,6 +18,7 @@ contract StakeManagerMock is IStakeManager {
         mapping(uint256 => address) signer;
         mapping(uint256 => address) validatorShares;
         mapping(address => uint256) delegator2Amount;
+        uint256 epoch;
     }
 
     State private state;
@@ -93,7 +94,7 @@ contract StakeManagerMock is IStakeManager {
     function unstakeClaim(uint256) external override {
         IERC20(state.token).transfer(
             msg.sender,
-            state.delegator2Amount[msg.sender]
+            IERC20(state.token).balanceOf(address(this))
         );
         state.delegator2Amount[msg.sender] = 0;
     }
@@ -139,8 +140,8 @@ contract StakeManagerMock is IStakeManager {
         return IERC20(state.token).transfer(msg.sender, amount);
     }
 
-    function epoch() external pure override returns (uint256) {
-        return 0;
+    function epoch() external view override returns (uint256) {
+        return state.epoch;
     }
 
     function slash(uint256 _validatorId) external {
@@ -178,5 +179,9 @@ contract StakeManagerMock is IStakeManager {
     /// @notice Returns the validator accumulated rewards on stake manager.
     function validatorReward(uint256) external pure override returns (uint256) {
         return 1000;
+    }
+
+    function setEpoch(uint256 _epoch) external {
+        state.epoch = _epoch;
     }
 }

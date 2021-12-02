@@ -13,14 +13,16 @@ import {
     ERC20,
     StakeManagerMock,
     ValidatorFactoryV2,
-    NodeOperatorRegistryV2
+    NodeOperatorRegistryV2,
+    Polygon
 } from "../typechain";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const { deployContract } = hardhat.waffle;
 
 chai.use(solidity);
 
-let signer: Signer;
+let signer: SignerWithAddress;
 let user1: Signer;
 let user1Address: string;
 let user2: Signer;
@@ -31,7 +33,7 @@ let user3Address: string;
 let nodeOperatorRegistryContract: NodeOperatorRegistry;
 let validatorFactoryContract: ValidatorFactory;
 let lidoMockContract: Contract;
-let polygonERC20Contract: ERC20;
+let polygonERC20Contract: Polygon;
 let erc721Contract: ERC721Test;
 let stakeManagerMockContract: StakeManagerMock;
 let validatorContract: Contract;
@@ -50,7 +52,8 @@ describe("NodeOperator", function () {
 
         // deploy ERC20 token
         const polygonERC20Artifact: Artifact = await hardhat.artifacts.readArtifact("Polygon");
-        polygonERC20Contract = (await deployContract(signer, polygonERC20Artifact)) as ERC20;
+        polygonERC20Contract = (await deployContract(signer, polygonERC20Artifact)) as Polygon;
+        await polygonERC20Contract.mint(ethers.utils.parseEther("2000000"));
 
         // deploy ERC721 token
         const polygonERC721Artifact: Artifact = await hardhat.artifacts.readArtifact("ERC721Test");
@@ -571,15 +574,17 @@ describe("NodeOperator", function () {
 
             const beforeBalance1 = await polygonERC20Contract.balanceOf(user1Address);
             const beforeBalance2 = await polygonERC20Contract.balanceOf(user2Address);
+            await polygonERC20Contract.mint(ethers.utils.parseEther("2000"));
 
+            await polygonERC20Contract.transfer(stakeManagerMockContract.address, "1000");
             expect(
                 await nodeOperatorRegistryContract.connect(user1).unstakeClaim()
             ).to.emit(nodeOperatorRegistryContract, "UnstakeClaim");
 
+            await polygonERC20Contract.transfer(stakeManagerMockContract.address, "1000");
             expect(
                 await nodeOperatorRegistryContract.connect(user2).unstakeClaim()
             ).to.emit(nodeOperatorRegistryContract, "UnstakeClaim");
-
             const afterBalance1 = await polygonERC20Contract.balanceOf(user1Address);
             const afterBalance2 = await polygonERC20Contract.balanceOf(user2Address);
             expect(beforeBalance1.toString(), "beforeBalance").not.equal(afterBalance1.toString());
