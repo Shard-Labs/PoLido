@@ -92,7 +92,7 @@ contract MockValidatorShare is IValidatorShare {
         uint256 amount2Transfer = (withdrawPoolShare * withdrawPool) /
             totalWithdrawPoolShares;
 
-        withdrawPool -= withdrawPoolShare;
+        withdrawPool -= amount2Transfer;
         totalShares -= withdrawPoolShare;
         totalWithdrawPoolShares -= withdrawPoolShare;
         IERC20(token).transfer(msg.sender, amount2Transfer);
