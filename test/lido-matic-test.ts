@@ -25,8 +25,6 @@ describe("Starting to test LidoMatic contract", () => {
     let mockStakeManager: StakeManagerMock;
     let mockERC20: Polygon;
 
-    let increaseBlockTime: (amountInSeconds: number) => Promise<void>;
-
     let submit: (
         signer: SignerWithAddress,
         amount: BigNumberish
@@ -74,16 +72,6 @@ describe("Starting to test LidoMatic contract", () => {
         mint = async (signer, amount) => {
             const signerERC = mockERC20.connect(signer);
             await signerERC.mint(amount);
-        };
-
-        increaseBlockTime = async (amountInSeconds) => {
-            const currentBlockNumber = await ethers.provider.getBlockNumber();
-            const { timestamp } = await ethers.provider.getBlock(
-                currentBlockNumber
-            );
-            await ethers.provider.send("evm_mine", [
-                amountInSeconds + timestamp
-            ]);
         };
 
         submit = async (signer, amount) => {
@@ -352,6 +340,33 @@ describe("Starting to test LidoMatic contract", () => {
         const balanceAfter = await mockERC20.balanceOf(testers[0].address);
 
         expect(balanceAfter.sub(balanceBefore).eq(withdrawAmount)).to.be.true;
+    });
+
+    it("Should update minValidatorBalance correctly", async () => {
+        const submitAmount = ethers.utils.parseEther("0.01");
+
+        await mint(testers[0], ethers.utils.parseEther("100"));
+        await addOperator(
+            "BananaOperator",
+            testers[0].address,
+            ethers.utils.randomBytes(64)
+        );
+        await stakeOperator(1, testers[0], "100");
+
+        await mint(testers[0], submitAmount);
+        await submit(testers[0], submitAmount);
+        await lidoMatic.delegate();
+
+        const minValidatorBalanceBefore = await lidoMatic.minValidatorBalance();
+
+        await mint(testers[0], submitAmount.mul(2));
+        await submit(testers[0], submitAmount);
+        await lidoMatic.delegate();
+
+        const minValidatorBalanceAfter = await lidoMatic.minValidatorBalance();
+
+        expect(!minValidatorBalanceBefore.eq(minValidatorBalanceAfter)).to.be.true;
+
     });
 
     // 1 validator, n delegators test
