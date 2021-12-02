@@ -12,8 +12,6 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/ILidoNFT.sol";
 
-import "hardhat/console.sol";
-
 contract LidoMatic is
     ERC20Upgradeable,
     AccessControlUpgradeable,
@@ -111,7 +109,6 @@ contract LidoMatic is
      */
     function submit(uint256 _amount) external whenNotPaused returns (uint256) {
         require(_amount > 0, "Invalid amount");
-        console.log("Submit of: %s Matic from: %s", _amount, msg.sender);
         IERC20Upgradeable(token).safeTransferFrom(
             msg.sender,
             address(this),
@@ -163,17 +160,6 @@ contract LidoMatic is
                 "Too much to withdraw"
             );
         }
-
-        console.log(
-            "Requesting withdraw of: %s shares (StMatic) from: %s",
-            _amount,
-            msg.sender
-        );
-
-        console.log(
-            "Requested amount equals to: %s of Matic",
-            currentAmount2WithdrawInMatic
-        );
 
         while (currentAmount2WithdrawInMatic != 0) {
             tokenId = lidoNFT.mint(msg.sender);
@@ -231,11 +217,6 @@ contract LidoMatic is
                 currentAmount2WithdrawInMatic = 0;
             }
         }
-        console.log(
-            "msg.sender balance: %s",
-            IERC20Upgradeable(address(this)).balanceOf(msg.sender)
-        );
-        console.log("Burning: %s StMatic", _amount);
         _burn(msg.sender, _amount);
         emit RequestWithdrawEvent(msg.sender, _amount);
     }
@@ -272,8 +253,6 @@ contract LidoMatic is
             ? maxDelegateLimitsSum
             : availableAmountToDelegate;
 
-        console.log("Total delegated amount: %s", totalToDelegatedAmount);
-
         IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
             totalToDelegatedAmount
@@ -285,12 +264,6 @@ contract LidoMatic is
             uint256 amountToDelegatePerOperator = (operatorShares[i]
                 .maxDelegateLimit * totalToDelegatedAmount) /
                 maxDelegateLimitsSum;
-
-            console.log(
-                "Delegated: %s to validatorShare: %s",
-                amountToDelegatePerOperator,
-                i + 1
-            );
 
             buyVoucher(
                 operatorShares[i].validatorShare,
@@ -318,7 +291,6 @@ contract LidoMatic is
                 minValidatorBalance = minValidatorBalanceCurrent;
             }
         }
-        console.log("MinValidatorBalance: %s", minValidatorBalance);
     }
 
     /**
@@ -355,7 +327,6 @@ contract LidoMatic is
                 balanceBeforeClaim;
         } else {
             amountToClaim = usersRequest.amount2WithdrawFromLidoMatic;
-            console.log("Claiming from LidoMatic: %s", amountToClaim);
 
             reservedFunds -= amountToClaim;
             totalBuffered -= amountToClaim;
