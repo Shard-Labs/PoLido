@@ -11,9 +11,9 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "./interfaces/IValidatorShare.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IStakeManager.sol";
-import "./interfaces/ILidoNFT.sol";
+import "./interfaces/IPoLidoNFT.sol";
 
-contract LidoMatic is
+contract StMATIC is
     ERC20Upgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable
@@ -41,7 +41,7 @@ contract LidoMatic is
     INodeOperatorRegistry public nodeOperator;
     FeeDistribution public entityFees;
     IStakeManager public stakeManager;
-    ILidoNFT public lidoNFT;
+    IPoLidoNFT public poLidoNFT;
 
     string public version;
     address public dao;
@@ -86,14 +86,14 @@ contract LidoMatic is
     ) public initializer {
         __AccessControl_init();
         __Pausable_init();
-        __ERC20_init("Staked MATIC", "StMATIC");
+        __ERC20_init("Staked MATIC", "stMATIC");
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(DAO, _dao);
 
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
         stakeManager = IStakeManager(_stakeManager);
-        lidoNFT = ILidoNFT(_lidoNFT);
+        poLidoNFT = IPoLidoNFT(_lidoNFT);
         dao = _dao;
         token = _token;
         insurance = _insurance;
@@ -103,7 +103,7 @@ contract LidoMatic is
     }
 
     /**
-     * @dev Send funds to LidoMatic contract and mints StMATIC to msg.sender
+     * @dev Send funds to StMATIC contract and mints StMATIC to msg.sender
      * @notice Requires that msg.sender has approved _amount of MATIC to this contract
      * @param _amount - Amount of MATIC sent from msg.sender to this contract
      * @return Amount of StMATIC shares generated
@@ -163,7 +163,7 @@ contract LidoMatic is
         }
 
         while (currentAmount2WithdrawInMatic != 0) {
-            tokenId = lidoNFT.mint(msg.sender);
+            tokenId = poLidoNFT.mint(msg.sender);
 
             if (allowedAmount2RequestFromValidators != 0) {
                 if (lastWithdrawnValidatorId > operatorShares.length - 1) {
@@ -302,7 +302,7 @@ contract LidoMatic is
      * @param _tokenId - Id of the token that wants to be claimed
      */
     function claimTokens(uint256 _tokenId) external whenNotPaused {
-        require(lidoNFT.isApprovedOrOwner(msg.sender, _tokenId), "Not owner");
+        require(poLidoNFT.isApprovedOrOwner(msg.sender, _tokenId), "Not owner");
         RequestWithdraw storage usersRequest = token2WithdrawRequest[_tokenId];
 
         require(
@@ -310,7 +310,7 @@ contract LidoMatic is
             "Not able to claim yet"
         );
 
-        lidoNFT.burn(_tokenId);
+        poLidoNFT.burn(_tokenId);
 
         uint256 amountToClaim;
 
@@ -406,7 +406,7 @@ contract LidoMatic is
     function withdrawTotalDelegated(address _validatorShare) external {
         require(msg.sender == address(nodeOperator), "Not a node operator");
 
-        uint256 tokenId = lidoNFT.mint(address(this));
+        uint256 tokenId = poLidoNFT.mint(address(this));
 
         (uint256 stakedAmount, ) = getTotalStake(
             IValidatorShare(_validatorShare)
@@ -430,18 +430,18 @@ contract LidoMatic is
 
     /**
      * @dev Claims tokens from validator share and sends them to the
-     * LidoMatic contract
+     * StMATIC contract
      * @param _tokenId - Id of the token that is supposed to be claimed
      */
     function claimTokens2LidoMatic(uint256 _tokenId) external whenNotPaused {
         RequestWithdraw storage lidoRequests = token2WithdrawRequest[_tokenId];
 
         require(
-            lidoNFT.ownerOf(_tokenId) == address(this),
+            poLidoNFT.ownerOf(_tokenId) == address(this),
             "Not owner of the NFT"
         );
 
-        lidoNFT.burn(_tokenId);
+        poLidoNFT.burn(_tokenId);
 
         require(
             stakeManager.epoch() >= lidoRequests.requestTime,
@@ -715,11 +715,11 @@ contract LidoMatic is
     }
 
     /**
-     * @dev Function that sets the lidoNFT address
-     * @param _lidoNFT new lidoNFT address
+     * @dev Function that sets the poLidoNFT address
+     * @param _lidoNFT new poLidoNFT address
      */
     function setLidoNFT(address _lidoNFT) external onlyRole(DAO) {
-        lidoNFT = ILidoNFT(_lidoNFT);
+        poLidoNFT = IPoLidoNFT(_lidoNFT);
     }
 
     /**

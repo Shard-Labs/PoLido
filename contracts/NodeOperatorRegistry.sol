@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
-import "./interfaces/ILido.sol";
+import "./interfaces/IStMATIC.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 ShardLabs.
@@ -42,7 +42,7 @@ contract NodeOperatorRegistry is
     /// @param slashed the number of times this operator was slashed, will be decreased after the slashedTimestamp + slashingDelay < block.timestamp.
     /// @param slashedTimestamp the timestamp when the operator was slashed.
     /// @param statusUpdatedTimestamp the timestamp when the operator updated the status (ex: INACTIVE -> ACTIVE)
-    /// @param maxDelegateLimit max delegation limit that LidoMatic contract will delegate to this operator each time delegate function is called.
+    /// @param maxDelegateLimit max delegation limit that StMATIC contract will delegate to this operator each time delegate function is called.
     struct NodeOperator {
         NodeOperatorStatus status;
         string name;
@@ -91,8 +91,8 @@ contract NodeOperatorRegistry is
     address private stakeManager;
     /// @notice polygonERC20 token (Matic) address.
     address private polygonERC20;
-    /// @notice lido address.
-    address private lido;
+    /// @notice poLido address.
+    address private poLido;
 
     /// @notice min amount allowed to stake per validator.
     uint256 public minAmountStake;
@@ -274,7 +274,7 @@ contract NodeOperatorRegistry is
             totalInactiveNodeOperator--;
             totalExitNodeOperator++;
         } else if (status == NodeOperatorStatus.ACTIVE) {
-            ILido(lido).withdrawTotalDelegated(no.validatorShare);
+            IStMATIC(poLido).withdrawTotalDelegated(no.validatorShare);
             no.status = NodeOperatorStatus.STOPPED;
             totalActiveNodeOperator--;
             totalStoppedNodeOperator++;
@@ -470,7 +470,7 @@ contract NodeOperatorRegistry is
         IValidator(no.validatorProxy).unstake(no.validatorId);
 
         // request withdraw from validatorShare
-        ILido(lido).withdrawTotalDelegated(no.validatorShare);
+        IStMATIC(poLido).withdrawTotalDelegated(no.validatorShare);
 
         no.status = NodeOperatorStatus.UNSTAKED;
         no.statusUpdatedTimestamp = block.timestamp;
@@ -803,9 +803,9 @@ contract NodeOperatorRegistry is
         allowsUnjail = _unjail;
     }
 
-    /// @notice Allows to set the lido contract address.
-    function setLido(address _lido) external override userHasRole(DAO_ROLE) {
-        lido = _lido;
+    /// @notice Allows to set the poLido contract address.
+    function setLido(address _poLido) external override userHasRole(DAO_ROLE) {
+        poLido = _poLido;
     }
 
     /// @notice Allows to set the validator factory contract address.
@@ -884,9 +884,9 @@ contract NodeOperatorRegistry is
         return polygonERC20;
     }
 
-    /// @notice Get the lido contract address.
+    /// @notice Get the poLido contract address.
     function getLido() external view override returns (address) {
-        return lido;
+        return poLido;
     }
 
     /// @notice Get the global state

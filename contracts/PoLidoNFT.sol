@@ -22,9 +22,9 @@ contract LidoNFT is
     mapping(address => uint256[]) public address2Approved;
     mapping(uint256 => uint256) public tokenId2ApprovedIndex;
 
-    // check if lido contract is the caller
+    // check if poLido contract is the caller
     modifier isLido() {
-        require(msg.sender == lido, "Caller is not lido contract");
+        require(msg.sender == poLido, "Caller is not poLido contract");
         _;
     }
 
@@ -137,9 +137,9 @@ contract LidoNFT is
         return _isApprovedOrOwner(_spender, _tokenId);
     }
 
-    /// @notice Set LidoMatic contract
-    function setLido(address _lido) external onlyOwner {
-        lido = _lido;
+    /// @notice Set StMATIC contract
+    function setLido(address _poLido) external onlyOwner {
+        poLido = _poLido;
     }
 
     /// @notice Set LidoNFT version

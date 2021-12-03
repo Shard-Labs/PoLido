@@ -1,5 +1,7 @@
 # Architecture
-The Matic lido architecture has two main parts:
+
+The Matic poLido architecture has two main parts:
+
 1. Lido Matic contract.
 2. Operator contract.
 

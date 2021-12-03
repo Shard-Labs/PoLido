@@ -4,11 +4,11 @@ pragma solidity 0.8.7;
 
 import "../interfaces/INodeOperatorRegistry.sol";
 
-contract LidoMock {
+contract StMATICMock {
     address operator;
 
-    function withdrawTotalDelegated(address _validatorShare) pure external{
-        require(_validatorShare != address(0), "ILido error");
+    function withdrawTotalDelegated(address _validatorShare) external pure {
+        require(_validatorShare != address(0), "IStMATIC error");
     }
 
     function setOperator(address _operator) public {

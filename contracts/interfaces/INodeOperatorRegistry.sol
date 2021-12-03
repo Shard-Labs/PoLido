@@ -129,8 +129,8 @@ interface INodeOperatorRegistry {
     /// @notice Allows the DAO to enable/disable unjail.
     function setUnjail(bool _unjail) external;
 
-    /// @notice Allows the DAO to set lido contract.
-    function setLido(address _lido) external;
+    /// @notice Allows the DAO to set poLido contract.
+    function setLido(address _poLido) external;
 
     /// @notice Allows the DAO to set validator factory contract.
     function setValidatorFactory(address _validatorFactory) external;
@@ -153,7 +153,7 @@ interface INodeOperatorRegistry {
     /// @notice Allows to get the Matic address.
     function getPolygonERC20() external view returns (address);
 
-    /// @notice Allows to get the lido address.
+    /// @notice Allows to get the poLido address.
     function getLido() external view returns (address);
 
     /// @notice Allows to get stats.
