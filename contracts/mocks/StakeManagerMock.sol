@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 import "../interfaces/IStakeManager.sol";
 import "../helpers/ERC721Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../mocks/MockValidatorShare.sol";
+import "../mocks/ValidatorShareMock.sol";
 
 contract StakeManagerMock is IStakeManager {
     struct State {
@@ -47,7 +47,7 @@ contract StakeManagerMock is IStakeManager {
         state.stakedAmount[id] = _amount;
         state.signer[id] = address(uint160(uint256(keccak256(_signerPubkey))));
         state.validatorShares[id] = address(
-            new MockValidatorShare(state.token, address(this), id)
+            new ValidatorShareMock(state.token, address(this), id)
         );
     }
 

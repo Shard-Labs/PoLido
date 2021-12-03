@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 /// @title LidoMatic interface.
-/// @author 2021 Shardlabs
+/// @author 2021 ShardLabs
 interface ILidoNFT is IERC721 {
     function mint(address _to) external returns (uint256);
 

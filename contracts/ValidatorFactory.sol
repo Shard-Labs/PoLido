@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
@@ -9,7 +9,7 @@ import "./interfaces/IValidatorProxy.sol";
 import "./interfaces/IValidatorFactory.sol";
 
 /// @title ValidatorFactory
-/// @author 2021 Shardlabs.
+/// @author 2021 ShardLabs.
 /// @notice The validator Factory is the contract that allows creating new validatorProxies
 // and managing them to update the operator and the validator implementation addresses.
 contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
@@ -71,11 +71,7 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     /// @notice Allows to set the NodeOperatorRegistry address and update all the validatorProxies
     /// with the new address.
     /// @param _newOperator new operator address.
-    function setOperator(address _newOperator)
-        external
-        override
-        onlyOwner
-    {
+    function setOperator(address _newOperator) external override onlyOwner {
         operator = _newOperator;
 
         uint256 length = validators.length;
@@ -106,10 +102,7 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     }
 
     /// @notice set contract version.
-    function setVersion(string memory _version)
-        external
-        onlyOwner
-    {
+    function setVersion(string memory _version) external onlyOwner {
         version = _version;
     }
 

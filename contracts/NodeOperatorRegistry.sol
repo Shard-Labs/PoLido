@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
@@ -11,7 +11,7 @@ import "./interfaces/IValidator.sol";
 import "./interfaces/ILido.sol";
 
 /// @title NodeOperatorRegistry
-/// @author 2021 Shardlabs.
+/// @author 2021 ShardLabs.
 /// @notice NodeOperatorRegistry is the main contract that manage validators
 /// @dev NodeOperatorRegistry is the main contract that manage operators.
 contract NodeOperatorRegistry is
@@ -113,8 +113,8 @@ contract NodeOperatorRegistry is
     uint256 public slashingDelay;
 
     /// @notice default max delgation limit.
-    uint256 public defaultMaxDelegateLimit;    
-    
+    uint256 public defaultMaxDelegateLimit;
+
     /// @notice This stores the operators ids.
     uint256[] private operatorIds;
 
@@ -940,7 +940,12 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows listing all the operator's status by checking if the local stakedAmount
     /// is not equal to the stakedAmount on stake manager.
-    function getIfOperatorsWasSlashed() external view override returns (bool[] memory) {
+    function getIfOperatorsWasSlashed()
+        external
+        view
+        override
+        returns (bool[] memory)
+    {
         IStakeManager sm = IStakeManager(stakeManager);
         uint256 length = operatorIds.length;
         bool[] memory slashedOperatorIds = new bool[](length);
@@ -963,7 +968,10 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows slashing all the operators if the local stakedAmount is not equal
     /// to the stakedAmount on stake manager.
-    function slashOperators(bool[] memory _slashedOperatorIds) external override {
+    function slashOperators(bool[] memory _slashedOperatorIds)
+        external
+        override
+    {
         IStakeManager sm = IStakeManager(stakeManager);
         uint256 length = _slashedOperatorIds.length;
 

@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IValidatorProxy.sol";
 
 /// @title ValidatorProxy
-/// @author 2021 Shardlabs.
+/// @author 2021 ShardLabs.
 /// @notice The validator proxy contract is a proxy used as a validator owner in the
 /// stakeManager. Each time a new operator is added a new validator proxy is created
 /// by the validator factory and assigned to the operator. Later we can use it to

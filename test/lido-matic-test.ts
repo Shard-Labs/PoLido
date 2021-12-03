@@ -1,19 +1,19 @@
-import { BigNumber, BigNumberish } from "@ethersproject/bignumber";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { expect } from 'chai';
+import { ethers, upgrades } from 'hardhat';
 import {
     LidoMatic,
     LidoNFT,
-    MockValidatorShare,
+    ValidatorShareMock,
     NodeOperatorRegistry,
     Polygon,
     StakeManagerMock,
     Validator,
-    ValidatorFactory
-} from "../typechain";
+    ValidatorFactory,
+} from '../typechain';
 
-describe("Starting to test LidoMatic contract", () => {
+describe('Starting to test LidoMatic contract', () => {
     let deployer: SignerWithAddress;
     let testers: SignerWithAddress[] = [];
     let insurance: SignerWithAddress;
@@ -95,21 +95,21 @@ describe("Starting to test LidoMatic contract", () => {
 
         slash = async (validatorId, percentage) => {
             if (percentage <= 0 || percentage > 100) {
-                throw new RangeError("Percentage not in valid range");
+                throw new RangeError('Percentage not in valid range');
             }
 
             const validatorShareAddress = (
-                await nodeOperatorRegistry["getNodeOperator(uint256)"](
+                await nodeOperatorRegistry['getNodeOperator(uint256)'](
                     validatorId
                 )
             ).validatorShare;
 
-            const MockValidatorShare = await ethers.getContractFactory(
-                "MockValidatorShare"
+            const ValidatorShareMock = await ethers.getContractFactory(
+                'ValidatorShareMock'
             );
-            const validatorShare = MockValidatorShare.attach(
+            const validatorShare = ValidatorShareMock.attach(
                 validatorShareAddress
-            ) as MockValidatorShare;
+            ) as ValidatorShareMock;
 
             const validatorShareBalance = await mockERC20.balanceOf(
                 validatorShareAddress
@@ -130,7 +130,7 @@ describe("Starting to test LidoMatic contract", () => {
 
         getValidatorShareAddress = async (validatorId) => {
             const { validatorShare } = await nodeOperatorRegistry[
-                "getNodeOperator(uint256)"
+                'getNodeOperator(uint256)'
             ].call(this, validatorId);
             return validatorShare;
         };
@@ -141,27 +141,27 @@ describe("Starting to test LidoMatic contract", () => {
 
         stakeOperator = async (id, signer, maxDelegation) => {
             // get node operator
-            const no1 = await nodeOperatorRegistry["getNodeOperator(address)"](
+            const no1 = await nodeOperatorRegistry['getNodeOperator(address)'](
                 signer.address
             );
             // approve token to validator contract
             await mockERC20
                 .connect(signer)
-                .approve(no1.validatorProxy, ethers.utils.parseEther("100"));
+                .approve(no1.validatorProxy, ethers.utils.parseEther('100'));
 
             // stake a node operator
             await nodeOperatorRegistry
                 .connect(signer)
                 .stake(
-                    ethers.utils.parseEther("80"),
-                    ethers.utils.parseEther("20")
+                    ethers.utils.parseEther('80'),
+                    ethers.utils.parseEther('20')
                 );
             await nodeOperatorRegistry.setDefaultMaxDelegateLimit(
-                ethers.utils.parseEther("10000000000")
+                ethers.utils.parseEther('10000000000')
             );
             await nodeOperatorRegistry.setMaxDelegateLimit(
                 id,
-                ethers.utils.parseEther(maxDelegation || "0")
+                ethers.utils.parseEther(maxDelegation || '0')
             );
         };
     });
@@ -172,18 +172,18 @@ describe("Starting to test LidoMatic contract", () => {
         insurance = testers[9];
 
         mockERC20 = (await (
-            await ethers.getContractFactory("Polygon")
+            await ethers.getContractFactory('Polygon')
         ).deploy()) as Polygon;
         await mockERC20.deployed();
 
         lidoNFT = (await upgrades.deployProxy(
-            await ethers.getContractFactory("LidoNFT"),
-            ["LidoNFT", "LN"]
+            await ethers.getContractFactory('LidoNFT'),
+            ['LidoNFT', 'LN']
         )) as LidoNFT;
         await lidoNFT.deployed();
 
         mockStakeManager = (await (
-            await ethers.getContractFactory("StakeManagerMock")
+            await ethers.getContractFactory('StakeManagerMock')
         ).deploy(
             mockERC20.address,
             ethers.constants.AddressZero
@@ -191,35 +191,35 @@ describe("Starting to test LidoMatic contract", () => {
         await mockStakeManager.deployed();
 
         validator = (await (
-            await ethers.getContractFactory("Validator")
+            await ethers.getContractFactory('Validator')
         ).deploy()) as Validator;
         await validator.deployed();
 
         validatorFactory = (await upgrades.deployProxy(
-            await ethers.getContractFactory("ValidatorFactory"),
+            await ethers.getContractFactory('ValidatorFactory'),
             [validator.address]
         )) as ValidatorFactory;
         await validatorFactory.deployed();
 
         nodeOperatorRegistry = (await upgrades.deployProxy(
-            await ethers.getContractFactory("NodeOperatorRegistry"),
+            await ethers.getContractFactory('NodeOperatorRegistry'),
             [
                 validatorFactory.address,
                 mockStakeManager.address,
-                mockERC20.address
+                mockERC20.address,
             ]
         )) as NodeOperatorRegistry;
         await nodeOperatorRegistry.deployed();
 
         lidoMatic = (await upgrades.deployProxy(
-            await ethers.getContractFactory("LidoMatic"),
+            await ethers.getContractFactory('LidoMatic'),
             [
                 nodeOperatorRegistry.address,
                 mockERC20.address,
                 deployer.address,
                 insurance.address,
                 mockStakeManager.address,
-                lidoNFT.address
+                lidoNFT.address,
             ]
         )) as LidoMatic;
         await lidoMatic.deployed();
@@ -229,8 +229,8 @@ describe("Starting to test LidoMatic contract", () => {
         await nodeOperatorRegistry.setLido(lidoMatic.address);
     });
 
-    it("Should submit successfully", async () => {
-        const amount = ethers.utils.parseEther("1");
+    it('Should submit successfully', async () => {
+        const amount = ethers.utils.parseEther('1');
         await mint(testers[0], amount);
         await submit(testers[0], amount);
 
@@ -238,8 +238,8 @@ describe("Starting to test LidoMatic contract", () => {
         expect(testerBalance.eq(amount)).to.be.true;
     });
 
-    it("Should request withdraw from the contract successfully", async () => {
-        const amount = ethers.utils.parseEther("1");
+    it('Should request withdraw from the contract successfully', async () => {
+        const amount = ethers.utils.parseEther('1');
         await mint(testers[0], amount);
         await submit(testers[0], amount);
         await requestWithdraw(testers[0], amount);
@@ -247,25 +247,25 @@ describe("Starting to test LidoMatic contract", () => {
         expect(owned).length(1);
     });
 
-    it("Should request withdraw from the contract when there is a staked operator but delegation didnt happen yet", async () => {
-        const amount = ethers.utils.parseEther("100");
-        const amount2Submit = ethers.utils.parseEther("0.05");
+    it('Should request withdraw from the contract when there is a staked operator but delegation didnt happen yet', async () => {
+        const amount = ethers.utils.parseEther('100');
+        const amount2Submit = ethers.utils.parseEther('0.05');
         await mint(testers[0], amount);
         await addOperator(
-            "BananaOperator",
+            'BananaOperator',
             testers[0].address,
             ethers.utils.randomBytes(64)
         );
-        await stakeOperator(1, testers[0], "10");
+        await stakeOperator(1, testers[0], '10');
         await mint(testers[0], amount2Submit);
         await submit(testers[0], amount2Submit);
-        await requestWithdraw(testers[0], ethers.utils.parseEther("0.005"));
+        await requestWithdraw(testers[0], ethers.utils.parseEther('0.005'));
 
         const balance = await lidoNFT.balanceOf(testers[0].address);
         expect(balance.eq(1)).to.be.true;
     });
 
-    it("Should claim tokens after submitting to contract successfully", async () => {
+    it('Should claim tokens after submitting to contract successfully', async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
         const withdrawAmounts: string[] = [];
@@ -314,17 +314,17 @@ describe("Starting to test LidoMatic contract", () => {
         }
     });
 
-    it("Should claim tokens after delegating to validator successfully", async () => {
-        const submitAmount = ethers.utils.parseEther("0.01");
-        const withdrawAmount = ethers.utils.parseEther("0.005");
+    it('Should claim tokens after delegating to validator successfully', async () => {
+        const submitAmount = ethers.utils.parseEther('0.01');
+        const withdrawAmount = ethers.utils.parseEther('0.005');
 
-        await mint(testers[0], ethers.utils.parseEther("100"));
+        await mint(testers[0], ethers.utils.parseEther('100'));
         await addOperator(
-            "BananaOperator",
+            'BananaOperator',
             testers[0].address,
             ethers.utils.randomBytes(64)
         );
-        await stakeOperator(1, testers[0], "100");
+        await stakeOperator(1, testers[0], '100');
         await mint(testers[0], submitAmount);
         await submit(testers[0], submitAmount);
         await lidoMatic.delegate();
@@ -342,16 +342,16 @@ describe("Starting to test LidoMatic contract", () => {
         expect(balanceAfter.sub(balanceBefore).eq(withdrawAmount)).to.be.true;
     });
 
-    it("Should update minValidatorBalance correctly", async () => {
-        const submitAmount = ethers.utils.parseEther("0.01");
+    it('Should update minValidatorBalance correctly', async () => {
+        const submitAmount = ethers.utils.parseEther('0.01');
 
-        await mint(testers[0], ethers.utils.parseEther("100"));
+        await mint(testers[0], ethers.utils.parseEther('100'));
         await addOperator(
-            "BananaOperator",
+            'BananaOperator',
             testers[0].address,
             ethers.utils.randomBytes(64)
         );
-        await stakeOperator(1, testers[0], "100");
+        await stakeOperator(1, testers[0], '100');
 
         await mint(testers[0], submitAmount);
         await submit(testers[0], submitAmount);
@@ -365,27 +365,27 @@ describe("Starting to test LidoMatic contract", () => {
 
         const minValidatorBalanceAfter = await lidoMatic.minValidatorBalance();
 
-        expect(!minValidatorBalanceBefore.eq(minValidatorBalanceAfter)).to.be.true;
-
+        expect(!minValidatorBalanceBefore.eq(minValidatorBalanceAfter)).to.be
+            .true;
     });
 
     // 1 validator, n delegators test
-    it("Should delegate and claim tokens from n delegators to 1 validator", async () => {
+    it('Should delegate and claim tokens from n delegators to 1 validator', async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
         const withdrawAmounts: string[] = [];
 
         const [minAmount, maxAmount] = [0.005, 0.01];
         const delegatorsAmount = Math.floor(Math.random() * (10 - 1)) + 1;
-        await mint(testers[0], ethers.utils.parseEther("100"));
+        await mint(testers[0], ethers.utils.parseEther('100'));
 
         await addOperator(
-            "BananaOperator",
+            'BananaOperator',
             testers[0].address,
             ethers.utils.randomBytes(64)
         );
 
-        await stakeOperator(1, testers[0], "100");
+        await stakeOperator(1, testers[0], '100');
 
         for (let i = 0; i < delegatorsAmount; i++) {
             submitAmounts.push(
@@ -431,7 +431,7 @@ describe("Starting to test LidoMatic contract", () => {
     });
 
     // n validator, n delegator test
-    it("Should delegate and claim from n delegators to m validators successfully", async () => {
+    it('Should delegate and claim from n delegators to m validators successfully', async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
         const withdrawAmounts: string[] = [];
@@ -440,7 +440,7 @@ describe("Starting to test LidoMatic contract", () => {
         const delegatorsAmount = Math.floor(Math.random() * (10 - 1)) + 1;
         const testersAmount = Math.floor(Math.random() * (10 - 1)) + 1;
         for (let i = 0; i < delegatorsAmount; i++) {
-            await mint(testers[i], ethers.utils.parseEther("100"));
+            await mint(testers[i], ethers.utils.parseEther('100'));
 
             await addOperator(
                 `BananaOperator${i}`,
@@ -448,7 +448,7 @@ describe("Starting to test LidoMatic contract", () => {
                 ethers.utils.randomBytes(64)
             );
 
-            await stakeOperator(i + 1, testers[i], "10");
+            await stakeOperator(i + 1, testers[i], '10');
         }
 
         for (let i = 0; i < testersAmount; i++) {
@@ -495,7 +495,7 @@ describe("Starting to test LidoMatic contract", () => {
         }
     });
 
-    it("Requesting withdraw AFTER slashing should result in lower balance", async () => {
+    it('Requesting withdraw AFTER slashing should result in lower balance', async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
         const withdrawAmounts: string[] = [];
@@ -504,7 +504,7 @@ describe("Starting to test LidoMatic contract", () => {
         const delegatorsAmount = Math.floor(Math.random() * (10 - 1)) + 1;
         const testersAmount = Math.floor(Math.random() * (10 - 1)) + 1;
         for (let i = 0; i < delegatorsAmount; i++) {
-            await mint(testers[i], ethers.utils.parseEther("100"));
+            await mint(testers[i], ethers.utils.parseEther('100'));
 
             await addOperator(
                 `BananaOperator${i}`,
@@ -512,7 +512,7 @@ describe("Starting to test LidoMatic contract", () => {
                 ethers.utils.randomBytes(64)
             );
 
-            await stakeOperator(i + 1, testers[i], "10");
+            await stakeOperator(i + 1, testers[i], '10');
         }
 
         for (let i = 0; i < testersAmount; i++) {
@@ -566,7 +566,7 @@ describe("Starting to test LidoMatic contract", () => {
         }
     });
 
-    it("Requesting withdraw BEFORE slashing should result in a lower balance withdrawal", async () => {
+    it('Requesting withdraw BEFORE slashing should result in a lower balance withdrawal', async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
         const withdrawAmounts: string[] = [];
@@ -575,7 +575,7 @@ describe("Starting to test LidoMatic contract", () => {
         const delegatorsAmount = Math.floor(Math.random() * (10 - 1)) + 1;
         const testersAmount = Math.floor(Math.random() * (10 - 1)) + 1;
         for (let i = 0; i < delegatorsAmount; i++) {
-            await mint(testers[i], ethers.utils.parseEther("100"));
+            await mint(testers[i], ethers.utils.parseEther('100'));
 
             await addOperator(
                 `BananaOperator${i}`,
@@ -583,7 +583,7 @@ describe("Starting to test LidoMatic contract", () => {
                 ethers.utils.randomBytes(64)
             );
 
-            await stakeOperator(i + 1, testers[i], "10");
+            await stakeOperator(i + 1, testers[i], '10');
         }
 
         for (let i = 0; i < testersAmount; i++) {
@@ -634,26 +634,26 @@ describe("Starting to test LidoMatic contract", () => {
         }
     });
 
-    it("Should pause the contract successfully", async () => {
+    it('Should pause the contract successfully', async () => {
         await lidoMatic.togglePause();
         await expect(lidoMatic.delegate()).to.be.revertedWith(
-            "Pausable: paused"
+            'Pausable: paused'
         );
     });
 
     // todo test with totalBuffred != 0
-    describe("Distribute rewards", async () => {
-        describe("Success cases", async () => {
+    describe('Distribute rewards', async () => {
+        describe('Success cases', async () => {
             const numOperators = 3;
-            beforeEach("setup", async () => {
+            beforeEach('setup', async () => {
                 for (let i = 1; i <= numOperators; i++) {
-                    await mint(testers[i], ethers.utils.parseEther("100"));
+                    await mint(testers[i], ethers.utils.parseEther('100'));
                     await addOperator(
                         `BananaOperator${i}`,
                         testers[i].address,
                         ethers.utils.randomBytes(64)
                     );
-                    await stakeOperator(i, testers[i], "100");
+                    await stakeOperator(i, testers[i], '100');
                 }
                 await lidoMatic.setDelegationLowerBound(5);
             });
@@ -666,7 +666,7 @@ describe("Starting to test LidoMatic contract", () => {
                 delegate: boolean;
                 amountSubmittedPerUser: number;
                 expectedTotalBuffred: number;
-                constructor (
+                constructor(
                     message: string,
                     rewardPerValidator: number,
                     insuraceRewards: string,
@@ -687,23 +687,23 @@ describe("Starting to test LidoMatic contract", () => {
 
             const testCases: Array<TestCase> = [
                 {
-                    message: "distribute rewards: totalBuffred == 0",
+                    message: 'distribute rewards: totalBuffred == 0',
                     rewardPerValidator: 100,
-                    insuraceRewards: "7500000000000000000",
-                    daoRewards: "7500000000000000000",
+                    insuraceRewards: '7500000000000000000',
+                    daoRewards: '7500000000000000000',
                     delegate: true,
                     amountSubmittedPerUser: 10,
-                    expectedTotalBuffred: 270
+                    expectedTotalBuffred: 270,
                 },
                 {
-                    message: "distribute rewards: totalBuffred != 0",
+                    message: 'distribute rewards: totalBuffred != 0',
                     rewardPerValidator: 100,
-                    insuraceRewards: "7500000000000000000",
-                    daoRewards: "7500000000000000000",
+                    insuraceRewards: '7500000000000000000',
+                    daoRewards: '7500000000000000000',
                     delegate: false,
                     amountSubmittedPerUser: 10,
-                    expectedTotalBuffred: 300 // (270 of 90% of rewards + 30 submitted by users)
-                }
+                    expectedTotalBuffred: 300, // (270 of 90% of rewards + 30 submitted by users)
+                },
             ];
 
             for (let index = 0; index < testCases.length; index++) {
@@ -714,10 +714,10 @@ describe("Starting to test LidoMatic contract", () => {
                     daoRewards,
                     delegate,
                     amountSubmittedPerUser,
-                    expectedTotalBuffred
+                    expectedTotalBuffred,
                 } = testCases[index];
 
-                it(index + " " + message, async () => {
+                it(index + ' ' + message, async () => {
                     for (let i = 1; i <= numOperators; i++) {
                         await mint(
                             testers[i],
@@ -747,13 +747,13 @@ describe("Starting to test LidoMatic contract", () => {
                         await lidoMatic.delegate();
                         expect(
                             await lidoMatic.totalBuffered(),
-                            "totalBuffered"
+                            'totalBuffered'
                         ).eq(0);
                     } else {
                         // check the totalBuffred
                         expect(
                             await lidoMatic.totalBuffered(),
-                            "totalBuffered"
+                            'totalBuffered'
                         ).eq(
                             ethers.utils.parseEther(
                                 String(amountSubmittedPerUser * numOperators)
@@ -769,13 +769,13 @@ describe("Starting to test LidoMatic contract", () => {
 
                     // distribute rewards
                     expect(await lidoMatic.distributeRewards())
-                        .emit(lidoMatic, "DistributeRewardsEvent")
+                        .emit(lidoMatic, 'DistributeRewardsEvent')
                         .withArgs(ethers.utils.parseEther(String(rewards)));
 
                     // check totalBuffred with expectedTotalBuffred
                     expect(
                         await lidoMatic.totalBuffered(),
-                        "after totalBuffered"
+                        'after totalBuffered'
                     ).eq(ethers.utils.parseEther(String(expectedTotalBuffred)));
 
                     // check if insurance and DAO received the correct amount
@@ -791,54 +791,54 @@ describe("Starting to test LidoMatic contract", () => {
             }
         });
     });
-    describe("Fail cases", async () => {
-        it("Amount to distribute lower than minimum", async () => {
+    describe('Fail cases', async () => {
+        it('Amount to distribute lower than minimum', async () => {
             const numOperators = 3;
             for (let i = 1; i <= numOperators; i++) {
-                await mint(testers[i], ethers.utils.parseEther("100"));
+                await mint(testers[i], ethers.utils.parseEther('100'));
                 await addOperator(
                     `BananaOperator${i}`,
                     testers[i].address,
                     ethers.utils.randomBytes(64)
                 );
-                await stakeOperator(i, testers[i], "100");
+                await stakeOperator(i, testers[i], '100');
             }
             await lidoMatic.setDelegationLowerBound(5);
 
             await lidoMatic.setRewardDistributionLowerBound(
-                ethers.utils.parseEther("100")
+                ethers.utils.parseEther('100')
             );
 
             for (let i = 1; i <= numOperators; i++) {
-                await mint(testers[i], ethers.utils.parseEther("10"));
+                await mint(testers[i], ethers.utils.parseEther('10'));
                 await submit(testers[i], ethers.utils.parseEther(String(10)));
 
                 // transfer some tokens to the validatorShare contracts to mimic rewards.
-                await mint(deployer, ethers.utils.parseEther("1"));
+                await mint(deployer, ethers.utils.parseEther('1'));
                 await mockERC20.transfer(
                     await getValidatorShareAddress(i),
                     ethers.utils.parseEther(String(1))
                 );
 
                 await expect(lidoMatic.distributeRewards()).revertedWith(
-                    "Amount to distribute lower than minimum"
+                    'Amount to distribute lower than minimum'
                 );
             }
         });
     });
-    describe("withdrawTotalDelegated", async () => {
-        describe("Success cases", async () => {
+    describe('withdrawTotalDelegated', async () => {
+        describe('Success cases', async () => {
             // stake operators
             const operatorId = 3;
-            beforeEach("setup", async () => {
+            beforeEach('setup', async () => {
                 for (let i = 1; i <= operatorId; i++) {
-                    await mint(testers[i], ethers.utils.parseEther("100"));
+                    await mint(testers[i], ethers.utils.parseEther('100'));
                     await addOperator(
                         `BananaOperator${i}`,
                         testers[i].address,
                         ethers.utils.randomBytes(64)
                     );
-                    await stakeOperator(i, testers[i], "100");
+                    await stakeOperator(i, testers[i], '100');
                     await lidoMatic.setDelegationLowerBound(1);
                 }
             });
@@ -847,7 +847,7 @@ describe("Starting to test LidoMatic contract", () => {
                 message: string;
                 delegate: boolean;
                 tokenIds: Array<number>;
-                constructor (
+                constructor(
                     message: string,
                     delegate: boolean,
                     tokenIds: Array<number>
@@ -860,32 +860,32 @@ describe("Starting to test LidoMatic contract", () => {
 
             const testCases: Array<TestCase> = [
                 {
-                    message: "Withdraw when delegated amount != 0",
+                    message: 'Withdraw when delegated amount != 0',
                     delegate: true,
-                    tokenIds: [1, 2, 3]
+                    tokenIds: [1, 2, 3],
                 },
                 {
-                    message: "Withdraw when delegated amount == 0",
+                    message: 'Withdraw when delegated amount == 0',
                     delegate: false,
-                    tokenIds: []
-                }
+                    tokenIds: [],
+                },
             ];
 
             for (let index = 0; index < testCases.length; index++) {
                 const { message, delegate, tokenIds } = testCases[index];
 
-                it(index + " " + message, async () => {
+                it(index + ' ' + message, async () => {
                     // if delegate is true users submit.
                     if (delegate) {
                         for (let i = 1; i <= 3; i++) {
                             await mint(
                                 testers[i],
-                                ethers.utils.parseEther("10")
+                                ethers.utils.parseEther('10')
                             );
 
                             await submit(
                                 testers[i],
-                                ethers.utils.parseEther("10")
+                                ethers.utils.parseEther('10')
                             );
                         }
 
@@ -907,7 +907,7 @@ describe("Starting to test LidoMatic contract", () => {
                             lidoMatic.address,
                             i
                         );
-                        expect(nftTokenId, i + "-tokenId").eq(tokenIds[i]);
+                        expect(nftTokenId, i + '-tokenId').eq(tokenIds[i]);
 
                         // check if the withdrawRequest has correct data
                         const withdrawRequest =
@@ -921,37 +921,37 @@ describe("Starting to test LidoMatic contract", () => {
                 });
             }
         });
-        describe("Fail cases", async () => {
-            it("Fail to withdrawTotalDelegated caller not node operator", async () => {
+        describe('Fail cases', async () => {
+            it('Fail to withdrawTotalDelegated caller not node operator', async () => {
                 await expect(
                     lidoMatic.withdrawTotalDelegated(
                         ethers.constants.AddressZero
                     )
-                ).revertedWith("Not a node operator");
+                ).revertedWith('Not a node operator');
             });
         });
     });
 
-    describe("claimTokens2LidoMatic", async () => {
-        describe("Success cases", async () => {
+    describe('claimTokens2LidoMatic', async () => {
+        describe('Success cases', async () => {
             // stake node operator
             const numOperators = 1;
-            beforeEach("Success cases", async () => {
+            beforeEach('Success cases', async () => {
                 for (let i = 1; i <= numOperators; i++) {
-                    await mint(testers[i], ethers.utils.parseEther("100"));
+                    await mint(testers[i], ethers.utils.parseEther('100'));
                     await addOperator(
                         `BananaOperator${i}`,
                         testers[i].address,
                         ethers.utils.randomBytes(64)
                     );
-                    await stakeOperator(i, testers[i], "100");
+                    await stakeOperator(i, testers[i], '100');
                 }
             });
 
             class TestCase {
                 message: string;
                 fn: Function;
-                constructor (message: string, fn: Function) {
+                constructor(message: string, fn: Function) {
                     this.message = message;
                     this.fn = fn;
                 }
@@ -959,35 +959,35 @@ describe("Starting to test LidoMatic contract", () => {
 
             const testCases: Array<TestCase> = [
                 {
-                    message: "stop operator",
+                    message: 'stop operator',
                     fn: async function () {
                         await stopOperator(1);
-                    }
+                    },
                 },
                 {
-                    message: "unstake operator",
+                    message: 'unstake operator',
                     fn: async function () {
                         await nodeOperatorRegistry
                             .connect(testers[1])
                             .unstake();
-                    }
-                }
+                    },
+                },
             ];
 
             for (let index = 0; index < testCases.length; index++) {
                 const { message, fn } = testCases[index];
 
-                it(index + "-" + message, async () => {
+                it(index + '-' + message, async () => {
                     // set lower bound
                     await lidoMatic.setDelegationLowerBound(5);
 
                     // users submit
                     const numOfUsers = 3;
                     for (let i = 1; i <= numOfUsers; i++) {
-                        await mint(testers[i], ethers.utils.parseEther("100"));
+                        await mint(testers[i], ethers.utils.parseEther('100'));
                         await submit(
                             testers[i],
-                            ethers.utils.parseEther("100")
+                            ethers.utils.parseEther('100')
                         );
                     }
 
@@ -1008,7 +1008,7 @@ describe("Starting to test LidoMatic contract", () => {
                     );
 
                     // transfer to validatorShare Eth to test with.
-                    const claimesAmount = ethers.utils.parseEther("100");
+                    const claimesAmount = ethers.utils.parseEther('100');
                     const token = await lidoNFT.owner2Tokens(
                         lidoMatic.address,
                         0
@@ -1023,27 +1023,27 @@ describe("Starting to test LidoMatic contract", () => {
 
                     // claimTokens2LidoMatic
                     expect(await lidoMatic.claimTokens2LidoMatic(token))
-                        .emit(lidoMatic, "ClaimTokensEvent")
+                        .emit(lidoMatic, 'ClaimTokensEvent')
                         .withArgs(lidoMatic.address, token, claimesAmount, 0);
 
-                    expect(await lidoMatic.totalBuffered(), "totalBuffered").eq(
+                    expect(await lidoMatic.totalBuffered(), 'totalBuffered').eq(
                         buffered.add(claimesAmount)
                     );
                 });
             }
         });
-        describe("Fail cases", async () => {
-            it("Fail withdraw delay not reached", async () => {
+        describe('Fail cases', async () => {
+            it('Fail withdraw delay not reached', async () => {
                 // stake operator
                 const numOperators = 1;
                 for (let i = 1; i <= numOperators; i++) {
-                    await mint(testers[i], ethers.utils.parseEther("100"));
+                    await mint(testers[i], ethers.utils.parseEther('100'));
                     await addOperator(
                         `BananaOperator${i}`,
                         testers[i].address,
                         ethers.utils.randomBytes(64)
                     );
-                    await stakeOperator(i, testers[i], "100");
+                    await stakeOperator(i, testers[i], '100');
                 }
 
                 await lidoMatic.setDelegationLowerBound(1);
@@ -1051,8 +1051,8 @@ describe("Starting to test LidoMatic contract", () => {
                 // users submit
                 const numOfUsers = 3;
                 for (let i = 1; i <= numOfUsers; i++) {
-                    await mint(testers[i], ethers.utils.parseEther("100"));
-                    await submit(testers[i], ethers.utils.parseEther("100"));
+                    await mint(testers[i], ethers.utils.parseEther('100'));
+                    await submit(testers[i], ethers.utils.parseEther('100'));
                 }
 
                 // delegate
@@ -1064,7 +1064,7 @@ describe("Starting to test LidoMatic contract", () => {
                 const token = await lidoNFT.owner2Tokens(lidoMatic.address, 0);
                 await expect(
                     lidoMatic.claimTokens2LidoMatic(token)
-                ).revertedWith("Not able to claim yet");
+                ).revertedWith('Not able to claim yet');
             });
         });
     });

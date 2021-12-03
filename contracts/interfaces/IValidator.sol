@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 import "../Validator.sol";
 
 /// @title IValidator.
-/// @author 2021 Shardlabs
+/// @author 2021 ShardLabs
 /// @notice Validator interface.
 interface IValidator {
     /// @notice Allows to stake a validator on the Polygon stakeManager contract.

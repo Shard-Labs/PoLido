@@ -1,11 +1,11 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 import "../lib/Operator.sol";
 
 /// @title INodeOperatorRegistry
-/// @author 2021 Shardlabs
+/// @author 2021 ShardLabs
 /// @notice Node operator registry interface
 interface INodeOperatorRegistry {
     /// @notice Allows to add a new node operator to the system.
@@ -172,7 +172,8 @@ interface INodeOperatorRegistry {
 
     /// @notice Allows to get all the active operators info.
     function getOperatorInfos(bool _rewardData)
-        external view
+        external
+        view
         returns (Operator.OperatorInfo[] memory);
 
     /// @notice Allows to get reward percentage per operator.

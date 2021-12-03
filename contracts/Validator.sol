@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
@@ -10,8 +10,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
+
 /// @title ValidatorImplementation
-/// @author 2021 Shardlabs.
+/// @author 2021 ShardLabs.
 /// @notice The validator contract is a simple implementation of the stakeManager API, the
 /// ValidatorProxies use this contract to interact with the stakeManager.
 /// When a ValidatorProxy calls this implementation the state is copied
@@ -89,7 +90,7 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _amount,
         bool _stakeRewards,
         uint256 amountStaked
-    ) external override isOperator returns (bool, uint256){
+    ) external override isOperator returns (bool, uint256) {
         INodeOperatorRegistry no = getOperator();
         IStakeManager stakeManager = IStakeManager(no.getStakeManager());
 
@@ -258,7 +259,7 @@ contract Validator is IERC721Receiver, IValidator {
     /// @return Returns the version.
     function version() external pure returns (string memory) {
         return "1.0.0";
-    }   
+    }
 
     /// @notice Implement @openzeppelin/contracts/token/ERC721/IERC721Receiver.sol interface.
     function onERC721Received(
