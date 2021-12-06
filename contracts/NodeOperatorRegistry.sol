@@ -31,7 +31,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice The node operator struct
-    /// @param status node operator status(INACTIVE, ACTIVE, CLAIMED, UNSTAKED, EXIT).
+    /// @param status node operator status(INACTIVE, ACTIVE, STOPPED, UNSTAKED, CLAIMED and EXIT).
     /// @param name node operator name.
     /// @param rewardAddress Validator public key used for access control and receive rewards.
     /// @param validatorId validator id of this node operator on the polygon stake manager.
@@ -65,7 +65,6 @@ contract NodeOperatorRegistry is
         keccak256("LIDO_REMOVE_OPERATOR");
     bytes32 public constant PAUSE_OPERATOR_ROLE =
         keccak256("LIDO_PAUSE_OPERATOR");
-    bytes32 public constant MANAGER_ROLE = keccak256("LIDO_MANAGER");
     bytes32 public constant DAO_ROLE = keccak256("LIDO_DAO");
 
     /// @notice contract version.
@@ -126,13 +125,6 @@ contract NodeOperatorRegistry is
     mapping(uint256 => NodeOperator) private operators;
 
     /// --------------------------- Modifiers-----------------------------------
-
-    /// @notice Check if the msg.sender has permission.
-    /// @param _role role needed to call function.
-    modifier userHasRole(bytes32 _role) {
-        require(hasRole(_role, msg.sender), "Permission not found");
-        _;
-    }
 
     /// @notice Check if the amount is inbound.
     /// @param _amount amount to stake.
@@ -197,7 +189,6 @@ contract NodeOperatorRegistry is
         _setupRole(REMOVE_OPERATOR_ROLE, msg.sender);
         _setupRole(PAUSE_OPERATOR_ROLE, msg.sender);
         _setupRole(DAO_ROLE, msg.sender);
-        _setupRole(MANAGER_ROLE, msg.sender);
     }
 
     /// ----------------------------- API --------------------------------------
@@ -219,7 +210,7 @@ contract NodeOperatorRegistry is
         external
         override
         whenNotPaused
-        userHasRole(ADD_OPERATOR_ROLE)
+        onlyRole(ADD_OPERATOR_ROLE)
         checkIfRewardAddressIsUsed(_rewardAddress)
     {
         require(_signerPubkey.length == 64, "Invalid Public Key");
@@ -258,7 +249,7 @@ contract NodeOperatorRegistry is
     function stopOperator(uint256 _operatorId)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyRole(DAO_ROLE)
     {
         NodeOperator storage no = operators[_operatorId];
         require(no.rewardAddress != address(0), "The Operator doesn't exist");
@@ -292,7 +283,7 @@ contract NodeOperatorRegistry is
         external
         override
         whenNotPaused
-        userHasRole(REMOVE_OPERATOR_ROLE)
+        onlyRole(REMOVE_OPERATOR_ROLE)
     {
         NodeOperator storage no = operators[_operatorId];
         NodeOperatorStatus status = no.status;
@@ -534,7 +525,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows to top up heimdall fees.
     /// @dev the operator's owner can topUp the heimdall fees by calling the
-    /// topUpForFee, but before that he/she need to approve the amount of heimdall
+    /// topUpForFee, but before that NodeOperator need to approve the amount of heimdall
     /// fees to his validatorProxy.
     /// @param _heimdallFee amount
     function topUpForFee(uint256 _heimdallFee)
@@ -703,7 +694,7 @@ contract NodeOperatorRegistry is
     function setDefaultMaxDelegateLimit(uint256 _defaultMaxDelegateLimit)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyRole(DAO_ROLE)
         checkMaxDelegationLimit(_defaultMaxDelegateLimit)
     {
         defaultMaxDelegateLimit = _defaultMaxDelegateLimit;
@@ -715,7 +706,7 @@ contract NodeOperatorRegistry is
     function setMaxDelegateLimit(uint256 _operatorId, uint256 _maxDelegateLimit)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyRole(DAO_ROLE)
         checkMaxDelegationLimit(_maxDelegateLimit)
     {
         NodeOperator storage no = operators[_operatorId];
@@ -730,7 +721,7 @@ contract NodeOperatorRegistry is
     function setSlashingDelay(uint256 _slashingDelay)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyRole(DAO_ROLE)
     {
         slashingDelay = _slashingDelay;
     }
@@ -739,7 +730,7 @@ contract NodeOperatorRegistry is
     function setCommissionRate(uint256 _commissionRate)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyRole(DAO_ROLE)
     {
         commissionRate = _commissionRate;
     }
@@ -749,7 +740,7 @@ contract NodeOperatorRegistry is
     function updateOperatorCommissionRate(
         uint256 _operatorId,
         uint256 _newCommissionRate
-    ) external override userHasRole(DAO_ROLE) {
+    ) external override onlyRole(DAO_ROLE) {
         NodeOperator storage no = operators[_operatorId];
         require(
             no.rewardAddress != address(0) ||
@@ -775,7 +766,7 @@ contract NodeOperatorRegistry is
     function setStakeAmountAndFees(
         uint256 _minAmountStake,
         uint256 _minHeimdallFees
-    ) external override userHasRole(DAO_ROLE) {
+    ) external override onlyRole(DAO_ROLE) {
         require(_minAmountStake >= minAmountStake, "Invalid amount");
         require(_minHeimdallFees >= minHeimdallFees, "Invalid heimdallFees");
 
@@ -784,27 +775,27 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows to pause the contract.
-    function pause() external override userHasRole(PAUSE_OPERATOR_ROLE) {
+    function pause() external override onlyRole(PAUSE_OPERATOR_ROLE) {
         _pause();
     }
 
     /// @notice Allows to unpause the contract.
-    function unpause() external override userHasRole(PAUSE_OPERATOR_ROLE) {
+    function unpause() external override onlyRole(PAUSE_OPERATOR_ROLE) {
         _unpause();
     }
 
     /// @notice Allows to toggle restake.
-    function setRestake(bool _restake) external override userHasRole(DAO_ROLE) {
+    function setRestake(bool _restake) external override onlyRole(DAO_ROLE) {
         allowsRestake = _restake;
     }
 
     /// @notice Allows to toggle unjail.
-    function setUnjail(bool _unjail) external override userHasRole(DAO_ROLE) {
+    function setUnjail(bool _unjail) external override onlyRole(DAO_ROLE) {
         allowsUnjail = _unjail;
     }
 
     /// @notice Allows to set the stMATIC contract address.
-    function setLido(address _stMATIC) external override userHasRole(DAO_ROLE) {
+    function setLido(address _stMATIC) external override onlyRole(DAO_ROLE) {
         stMATIC = _stMATIC;
     }
 
@@ -812,7 +803,7 @@ contract NodeOperatorRegistry is
     function setValidatorFactory(address _validatorFactory)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyRole(DAO_ROLE)
     {
         validatorFactory = _validatorFactory;
     }
@@ -821,7 +812,7 @@ contract NodeOperatorRegistry is
     function setStakeManager(address _stakeManager)
         external
         override
-        userHasRole(DAO_ROLE)
+        onlyRole(DAO_ROLE)
     {
         stakeManager = _stakeManager;
     }
@@ -831,7 +822,7 @@ contract NodeOperatorRegistry is
     function setVersion(string memory _version)
         external
         override
-        userHasRole(MANAGER_ROLE)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         version = _version;
     }
@@ -940,7 +931,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows listing all the operator's status by checking if the local stakedAmount
     /// is not equal to the stakedAmount on stake manager.
-    function getIfOperatorsWasSlashed()
+    function getIfOperatorsWereSlashed()
         external
         view
         override

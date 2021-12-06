@@ -188,5 +188,5 @@ interface INodeOperatorRegistry {
 
     /// @notice Allows listing all the operator's status by checking if the local stakedAmount
     /// is not equal to the stakedAmount on stake manager.
-    function getIfOperatorsWasSlashed() external view returns (bool[] memory);
+    function getIfOperatorsWereSlashed() external view returns (bool[] memory);
 }

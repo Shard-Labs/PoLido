@@ -238,6 +238,12 @@ contract Validator is IERC721Receiver, IValidator {
         erc721.safeTransferFrom(address(this), _rewardAddress, _validatorId);
     }
 
+    /// @notice Allows a validator that was already staked on the polygon stake manager
+    /// to join the Lido system.
+    /// @param _validatorId validator id
+    /// @param _stakeManagerNFT address of the staking NFT
+    /// @param _rewardAddress address that will receive the rewards from staking
+    /// @param _newCommissionRate commission rate
     function join(
         uint256 _validatorId,
         address _stakeManagerNFT,

@@ -71,10 +71,13 @@ contract StMATIC is
         uint8 insurance;
     }
 
-    // Document the remaining arguments
     /**
-     * @param _token - Address of MATIC token on Ethereum Mainnet
      * @param _nodeOperator - Address of the node operator
+     * @param _token - Address of MATIC token on Ethereum Mainnet
+     * @param _dao - Address of the DAO
+     * @param _insurance - Address of the insurance
+     * @param _stakeManager - Address of the stake manager
+     * @param _lidoNFT - Address of the lido NFT
      */
     function initialize(
         address _nodeOperator,
@@ -218,7 +221,7 @@ contract StMATIC is
                 currentAmount2WithdrawInMatic = 0;
             }
         }
-        
+
         _burn(msg.sender, _amount);
         emit RequestWithdrawEvent(msg.sender, _amount);
     }
