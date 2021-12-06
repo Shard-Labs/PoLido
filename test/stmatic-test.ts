@@ -636,7 +636,7 @@ describe("Starting to test StMATIC contract", () => {
             }
             const balanceAfter = await mockERC20.balanceOf(testers[i].address);
 
-            expect(balanceAfter.lt(ethers.utils.parseEther(withdrawAmounts[i])))
+            expect(balanceAfter.lte(ethers.utils.parseEther(withdrawAmounts[i])))
                 .to.be.true;
         }
     });

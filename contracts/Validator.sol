@@ -51,11 +51,12 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _heimdallFee,
         bool _acceptDelegation,
         bytes memory _signerPubkey,
-        uint256 _commissionRate
+        uint256 _commissionRate,
+        address _stakeManager,
+        address _polygonERC20
     ) external override isOperator returns (uint256, address) {
-        INodeOperatorRegistry no = getOperator();
-        IStakeManager stakeManager = IStakeManager(no.getStakeManager());
-        IERC20 polygonERC20 = IERC20(no.getPolygonERC20());
+        IStakeManager stakeManager = IStakeManager(_stakeManager);
+        IERC20 polygonERC20 = IERC20(_polygonERC20);
 
         uint256 totalAmount = _amount + _heimdallFee;
         polygonERC20.safeTransferFrom(_sender, address(this), totalAmount);
@@ -89,13 +90,14 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _validatorId,
         uint256 _amount,
         bool _stakeRewards,
-        uint256 amountStaked
+        uint256 amountStaked,
+        address _stakeManager,
+        address _polygonERC20
     ) external override isOperator returns (bool, uint256) {
-        INodeOperatorRegistry no = getOperator();
-        IStakeManager stakeManager = IStakeManager(no.getStakeManager());
+        IStakeManager stakeManager = IStakeManager(_stakeManager);
 
         if (_amount > 0) {
-            IERC20 polygonERC20 = IERC20(no.getPolygonERC20());
+            IERC20 polygonERC20 = IERC20(_polygonERC20);
             polygonERC20.safeTransferFrom(_sender, address(this), _amount);
             polygonERC20.safeApprove(address(stakeManager), _amount);
         }
@@ -110,21 +112,26 @@ contract Validator is IERC721Receiver, IValidator {
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @param _validatorId validatorId.
-    function unstake(uint256 _validatorId) external override isOperator {
-        IStakeManager(getOperator().getStakeManager()).unstake(_validatorId);
+    function unstake(uint256 _validatorId, address _stakeManager)
+        external
+        override
+        isOperator
+    {
+        // stakeManager
+        IStakeManager(_stakeManager).unstake(_validatorId);
     }
 
     /// @notice Allows a validator to top-up the heimdall fees.
     /// @param _sender address that approved the _heimdallFee amount.
     /// @param _heimdallFee amount.
-    function topUpForFee(address _sender, uint256 _heimdallFee)
-        external
-        override
-        isOperator
-    {
-        INodeOperatorRegistry no = getOperator();
-        IStakeManager stakeManager = IStakeManager(no.getStakeManager());
-        IERC20 polygonERC20 = IERC20(no.getPolygonERC20());
+    function topUpForFee(
+        address _sender,
+        uint256 _heimdallFee,
+        address _stakeManager,
+        address _polygonERC20
+    ) external override isOperator {
+        IStakeManager stakeManager = IStakeManager(_stakeManager);
+        IERC20 polygonERC20 = IERC20(_polygonERC20);
 
         polygonERC20.safeTransferFrom(_sender, address(this), _heimdallFee);
         polygonERC20.safeApprove(address(stakeManager), _heimdallFee);
@@ -135,16 +142,15 @@ contract Validator is IERC721Receiver, IValidator {
     /// owner can request withdraw. The rewards are transfered to the _rewardAddress.
     /// @param _validatorId validator id.
     /// @param _rewardAddress reward address.
-    function withdrawRewards(uint256 _validatorId, address _rewardAddress)
-        external
-        override
-        isOperator
-        returns (uint256)
-    {
-        INodeOperatorRegistry no = getOperator();
-        IStakeManager(no.getStakeManager()).withdrawRewards(_validatorId);
+    function withdrawRewards(
+        uint256 _validatorId,
+        address _rewardAddress,
+        address _stakeManager,
+        address _polygonERC20
+    ) external override isOperator returns (uint256) {
+        IStakeManager(_stakeManager).withdrawRewards(_validatorId);
 
-        IERC20 polygonERC20 = IERC20(no.getPolygonERC20());
+        IERC20 polygonERC20 = IERC20(_polygonERC20);
         uint256 balance = polygonERC20.balanceOf(address(this));
         polygonERC20.safeTransfer(_rewardAddress, balance);
 
@@ -155,17 +161,17 @@ contract Validator is IERC721Receiver, IValidator {
     /// to the owner rewardAddress.
     /// @param _validatorId validator id.
     /// @param _rewardAddress rewardAddress address.
-    function unstakeClaim(uint256 _validatorId, address _rewardAddress)
-        external
-        override
-        isOperator
-        returns (uint256)
-    {
-        INodeOperatorRegistry no = getOperator();
-        IStakeManager stakeManager = IStakeManager(no.getStakeManager());
+    function unstakeClaim(
+        uint256 _validatorId,
+        address _rewardAddress,
+        address _stakeManager,
+        address _polygonERC20
+    ) external override isOperator returns (uint256) {
+        IStakeManager stakeManager = IStakeManager(_stakeManager);
         stakeManager.unstakeClaim(_validatorId);
-
-        IERC20 polygonERC20 = IERC20(no.getPolygonERC20());
+        // polygonERC20
+        // stakeManager
+        IERC20 polygonERC20 = IERC20(_polygonERC20);
         uint256 balance = polygonERC20.balanceOf(address(this));
         polygonERC20.safeTransfer(_rewardAddress, balance);
 
@@ -175,15 +181,12 @@ contract Validator is IERC721Receiver, IValidator {
     /// @notice Allows to update signer publickey.
     /// @param _validatorId validator id.
     /// @param _signerPubkey new publickey.
-    function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
-        external
-        override
-        isOperator
-    {
-        IStakeManager(getOperator().getStakeManager()).updateSigner(
-            _validatorId,
-            _signerPubkey
-        );
+    function updateSigner(
+        uint256 _validatorId,
+        bytes memory _signerPubkey,
+        address _stakeManager
+    ) external override isOperator {
+        IStakeManager(_stakeManager).updateSigner(_validatorId, _signerPubkey);
     }
 
     /// @notice Allows withdraw heimdall fees.
@@ -194,13 +197,14 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _accumFeeAmount,
         uint256 _index,
         bytes memory _proof,
-        address _rewardAddress
+        address _rewardAddress,
+        address _stakeManager,
+        address _polygonERC20
     ) external override isOperator {
-        INodeOperatorRegistry no = getOperator();
-        IStakeManager stakeManager = IStakeManager(no.getStakeManager());
+        IStakeManager stakeManager = IStakeManager(_stakeManager);
         stakeManager.claimFee(_accumFeeAmount, _index, _proof);
 
-        IERC20 polygonERC20 = IERC20(no.getPolygonERC20());
+        IERC20 polygonERC20 = IERC20(_polygonERC20);
         uint256 balance = polygonERC20.balanceOf(address(this));
         polygonERC20.safeTransfer(_rewardAddress, balance);
     }
@@ -210,9 +214,10 @@ contract Validator is IERC721Receiver, IValidator {
     /// @param _newCommissionRate new commission rate.
     function updateCommissionRate(
         uint256 _validatorId,
-        uint256 _newCommissionRate
+        uint256 _newCommissionRate,
+        address _stakeManager
     ) public override isOperator {
-        IStakeManager(getOperator().getStakeManager()).updateCommissionRate(
+        IStakeManager(_stakeManager).updateCommissionRate(
             _validatorId,
             _newCommissionRate
         );
@@ -220,8 +225,12 @@ contract Validator is IERC721Receiver, IValidator {
 
     /// @notice Allows to unjail a validator.
     /// @param _validatorId validator id
-    function unjail(uint256 _validatorId) external override isOperator {
-        IStakeManager(getOperator().getStakeManager()).unjail(_validatorId);
+    function unjail(uint256 _validatorId, address _stakeManager)
+        external
+        override
+        isOperator
+    {
+        IStakeManager(_stakeManager).unjail(_validatorId);
     }
 
     /// @notice Allows to transfer the validator nft token to the reward address a validator.
@@ -238,7 +247,7 @@ contract Validator is IERC721Receiver, IValidator {
         erc721.safeTransferFrom(address(this), _rewardAddress, _validatorId);
     }
 
-    /// @notice Allows a validator that was already staked on the polygon stake manager
+     /// @notice Allows a validator that was already staked on the polygon stake manager
     /// to join the Lido system.
     /// @param _validatorId validator id
     /// @param _stakeManagerNFT address of the staking NFT
@@ -248,17 +257,12 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _validatorId,
         address _stakeManagerNFT,
         address _rewardAddress,
-        uint256 _newCommissionRate
+        uint256 _newCommissionRate,
+        address _stakeManager
     ) external override isOperator {
         IERC721 erc721 = IERC721(_stakeManagerNFT);
         erc721.safeTransferFrom(_rewardAddress, address(this), _validatorId);
-        updateCommissionRate(_validatorId, _newCommissionRate);
-    }
-
-    /// @notice Allows to get the operator contract interface.
-    /// @return Returns the node operator contract interface.
-    function getOperator() internal view returns (INodeOperatorRegistry) {
-        return INodeOperatorRegistry(operator);
+        updateCommissionRate(_validatorId, _newCommissionRate, _stakeManager);
     }
 
     /// @notice Allows to get the version of the validator implementation.

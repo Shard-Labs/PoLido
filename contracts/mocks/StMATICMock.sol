@@ -8,10 +8,15 @@ contract StMATICMock {
     address operator;
 
     function withdrawTotalDelegated(address _validatorShare) external pure {
-        require(_validatorShare != address(0), "IStMATIC error");
+        require(_validatorShare != address(0), "ILido error");
     }
 
     function setOperator(address _operator) public {
         operator = _operator;
+    }
+
+    function claimTokens2LidoMatic(address _validatorShare) public {
+        require(operator != address(0), "Operator address not set");
+        INodeOperatorRegistry(operator).exitOperator(_validatorShare);
     }
 }

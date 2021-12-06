@@ -117,11 +117,8 @@ interface INodeOperatorRegistry {
         uint256 _minHeimdallFees
     ) external;
 
-    /// @notice Allows to pause th node operator contract.
-    function pause() external;
-
-    /// @notice Allows to unpause th node operator contract.
-    function unpause() external;
+    /// @notice Allows to pause/unpause th node operator contract.
+    function togglePause() external;
 
     /// @notice Allows the DAO to enable/disable restake.
     function setRestake(bool _restake) external;
@@ -129,8 +126,8 @@ interface INodeOperatorRegistry {
     /// @notice Allows the DAO to enable/disable unjail.
     function setUnjail(bool _unjail) external;
 
-    /// @notice Allows the DAO to set stMATIC contract.
-    function setLido(address _stMATIC) external;
+    /// @notice Allows the DAO to set lido contract.
+    function setLido(address _lido) external;
 
     /// @notice Allows the DAO to set validator factory contract.
     function setValidatorFactory(address _validatorFactory) external;
@@ -141,20 +138,15 @@ interface INodeOperatorRegistry {
     /// @notice Allows to set contract version.
     function setVersion(string memory _version) external;
 
-    /// @notice Allows an operator's owner to get the validator proxy address.
-    function getOwnerValidatorProxy() external view returns (address);
-
-    /// @notice Allows to get the validatorFactory address.
-    function getValidatorFactory() external view returns (address);
-
-    /// @notice Allows to get the stake manager address.
-    function getStakeManager() external view returns (address);
-
-    /// @notice Allows to get the Matic address.
-    function getPolygonERC20() external view returns (address);
-
-    /// @notice Allows to get the stMATIC address.
-    function getLido() external view returns (address);
+    function getContracts()
+        external
+        view
+        returns (
+            address _validatorFactory,
+            address _stakeManager,
+            address _polygonERC20,
+            address _lido
+        );
 
     /// @notice Allows to get stats.
     function getState()
@@ -167,6 +159,7 @@ interface INodeOperatorRegistry {
             uint256 _totalStoppedNodeOperator,
             uint256 _totalUnstakedNodeOperator,
             uint256 _totalClaimedNodeOperator,
+            uint256 _totalWaitNodeOperator,
             uint256 _totalExitNodeOperator
         );
 
@@ -176,17 +169,20 @@ interface INodeOperatorRegistry {
         view
         returns (Operator.OperatorInfo[] memory);
 
-    /// @notice Allows to get reward percentage per operator.
-    function getRewardPercentage(address _rewardAddress)
-        external
-        view
-        returns (uint8);
-
     /// @notice Allows slashing all the operators if the local stakedAmount is not equal
     /// to the stakedAmount on stake manager.
     function slashOperators(bool[] memory _slashedOperatorIds) external;
 
     /// @notice Allows listing all the operator's status by checking if the local stakedAmount
     /// is not equal to the stakedAmount on stake manager.
-    function getIfOperatorsWereSlashed() external view returns (bool[] memory);
+    function getIfOperatorsWasSlashed() external view returns (bool[] memory);
+
+    /// @notice Allows update an operator status from WAIT to EXIT
+    function exitOperator(address _validatorShare) external;
+
+    /// @notice Allows to get all the operator ids.
+    function getOperatorIds() external view returns (uint256[] memory);
+
+    /// @notice Allows to get an node operator validatorShare contracts.
+    function getNodeOperatorState() external view returns (address[] memory);
 }
