@@ -92,6 +92,7 @@ interface IStakeManager {
     ) external;
 
     /// @notice Allows to unjail a validator.
+    /// @param _validatorId id of the validator that is to be unjailed
     function unjail(uint256 _validatorId) external;
 
     /// @notice Returns a withdrawal delay.

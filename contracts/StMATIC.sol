@@ -59,7 +59,7 @@ contract StMATIC is
     bytes32 public constant DAO = keccak256("DAO");
 
     struct RequestWithdraw {
-        uint256 amount2WithdrawFromLidoMatic;
+        uint256 amount2WithdrawFromStMATIC;
         uint256 validatorNonce;
         uint256 requestTime;
         address validatorAddress;
@@ -77,7 +77,7 @@ contract StMATIC is
      * @param _dao - Address of the DAO
      * @param _insurance - Address of the insurance
      * @param _stakeManager - Address of the stake manager
-     * @param _lidoNFT - Address of the stMATIC NFT
+     * @param _poLidoNFT - Address of the stMATIC NFT
      */
     function initialize(
         address _nodeOperator,
@@ -85,7 +85,7 @@ contract StMATIC is
         address _dao,
         address _insurance,
         address _stakeManager,
-        address _lidoNFT
+        address _poLidoNFT
     ) public initializer {
         __AccessControl_init();
         __Pausable_init();
@@ -96,7 +96,7 @@ contract StMATIC is
 
         nodeOperator = INodeOperatorRegistry(_nodeOperator);
         stakeManager = IStakeManager(_stakeManager);
-        poLidoNFT = IPoLidoNFT(_lidoNFT);
+        poLidoNFT = IPoLidoNFT(_poLidoNFT);
         dao = _dao;
         token = _token;
         insurance = _insurance;
@@ -332,7 +332,7 @@ contract StMATIC is
                 IERC20Upgradeable(token).balanceOf(address(this)) -
                 balanceBeforeClaim;
         } else {
-            amountToClaim = usersRequest.amount2WithdrawFromLidoMatic;
+            amountToClaim = usersRequest.amount2WithdrawFromStMATIC;
 
             reservedFunds -= amountToClaim;
             totalBuffered -= amountToClaim;
@@ -437,7 +437,7 @@ contract StMATIC is
      * StMATIC contract
      * @param _tokenId - Id of the token that is supposed to be claimed
      */
-    function claimTokens2LidoMatic(uint256 _tokenId) external whenNotPaused {
+    function claimTokens2StMatic(uint256 _tokenId) external whenNotPaused {
         RequestWithdraw storage lidoRequests = token2WithdrawRequest[_tokenId];
 
         require(
@@ -724,10 +724,10 @@ contract StMATIC is
 
     /**
      * @dev Function that sets the poLidoNFT address
-     * @param _lidoNFT new poLidoNFT address
+     * @param _poLidoNFT new poLidoNFT address
      */
-    function setLidoNFT(address _lidoNFT) external onlyRole(DAO) {
-        poLidoNFT = IPoLidoNFT(_lidoNFT);
+    function setPoLidoNFT(address _poLidoNFT) external onlyRole(DAO) {
+        poLidoNFT = IPoLidoNFT(_poLidoNFT);
     }
 
     /**

@@ -106,6 +106,7 @@ interface INodeOperatorRegistry {
     function setCommissionRate(uint256 _commissionRate) external;
 
     /// @notice Allows the DAO to set _commissionRate for an operator.
+    /// @param _operatorId id of the operator
     /// @param _newCommissionRate new commission rate
     function updateOperatorCommissionRate(
         uint256 _operatorId,
@@ -118,7 +119,7 @@ interface INodeOperatorRegistry {
         uint256 _minHeimdallFees
     ) external;
 
-    /// @notice Allows to pause/unpause th node operator contract.
+    /// @notice Allows to pause/unpause the node operator contract.
     function togglePause() external;
 
     /// @notice Allows the DAO to enable/disable restake.
@@ -139,6 +140,7 @@ interface INodeOperatorRegistry {
     /// @notice Allows to set contract version.
     function setVersion(string memory _version) external;
 
+    /// @notice Get the stMATIC contract addresses
     function getContracts()
         external
         view

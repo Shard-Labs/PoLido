@@ -26,10 +26,11 @@ const main = async () => {
     await poLidoNFT.setStMATIC(stMATIC.address);
 
     await stMATIC.deployed();
-    const lidoMaticImplAddress =
-        await upgrades.erc1967.getImplementationAddress(stMATIC.address);
+    const stMATICImplAddress = await upgrades.erc1967.getImplementationAddress(
+        stMATIC.address
+    );
 
-    console.log('StMATIC Implementation address:', lidoMaticImplAddress);
+    console.log('StMATIC Implementation address:', stMATICImplAddress);
     console.log('StMATIC Proxy address:', stMATIC.address);
 
     // Update nodeOperatorLido address

@@ -158,7 +158,7 @@ contract PoLidoNFT is
         stMATIC = _stMATIC;
     }
 
-    /// @notice Set LidoNFT version
+    /// @notice Set PoLidoNFT version
     /// @param _version - New version that will be set
     function setVersion(string calldata _version) external onlyOwner {
         version = _version;

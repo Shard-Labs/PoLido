@@ -40,7 +40,7 @@ contract NodeOperatorRegistry is
     /// @param slashed the number of times this operator was slashed, will be decreased after the slashedTimestamp + slashingDelay < block.timestamp.
     /// @param slashedTimestamp the timestamp when the operator was slashed.
     /// @param statusUpdatedTimestamp the timestamp when the operator updated the status (ex: INACTIVE -> ACTIVE)
-    /// @param maxDelegateLimit max delegation limit that LidoMatic contract will delegate to this operator each time delegate function is called.
+    /// @param maxDelegateLimit max delegation limit that StMatic contract will delegate to this operator each time delegate function is called.
     struct NodeOperator {
         NodeOperatorStatus status;
         string name;
@@ -274,7 +274,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows to switch an operator status from WAIT to EXIT.
-    /// this function should only be called by the LidoMatic contract inside claimTokens2LidoMatic.
+    /// this function should only be called by the StMatic contract inside claimTokens2StMatic.
     function exitOperator(address _validatorShare) external override {
         checkCondition(msg.sender == stMATIC, "Caller is not stMATIC contract");
 
@@ -332,7 +332,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows a validator that was already staked on the polygon stake manager
-    /// to join the StMATIC system.
+    /// to join the PoLido protocol.
     function joinOperator() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
@@ -465,7 +465,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
-    /// @dev when the operators's owner wants to quite the StMATIC system he can call
+    /// @dev when the operators's owner wants to quite the PoLido protocol he can call
     /// the unstake func, in this case, the operator status is set to UNSTAKED.
     function unstake() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
@@ -748,6 +748,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows the dao to update commission rate for an operator.
+    /// @param _operatorId id of the operator
     /// @param _newCommissionRate new commission rate
     function updateOperatorCommissionRate(
         uint256 _operatorId,
@@ -805,7 +806,7 @@ contract NodeOperatorRegistry is
         allowsUnjail = _unjail;
     }
 
-    /// @notice Allows to set the stMATIC contract address.
+    /// @notice Allows to set the StMATIC contract address.
     function setStMATIC(address _stMATIC)
         external
         override
@@ -1093,11 +1094,14 @@ contract NodeOperatorRegistry is
         return percentage > 0 ? percentage : 1;
     }
 
-    function checkCondition(bool _condition, string memory message)
+    /// @notice Checks condition and displays the message
+    /// @param _condition a condition
+    /// @param _message message to display
+    function checkCondition(bool _condition, string memory _message)
         private
         pure
     {
-        require(_condition, message);
+        require(_condition, _message);
     }
 
     /// @notice Retrieve the operator struct based on the operatorId

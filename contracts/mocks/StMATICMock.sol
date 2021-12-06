@@ -15,7 +15,7 @@ contract StMATICMock {
         operator = _operator;
     }
 
-    function claimTokens2LidoMatic(address _validatorShare) public {
+    function claimTokens2StMatic(address _validatorShare) public {
         require(operator != address(0), "Operator address not set");
         INodeOperatorRegistry(operator).exitOperator(_validatorShare);
     }

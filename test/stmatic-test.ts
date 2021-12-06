@@ -78,19 +78,19 @@ describe("Starting to test StMATIC contract", () => {
             const signerERC20 = mockERC20.connect(signer);
             await signerERC20.approve(stMATIC.address, amount);
 
-            const signerLidoMatic = stMATIC.connect(signer);
-            await signerLidoMatic.submit(amount);
+            const signerStMATIC = stMATIC.connect(signer);
+            await signerStMATIC.submit(amount);
         };
 
         requestWithdraw = async (signer, amount) => {
-            const signerLidoMatic = stMATIC.connect(signer);
-            await signerLidoMatic.approve(stMATIC.address, amount);
-            await signerLidoMatic.requestWithdraw(amount);
+            const signerStMATIC = stMATIC.connect(signer);
+            await signerStMATIC.approve(stMATIC.address, amount);
+            await signerStMATIC.requestWithdraw(amount);
         };
 
         claimTokens = async (signer, tokenId) => {
-            const signerLidoMatic = stMATIC.connect(signer);
-            await signerLidoMatic.claimTokens(tokenId);
+            const signerStMATIC = stMATIC.connect(signer);
+            await signerStMATIC.claimTokens(tokenId);
         };
 
         slash = async (validatorId, percentage) => {
@@ -940,7 +940,7 @@ describe("Starting to test StMATIC contract", () => {
         });
     });
 
-    describe("claimTokens2LidoMatic", async () => {
+    describe("claimTokens2StMatic", async () => {
         describe("Success cases", async () => {
             // stake node operator
             const numOperators = 1;
@@ -1029,8 +1029,8 @@ describe("Starting to test StMATIC contract", () => {
                         claimesAmount
                     );
 
-                    // claimTokens2LidoMatic
-                    expect(await stMATIC.claimTokens2LidoMatic(token))
+                    // claimTokens2StMatic
+                    expect(await stMATIC.claimTokens2StMatic(token))
                         .emit(stMATIC, "ClaimTokensEvent")
                         .withArgs(stMATIC.address, token, claimesAmount, 0);
 
@@ -1068,9 +1068,9 @@ describe("Starting to test StMATIC contract", () => {
                 await mockStakeManager.setEpoch(1);
                 await stopOperator(1);
 
-                // claimTokens2LidoMatic before withdraw delay is reached.
+                // claimTokens2StMatic before withdraw delay is reached.
                 const token = await poLidoNFT.owner2Tokens(stMATIC.address, 0);
-                await expect(stMATIC.claimTokens2LidoMatic(token)).revertedWith(
+                await expect(stMATIC.claimTokens2StMatic(token)).revertedWith(
                     "Not able to claim yet"
                 );
             });

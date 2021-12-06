@@ -615,17 +615,17 @@ describe("NodeOperator", function () {
                 "getNodeOperator(address)"
             ].call(this, user1Address);
 
-            await stMATICMockContract.claimTokens2LidoMatic(no.validatorShare);
+            await stMATICMockContract.claimTokens2StMatic(no.validatorShare);
 
             no = await nodeOperatorRegistryContract[
                 "getNodeOperator(address)"
             ].call(this, user2Address);
-            await stMATICMockContract.claimTokens2LidoMatic(no.validatorShare);
+            await stMATICMockContract.claimTokens2StMatic(no.validatorShare);
 
             no = await nodeOperatorRegistryContract[
                 "getNodeOperator(address)"
             ].call(this, user3Address);
-            await stMATICMockContract.claimTokens2LidoMatic(no.validatorShare);
+            await stMATICMockContract.claimTokens2StMatic(no.validatorShare);
 
             await checkStats(3, 0, 0, 0, 0, 0, 0, 3);
         });
@@ -642,7 +642,7 @@ describe("NodeOperator", function () {
             ).revertedWith("Caller is not stMATIC contract");
 
             await expect(
-                stMATICMockContract.claimTokens2LidoMatic(
+                stMATICMockContract.claimTokens2StMatic(
                     ethers.constants.AddressZero
                 )
             ).revertedWith("Operator not found");
@@ -651,7 +651,7 @@ describe("NodeOperator", function () {
                 "getNodeOperator(address)"
             ].call(this, user1Address);
             await expect(
-                stMATICMockContract.claimTokens2LidoMatic(no.validatorShare)
+                stMATICMockContract.claimTokens2StMatic(no.validatorShare)
             ).revertedWith("Invalid status");
         });
 
@@ -1082,12 +1082,12 @@ describe("NodeOperator", function () {
             no = await nodeOperatorRegistryContract[
                 "getNodeOperator(address)"
             ].call(this, user1Address);
-            await stMATICMockContract.claimTokens2LidoMatic(no.validatorShare);
+            await stMATICMockContract.claimTokens2StMatic(no.validatorShare);
 
             no = await nodeOperatorRegistryContract[
                 "getNodeOperator(address)"
             ].call(this, user2Address);
-            await stMATICMockContract.claimTokens2LidoMatic(no.validatorShare);
+            await stMATICMockContract.claimTokens2StMatic(no.validatorShare);
 
             await checkStats(3, 0, 0, 0, 0, 0, 0, 3);
 
@@ -1209,12 +1209,12 @@ describe("NodeOperator", function () {
             no = await nodeOperatorRegistryContract[
                 "getNodeOperator(address)"
             ].call(this, user2Address);
-            await stMATICMockContract.claimTokens2LidoMatic(no.validatorShare);
+            await stMATICMockContract.claimTokens2StMatic(no.validatorShare);
 
             no = await nodeOperatorRegistryContract[
                 "getNodeOperator(address)"
             ].call(this, user3Address);
-            await stMATICMockContract.claimTokens2LidoMatic(no.validatorShare);
+            await stMATICMockContract.claimTokens2StMatic(no.validatorShare);
 
             res = await nodeOperatorRegistryContract.getNodeOperatorState();
             expect(res.length).eq(1);
@@ -1229,7 +1229,7 @@ describe("NodeOperator", function () {
             no = await nodeOperatorRegistryContract[
                 "getNodeOperator(address)"
             ].call(this, user1Address);
-            await stMATICMockContract.claimTokens2LidoMatic(no.validatorShare);
+            await stMATICMockContract.claimTokens2StMatic(no.validatorShare);
 
             res = await nodeOperatorRegistryContract.getNodeOperatorState();
             expect(res.length).eq(0);

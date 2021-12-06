@@ -33,6 +33,8 @@ interface IValidator {
     /// @param amount amount to stake.
     /// @param stakeRewards restake rewards.
     /// @param amountStaked total amount staked by the operator in stake manager.
+    /// @param _stakeManager stake manager address
+    /// @param _polygonERC20 address of the MATIC token
     function restake(
         address _sender,
         uint256 validatorId,
@@ -46,11 +48,14 @@ interface IValidator {
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
     /// @param _validatorId validatorId.
+    /// @param _stakeManager address of the stake manager
     function unstake(uint256 _validatorId, address _stakeManager) external;
 
     /// @notice Allows to top up heimdall fees.
     /// @param _heimdallFee amount
     /// @param _sender msg.sender
+    /// @param _stakeManager stake manager address
+    /// @param _polygonERC20 address of the MATIC token
     function topUpForFee(
         address _sender,
         uint256 _heimdallFee,
@@ -62,6 +67,9 @@ interface IValidator {
     /// @dev Allows to withdraw rewards from the validator using the _validatorId. Only the
     /// owner can request withdraw in this the owner is this contract.
     /// @param _validatorId validator id.
+    /// @param _rewardAddress user address used to transfer the staked tokens.
+    /// @param _stakeManager stake manager address
+    /// @param _polygonERC20 address of the MATIC token
     /// @return Returns the amount transfered to the user.
     function withdrawRewards(
         uint256 _validatorId,
@@ -85,6 +93,7 @@ interface IValidator {
     /// @notice Allows to update the signer pubkey
     /// @param _validatorId validator id
     /// @param _signerPubkey update signer public key
+    /// @param _stakeManager stake manager address
     function updateSigner(
         uint256 _validatorId,
         bytes memory _signerPubkey,
@@ -95,6 +104,9 @@ interface IValidator {
     /// @param _accumFeeAmount accumulated fees amount
     /// @param _index index
     /// @param _proof proof
+    /// @param _ownerRecipient owner recipient
+    /// @param _stakeManager stake manager address
+    /// @param _polygonERC20 address of the MATIC token
     function claimFee(
         uint256 _accumFeeAmount,
         uint256 _index,
@@ -107,6 +119,7 @@ interface IValidator {
     /// @notice Allows to update the commision rate of a validator
     /// @param _validatorId operator id
     /// @param _newCommissionRate commission rate
+    /// @param _stakeManager stake manager address
     function updateCommissionRate(
         uint256 _validatorId,
         uint256 _newCommissionRate,
@@ -128,7 +141,7 @@ interface IValidator {
     ) external;
 
     /// @notice Allows a validator that was already staked on the polygon stake manager
-    /// to join the StMATIC system.
+    /// to join the PoLido protocol.
     /// @param _validatorId validator id
     /// @param _stakeManagerNFT address of the staking NFT
     /// @param _rewardAddress address that will receive the rewards from staking

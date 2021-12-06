@@ -83,14 +83,16 @@ contract Validator is IERC721Receiver, IValidator {
     /// @param _validatorId validator id.
     /// @param _amount amount to stake.
     /// @param _stakeRewards restake rewards.
-    /// @param amountStaked total amount staked by the operator in stake manager.
+    /// @param _amountStaked total amount staked by the operator in stake manager.
+    /// @param _stakeManager stake manager address
+    /// @param _polygonERC20 address of the MATIC token
     /// @return return a bool and the new total amount staked in stake manager.
     function restake(
         address _sender,
         uint256 _validatorId,
         uint256 _amount,
         bool _stakeRewards,
-        uint256 amountStaked,
+        uint256 _amountStaked,
         address _stakeManager,
         address _polygonERC20
     ) external override isOperator returns (bool, uint256) {
@@ -101,7 +103,7 @@ contract Validator is IERC721Receiver, IValidator {
             polygonERC20.safeTransferFrom(_sender, address(this), _amount);
             polygonERC20.safeApprove(address(stakeManager), _amount);
         }
-        if (stakeManager.validatorStake(_validatorId) != amountStaked) {
+        if (stakeManager.validatorStake(_validatorId) != _amountStaked) {
             return (false, 0);
         }
 
@@ -112,6 +114,7 @@ contract Validator is IERC721Receiver, IValidator {
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @param _validatorId validatorId.
+    /// @param _stakeManager address of the stake manager
     function unstake(uint256 _validatorId, address _stakeManager)
         external
         override
@@ -124,6 +127,8 @@ contract Validator is IERC721Receiver, IValidator {
     /// @notice Allows a validator to top-up the heimdall fees.
     /// @param _sender address that approved the _heimdallFee amount.
     /// @param _heimdallFee amount.
+    /// @param _stakeManager stake manager address
+    /// @param _polygonERC20 address of the MATIC token
     function topUpForFee(
         address _sender,
         uint256 _heimdallFee,
@@ -142,6 +147,8 @@ contract Validator is IERC721Receiver, IValidator {
     /// owner can request withdraw. The rewards are transfered to the _rewardAddress.
     /// @param _validatorId validator id.
     /// @param _rewardAddress reward address.
+    /// @param _stakeManager stake manager address
+    /// @param _polygonERC20 address of the MATIC token
     function withdrawRewards(
         uint256 _validatorId,
         address _rewardAddress,
@@ -161,6 +168,8 @@ contract Validator is IERC721Receiver, IValidator {
     /// to the owner rewardAddress.
     /// @param _validatorId validator id.
     /// @param _rewardAddress rewardAddress address.
+    /// @param _stakeManager stake manager address
+    /// @param _polygonERC20 address of the MATIC token
     function unstakeClaim(
         uint256 _validatorId,
         address _rewardAddress,
@@ -181,6 +190,7 @@ contract Validator is IERC721Receiver, IValidator {
     /// @notice Allows to update signer publickey.
     /// @param _validatorId validator id.
     /// @param _signerPubkey new publickey.
+    /// @param _stakeManager stake manager address
     function updateSigner(
         uint256 _validatorId,
         bytes memory _signerPubkey,
@@ -212,6 +222,7 @@ contract Validator is IERC721Receiver, IValidator {
     /// @notice Allows to update commission rate of a validator.
     /// @param _validatorId validator id.
     /// @param _newCommissionRate new commission rate.
+    /// @param _stakeManager stake manager address
     function updateCommissionRate(
         uint256 _validatorId,
         uint256 _newCommissionRate,
@@ -248,7 +259,7 @@ contract Validator is IERC721Receiver, IValidator {
     }
 
     /// @notice Allows a validator that was already staked on the polygon stake manager
-    /// to join the StMATIC system.
+    /// to join the PoLido protocol.
     /// @param _validatorId validator id
     /// @param _stakeManagerNFT address of the staking NFT
     /// @param _rewardAddress address that will receive the rewards from staking
