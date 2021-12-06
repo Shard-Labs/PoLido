@@ -11,20 +11,24 @@ contract LidoNFT is
     ERC721Upgradeable,
     ERC721PausableUpgradeable
 {
-    // lido contract
-    address public lido;
+    address public stMATIC;
     uint256 public tokenIdIndex;
     string public version;
 
+    // maps the address to array of the owned tokens
     mapping(address => uint256[]) public owner2Tokens;
+    // token can be owned by only one address at the time, therefore tokenId is present in only one of those arrays in the mapping
+    // this mapping stores the index of the tokenId in one of those arrays
     mapping(uint256 => uint256) public token2Index;
 
+    // maps the address to array of the tokens that are approved to this address
     mapping(address => uint256[]) public address2Approved;
+    // token can be approved to only one address at the time, therefore tokenId is present in only one of those arrays in the mapping
+    // this mapping stores the index of the tokenId in one of those arrays
     mapping(uint256 => uint256) public tokenId2ApprovedIndex;
 
-    // check if poLido contract is the caller
     modifier isLido() {
-        require(msg.sender == poLido, "Caller is not poLido contract");
+        require(msg.sender == stMATIC, "Caller is not stMATIC contract");
         _;
     }
 
@@ -40,7 +44,11 @@ contract LidoNFT is
         __ERC721Pausable_init_unchained();
     }
 
-    /// @notice Mint token.
+    /**
+     * @dev Increments the token supply and mints the token based on that index
+     * @param _to - Address that will be the owner of minted token
+     * @return Index of the minted token
+     */
     function mint(address _to) external isLido returns (uint256) {
         uint256 currentIndex = tokenIdIndex;
         currentIndex++;
@@ -52,31 +60,32 @@ contract LidoNFT is
         return currentIndex;
     }
 
-    /// @notice Burn token.
+    /**
+     * @dev Burn the token with specified _tokenId
+     * @param _tokenId - Id of the token that will be burned
+     */
     function burn(uint256 _tokenId) external isLido {
         _burn(_tokenId);
     }
 
-    function approve(address to, uint256 tokenId) public override {
-        // Check if this token was ever approved before
-        // If it was retrieve the address that this token was approved to
-        // Retrieve the old owners approved token array
-        // Retrieve the index of that token inside the old approved token array
-        // Delete the tokenId at the retrieved index from the old approved array
-        if (getApproved(tokenId) != address(0)) {
-            _removeApproval(tokenId);
+    /**
+     * @notice Override of the approve function
+     * @param _to - Address that the token will be approved to
+     * @param _tokenId - Id of the token that will be approved to _to
+     */
+    function approve(address _to, uint256 _tokenId) public override {
+        // If this token was approved before, remove it from the mapping of approvals
+        if (getApproved(_tokenId) != address(0)) {
+            _removeApproval(_tokenId);
         }
 
-        super.approve(to, tokenId);
+        super.approve(_to, _tokenId);
 
-        // Retrieve the array of the address that this token will be approved to
-        // Push this tokenId to the retrieved array
-        // Update the tokens index by seeting it to the retrieved array.length - 1
-        // Update the approval status of the approved token
-        uint256[] storage approvedTokens = address2Approved[to];
-
-        approvedTokens.push(tokenId);
-        tokenId2ApprovedIndex[tokenId] = approvedTokens.length - 1;
+        uint256[] storage approvedTokens = address2Approved[_to];
+        
+        // Add the new approved token to the mapping 
+        approvedTokens.push(_tokenId);
+        tokenId2ApprovedIndex[_tokenId] = approvedTokens.length - 1;
     }
 
     function _beforeTokenTransfer(
@@ -128,7 +137,11 @@ contract LidoNFT is
         }
     }
 
-    // isApprovedOrOwner check if the spender is owner or an approved.
+    /**
+     * @dev Check if the spender is the owner or is the tokenId approved to him
+     * @param _spender - Address that will be checked
+     * @param _tokenId - Token id that will be checked against _spender
+     */
     function isApprovedOrOwner(address _spender, uint256 _tokenId)
         external
         view
@@ -137,9 +150,12 @@ contract LidoNFT is
         return _isApprovedOrOwner(_spender, _tokenId);
     }
 
-    /// @notice Set StMATIC contract
-    function setLido(address _poLido) external onlyOwner {
-        poLido = _poLido;
+    /**
+     * @dev Set stMATIC contract address
+     * @param _stMATIC - address of the stMATIC contract
+     */
+    function setLido(address _stMATIC) external onlyOwner {
+        stMATIC = _stMATIC;
     }
 
     /// @notice Set LidoNFT version
@@ -148,7 +164,11 @@ contract LidoNFT is
         version = _version;
     }
 
-    /// @notice Retrieve owned tokens by address
+    /**
+     * @dev Retrieve the array of owned tokens
+     * @param _address - Address for which the tokens will be retrieved
+     * @return - Array of owned tokens
+     */
     function getOwnedTokens(address _address)
         public
         view
@@ -157,7 +177,11 @@ contract LidoNFT is
         return owner2Tokens[_address];
     }
 
-    /// @notice Retrieve approved tokens by address
+    /**
+     * @dev Retrieve the array of approved tokens
+     * @param _address - Address for which the tokens will be retrieved
+     * @return - Array of approved tokens
+     */
     function getApprovedTokens(address _address)
         public
         view
@@ -166,6 +190,10 @@ contract LidoNFT is
         return address2Approved[_address];
     }
 
+    /**
+     * @dev Remove the tokenId from the specific users array of approved tokens
+     * @param _tokenId - Id of the token that will be removed
+     */
     function _removeApproval(uint256 _tokenId) internal {
         uint256[] storage lastApprovedTokens = address2Approved[
             getApproved(_tokenId)

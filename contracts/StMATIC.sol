@@ -218,6 +218,7 @@ contract StMATIC is
                 currentAmount2WithdrawInMatic = 0;
             }
         }
+        
         _burn(msg.sender, _amount);
         emit RequestWithdrawEvent(msg.sender, _amount);
     }
@@ -600,8 +601,8 @@ contract StMATIC is
     }
 
     /**
-     * @dev Function that converts arbitrary StMatic to Matic
-     * @param _balance - Balance in StMatic
+     * @dev Function that converts arbitrary stMatic to Matic
+     * @param _balance - Balance in stMatic
      * @return Balance in Matic
      */
     function convertStMaticToMatic(uint256 _balance)
@@ -620,12 +621,16 @@ contract StMATIC is
         return balanceInMATIC;
     }
 
+    /**
+     * @dev Function that converts arbitrary Matic to stMatic
+     * @param _balance - Balance in Matic
+     * @return Balance in stMatic
+     */
     function convertMaticToStMatic(uint256 _balance)
         public
         view
         returns (uint256)
     {
-        //uint256 totalShares = totalSupply() - lockedAmountStMatic;
         uint256 totalShares = totalSupply();
         totalShares = totalShares == 0 ? 1 : totalShares;
 

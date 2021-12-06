@@ -91,8 +91,8 @@ contract NodeOperatorRegistry is
     address private stakeManager;
     /// @notice polygonERC20 token (Matic) address.
     address private polygonERC20;
-    /// @notice poLido address.
-    address private poLido;
+    /// @notice stMATIC address.
+    address private stMATIC;
 
     /// @notice min amount allowed to stake per validator.
     uint256 public minAmountStake;
@@ -274,7 +274,7 @@ contract NodeOperatorRegistry is
             totalInactiveNodeOperator--;
             totalExitNodeOperator++;
         } else if (status == NodeOperatorStatus.ACTIVE) {
-            IStMATIC(poLido).withdrawTotalDelegated(no.validatorShare);
+            IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
             no.status = NodeOperatorStatus.STOPPED;
             totalActiveNodeOperator--;
             totalStoppedNodeOperator++;
@@ -470,7 +470,7 @@ contract NodeOperatorRegistry is
         IValidator(no.validatorProxy).unstake(no.validatorId);
 
         // request withdraw from validatorShare
-        IStMATIC(poLido).withdrawTotalDelegated(no.validatorShare);
+        IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
 
         no.status = NodeOperatorStatus.UNSTAKED;
         no.statusUpdatedTimestamp = block.timestamp;
@@ -803,9 +803,9 @@ contract NodeOperatorRegistry is
         allowsUnjail = _unjail;
     }
 
-    /// @notice Allows to set the poLido contract address.
-    function setLido(address _poLido) external override userHasRole(DAO_ROLE) {
-        poLido = _poLido;
+    /// @notice Allows to set the stMATIC contract address.
+    function setLido(address _stMATIC) external override userHasRole(DAO_ROLE) {
+        stMATIC = _stMATIC;
     }
 
     /// @notice Allows to set the validator factory contract address.
@@ -884,9 +884,9 @@ contract NodeOperatorRegistry is
         return polygonERC20;
     }
 
-    /// @notice Get the poLido contract address.
+    /// @notice Get the stMATIC contract address.
     function getLido() external view override returns (address) {
-        return poLido;
+        return stMATIC;
     }
 
     /// @notice Get the global state
