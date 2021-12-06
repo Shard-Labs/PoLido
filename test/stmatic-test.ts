@@ -224,9 +224,9 @@ describe("Starting to test StMATIC contract", () => {
         )) as StMATIC;
         await stMATIC.deployed();
 
-        await poLidoNFT.setLido(stMATIC.address);
+        await poLidoNFT.setStMATIC(stMATIC.address);
         await validatorFactory.setOperator(nodeOperatorRegistry.address);
-        await nodeOperatorRegistry.setLido(stMATIC.address);
+        await nodeOperatorRegistry.setStMATIC(stMATIC.address);
     });
 
     it("Should submit successfully", async () => {
@@ -636,8 +636,9 @@ describe("Starting to test StMATIC contract", () => {
             }
             const balanceAfter = await mockERC20.balanceOf(testers[i].address);
 
-            expect(balanceAfter.lte(ethers.utils.parseEther(withdrawAmounts[i])))
-                .to.be.true;
+            expect(
+                balanceAfter.lte(ethers.utils.parseEther(withdrawAmounts[i]))
+            ).to.be.true;
         }
     });
 
@@ -646,7 +647,6 @@ describe("Starting to test StMATIC contract", () => {
         await expect(stMATIC.delegate()).to.be.revertedWith("Pausable: paused");
     });
 
-    // todo test with totalBuffred != 0
     describe("Distribute rewards", async () => {
         describe("Success cases", async () => {
             const numOperators = 3;

@@ -106,6 +106,7 @@ interface INodeOperatorRegistry {
     function setCommissionRate(uint256 _commissionRate) external;
 
     /// @notice Allows the DAO to set _commissionRate for an operator.
+    /// @param _newCommissionRate new commission rate
     function updateOperatorCommissionRate(
         uint256 _operatorId,
         uint256 _newCommissionRate
@@ -126,8 +127,8 @@ interface INodeOperatorRegistry {
     /// @notice Allows the DAO to enable/disable unjail.
     function setUnjail(bool _unjail) external;
 
-    /// @notice Allows the DAO to set lido contract.
-    function setLido(address _lido) external;
+    /// @notice Allows the DAO to set stMATIC contract.
+    function setStMATIC(address _stMATIC) external;
 
     /// @notice Allows the DAO to set validator factory contract.
     function setValidatorFactory(address _validatorFactory) external;
@@ -145,7 +146,7 @@ interface INodeOperatorRegistry {
             address _validatorFactory,
             address _stakeManager,
             address _polygonERC20,
-            address _lido
+            address _stMATIC
         );
 
     /// @notice Allows to get stats.
@@ -175,7 +176,7 @@ interface INodeOperatorRegistry {
 
     /// @notice Allows listing all the operator's status by checking if the local stakedAmount
     /// is not equal to the stakedAmount on stake manager.
-    function getIfOperatorsWasSlashed() external view returns (bool[] memory);
+    function getIfOperatorsWereSlashed() external view returns (bool[] memory);
 
     /// @notice Allows update an operator status from WAIT to EXIT
     function exitOperator(address _validatorShare) external;

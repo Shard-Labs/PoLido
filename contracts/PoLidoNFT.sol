@@ -82,8 +82,8 @@ contract PoLidoNFT is
         super.approve(_to, _tokenId);
 
         uint256[] storage approvedTokens = address2Approved[_to];
-        
-        // Add the new approved token to the mapping 
+
+        // Add the new approved token to the mapping
         approvedTokens.push(_tokenId);
         tokenId2ApprovedIndex[_tokenId] = approvedTokens.length - 1;
     }
@@ -154,7 +154,7 @@ contract PoLidoNFT is
      * @dev Set stMATIC contract address
      * @param _stMATIC - address of the stMATIC contract
      */
-    function setLido(address _stMATIC) external onlyOwner {
+    function setStMATIC(address _stMATIC) external onlyOwner {
         stMATIC = _stMATIC;
     }
 

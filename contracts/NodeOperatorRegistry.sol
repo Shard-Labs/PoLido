@@ -332,7 +332,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows a validator that was already staked on the polygon stake manager
-    /// to join the Lido system.
+    /// to join the StMATIC system.
     function joinOperator() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
@@ -465,7 +465,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
-    /// @dev when the operators's owner wants to quite the Lido system he can call
+    /// @dev when the operators's owner wants to quite the StMATIC system he can call
     /// the unstake func, in this case, the operator status is set to UNSTAKED.
     function unstake() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
@@ -530,7 +530,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows to top up heimdall fees.
     /// @dev the operator's owner can topUp the heimdall fees by calling the
-    /// topUpForFee, but before that he/she need to approve the amount of heimdall
+    /// topUpForFee, but before that node operator needs to approve the amount of heimdall
     /// fees to his validatorProxy.
     /// @param _heimdallFee amount
     function topUpForFee(uint256 _heimdallFee)
@@ -806,7 +806,11 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows to set the stMATIC contract address.
-    function setLido(address _stMATIC) external override userHasRole(DAO_ROLE) {
+    function setStMATIC(address _stMATIC)
+        external
+        override
+        userHasRole(DAO_ROLE)
+    {
         stMATIC = _stMATIC;
     }
 
@@ -896,7 +900,7 @@ contract NodeOperatorRegistry is
         return adds;
     }
 
-    /// @notice Get the poLido contract addresses
+    /// @notice Get the stMATIC contract addresses
     function getContracts()
         external
         view
@@ -970,7 +974,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows listing all the operator's status by checking if the local stakedAmount
     /// is not equal to the stakedAmount on stake manager.
-    function getIfOperatorsWasSlashed()
+    function getIfOperatorsWereSlashed()
         external
         view
         override

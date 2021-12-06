@@ -16,5 +16,5 @@ interface IPoLidoNFT is IERC721 {
         view
         returns (bool);
 
-    function setLido(address _stMATIC) external;
+    function setStMATIC(address _stMATIC) external;
 }

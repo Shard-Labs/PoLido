@@ -77,7 +77,7 @@ contract StMATIC is
      * @param _dao - Address of the DAO
      * @param _insurance - Address of the insurance
      * @param _stakeManager - Address of the stake manager
-     * @param _lidoNFT - Address of the lido NFT
+     * @param _lidoNFT - Address of the stMATIC NFT
      */
     function initialize(
         address _nodeOperator,
@@ -604,8 +604,8 @@ contract StMATIC is
     }
 
     /**
-     * @dev Function that converts arbitrary stMatic to Matic
-     * @param _balance - Balance in stMatic
+     * @dev Function that converts arbitrary stMATIC to Matic
+     * @param _balance - Balance in stMATIC
      * @return Balance in Matic
      */
     function convertStMaticToMatic(uint256 _balance)
@@ -625,9 +625,9 @@ contract StMATIC is
     }
 
     /**
-     * @dev Function that converts arbitrary Matic to stMatic
+     * @dev Function that converts arbitrary Matic to stMATIC
      * @param _balance - Balance in Matic
-     * @return Balance in stMatic
+     * @return Balance in stMATIC
      */
     function convertMaticToStMatic(uint256 _balance)
         public
