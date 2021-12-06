@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
 
-contract LidoNFT is
+contract PoLidoNFT is
     OwnableUpgradeable,
     ERC721Upgradeable,
     ERC721PausableUpgradeable
