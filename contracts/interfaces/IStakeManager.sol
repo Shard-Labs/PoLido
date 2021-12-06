@@ -1,9 +1,9 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 /// @title polygon stake manager interface.
-/// @author 2021 Shardlabs
+/// @author 2021 ShardLabs
 /// @notice User to interact with the polygon stake manager.
 interface IStakeManager {
     /// @notice Stake a validator on polygon stake manager.
@@ -92,6 +92,7 @@ interface IStakeManager {
     ) external;
 
     /// @notice Allows to unjail a validator.
+    /// @param _validatorId id of the validator that is to be unjailed
     function unjail(uint256 _validatorId) external;
 
     /// @notice Returns a withdrawal delay.
@@ -134,4 +135,12 @@ interface IStakeManager {
         view
         returns (Validator memory);
 
+    /// @notice Returns the address of the nft contract
+    function NFTContract() external view returns (address);
+
+    /// @notice Returns the validator accumulated rewards on stake manager.
+    function validatorReward(uint256 validatorId)
+        external
+        view
+        returns (uint256);
 }

@@ -1,49 +1,40 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 import "../interfaces/IStakeManager.sol";
+import "../helpers/ERC721Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../mocks/ValidatorShareMock.sol";
 
 contract StakeManagerMock is IStakeManager {
     struct State {
         address token;
+        address stakeNFT;
         uint256 id;
         mapping(address => uint256) validators;
         mapping(uint256 => address) Owners;
+        mapping(uint256 => uint256) stakedAmount;
+        mapping(uint256 => address) signer;
+        mapping(uint256 => address) validatorShares;
+        mapping(address => uint256) delegator2Amount;
+        uint256 epoch;
     }
 
     State private state;
 
-    event StakeFor(
-        address _user,
-        uint256 amount,
-        uint256 heimdallFee,
-        bool acceptDelegation,
-        bytes signerPubkey
-    );
-    event Unstake(address user, uint256 validatorId);
-    event TopUpForFee(address user, uint256 heimdallFee);
-    event WithdrawRewards(address user, uint256 validatorId);
-    event UnstakeClaim(address user, uint256 validatorId);
-    event UpdateSigner(address user, uint256 validatorId, bytes signerPubKey);
-    event ClaimFee(uint256 accumFeeAmount, uint256 index, bytes proof);
-    event UpdateCommissionRate(uint256 validatorId, uint256 newCommissionRate);
-    event Unjail(uint256 validatorId);
-
-    constructor(address _token) {
+    constructor(address _token, address _stakeNFT) {
         state.token = _token;
-        state.id = 0;
+        state.stakeNFT = _stakeNFT;
     }
 
     function stakeFor(
         address _user,
         uint256 _amount,
         uint256 _heimdallFee,
-        bool _acceptDelegation,
+        bool,
         bytes memory _signerPubkey
     ) external override {
-        require(msg.sender == _user, "User not valid");
         uint256 id = state.id + 1;
         state.validators[_user] = id;
         state.Owners[id] = _user;
@@ -53,13 +44,10 @@ contract StakeManagerMock is IStakeManager {
             _amount + _heimdallFee
         );
         state.id++;
-
-        emit StakeFor(
-            _user,
-            _amount,
-            _heimdallFee,
-            _acceptDelegation,
-            _signerPubkey
+        state.stakedAmount[id] = _amount;
+        state.signer[id] = address(uint160(uint256(keccak256(_signerPubkey))));
+        state.validatorShares[id] = address(
+            new ValidatorShareMock(state.token, address(this), id)
         );
     }
 
@@ -71,17 +59,14 @@ contract StakeManagerMock is IStakeManager {
         IERC20(state.token).transferFrom(msg.sender, address(this), _amount);
     }
 
-    function unstake(uint256 _validatorId) external override {
+    function unstake(uint256) external override {
         delete state.validators[msg.sender];
-        emit Unstake(msg.sender, _validatorId);
     }
 
     function topUpForFee(address _user, uint256 _heimdallFee)
         external
         override
-    {
-        emit TopUpForFee(_user, _heimdallFee);
-    }
+    {}
 
     function getValidatorId(address _user)
         external
@@ -98,54 +83,48 @@ contract StakeManagerMock is IStakeManager {
         override
         returns (address)
     {
-        return state.Owners[_validatorId];
+        return state.validatorShares[_validatorId];
     }
 
-    function withdrawRewards(uint256 _validatorId)
-        external
-        override
-        returns (uint256)
-    {
-        emit WithdrawRewards(msg.sender, _validatorId);
+    function withdrawRewards(uint256) external override returns (uint256) {
         IERC20(state.token).transfer(msg.sender, 1000);
         return 1000;
     }
 
-    function unstakeClaim(uint256 _validatorId) external override {
-        emit WithdrawRewards(msg.sender, _validatorId);
-        IERC20(state.token).transfer(msg.sender, 1100);
-        emit UnstakeClaim(msg.sender, _validatorId);
+    function unstakeClaim(uint256) external override {
+        IERC20(state.token).transfer(
+            msg.sender,
+            IERC20(state.token).balanceOf(address(this))
+        );
+        state.delegator2Amount[msg.sender] = 0;
     }
 
-    function validatorStake(uint256) external pure override returns (uint256) {
-        return 1000;
+    function validatorStake(uint256 _validatorId)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return state.stakedAmount[_validatorId];
     }
 
     function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
         external
         override
-    {
-        emit UpdateSigner(msg.sender, _validatorId, _signerPubkey);
-    }
+    {}
 
     function claimFee(
         uint256 _accumFeeAmount,
         uint256 _index,
         bytes memory _proof
-    ) external override {
-        emit ClaimFee(_accumFeeAmount, _index, _proof);
-    }
+    ) external override {}
 
     function updateCommissionRate(
         uint256 _validatorId,
         uint256 _newCommissionRate
-    ) external override {
-        emit UpdateCommissionRate(_validatorId, _newCommissionRate);
-    }
+    ) external override {}
 
-    function unjail(uint256 _validatorId) external override {
-        emit Unjail(_validatorId);
-    }
+    function unjail(uint256 _validatorId) external override {}
 
     function withdrawalDelay() external pure override returns (uint256) {
         return (2**13);
@@ -156,29 +135,34 @@ contract StakeManagerMock is IStakeManager {
         uint256 amount,
         address delegator
     ) external override returns (bool) {
-        return
-            IERC20(state.token).transferFrom(delegator, address(this), amount);
+        state.delegator2Amount[msg.sender] += amount;
+        IERC20(state.token).transferFrom(delegator, address(this), amount);
+        return IERC20(state.token).transfer(msg.sender, amount);
     }
 
-    function epoch() external pure override returns (uint256) {
-        return 0;
+    function epoch() external view override returns (uint256) {
+        return state.epoch;
     }
 
-    function validators(uint256)
+    function slash(uint256 _validatorId) external {
+        state.stakedAmount[_validatorId] -= 1 ether;
+    }
+
+    function validators(uint256 _validatorId)
         external
-        pure
+        view
         override
         returns (Validator memory)
     {
         return
             Validator({
-                amount: 0,
+                amount: state.stakedAmount[_validatorId],
                 reward: 0,
                 activationEpoch: 0,
                 deactivationEpoch: 0,
                 jailTime: 0,
-                signer: address(0),
-                contractAddress: address(0),
+                signer: state.signer[_validatorId],
+                contractAddress: state.validatorShares[_validatorId],
                 status: Status.Active,
                 commissionRate: 0,
                 lastCommissionUpdate: 0,
@@ -186,5 +170,18 @@ contract StakeManagerMock is IStakeManager {
                 delegatedAmount: 0,
                 initialRewardPerStake: 0
             });
+    }
+
+    function NFTContract() external view override returns (address) {
+        return state.stakeNFT;
+    }
+
+    /// @notice Returns the validator accumulated rewards on stake manager.
+    function validatorReward(uint256) external pure override returns (uint256) {
+        return 1000;
+    }
+
+    function setEpoch(uint256 _epoch) external {
+        state.epoch = _epoch;
     }
 }

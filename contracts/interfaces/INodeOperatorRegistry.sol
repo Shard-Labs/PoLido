@@ -1,15 +1,14 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 import "../lib/Operator.sol";
 
 /// @title INodeOperatorRegistry
-/// @author 2021 Shardlabs
+/// @author 2021 ShardLabs
 /// @notice Node operator registry interface
 interface INodeOperatorRegistry {
-    /// @notice Add a new node operator to the system.
-    /// @dev Add a new operator
+    /// @notice Allows to add a new node operator to the system.
     /// @param _name the node operator name.
     /// @param _rewardAddress public address used for ACL and receive rewards.
     /// @param _signerPubkey public key used on heimdall len 64 bytes.
@@ -19,13 +18,18 @@ interface INodeOperatorRegistry {
         bytes memory _signerPubkey
     ) external;
 
-    /// @notice Remove a node operator from the system.
-    /// @dev Remove a node operator from the system using the _id.
+    /// @notice Allows to stop a node operator.
+    /// @param _operatorId node operator id.
+    function stopOperator(uint256 _operatorId) external;
+
+    /// @notice Allows to remove a node operator from the system.
     /// @param _operatorId node operator id.
     function removeOperator(uint256 _operatorId) external;
 
-    /// @notice Allows to stake an opearator on the Polygon stakeManager
-    /// @dev Allows to stake an operator on the Polygon stakeManager.
+    /// @notice Allows a staked validator to join the system.
+    function joinOperator() external;
+
+    /// @notice Allows to stake an operator on the Polygon stakeManager.
     /// This function calls Polygon transferFrom so the totalAmount(_amount + _heimdallFee)
     /// has to be approved first.
     /// @param _amount amount to stake.
@@ -33,11 +37,15 @@ interface INodeOperatorRegistry {
     function stake(uint256 _amount, uint256 _heimdallFee) external;
 
     /// @notice Restake Matics for a validator on polygon stake manager.
-    /// @param amount amount to stake.
-    function restake(uint256 amount) external;
+    /// @param _amount amount to stake.
+    /// @param _restakeRewards restake rewards.
+    function restake(uint256 _amount, bool _restakeRewards) external;
 
-    /// @notice Allows to unstake an operator from the stakeManager.
-    /// @dev Unstake an operator from the stakeManager. After the withdraw_delay
+    /// @notice Allows the operator's owner to migrate the NFT. This can be done only
+    /// if the DAO stopped the operator.
+    function migrate() external;
+
+    /// @notice Allows to unstake an operator from the stakeManager. After the withdraw_delay
     /// the operator owner can call claimStake func to withdraw the staked tokens.
     function unstake() external;
 
@@ -50,24 +58,15 @@ interface INodeOperatorRegistry {
     function unstakeClaim() external;
 
     /// @notice Allows to get the total staked by a validator.
-    /// @param _validatorId validator id.
+    /// @param _rewardAddress reward address.
     /// @return Returns the total staked.
-    function validatorStake(uint256 _validatorId)
+    function getValidatorStake(address _rewardAddress)
         external
         view
         returns (uint256);
 
-    /// @notice Allows to get the validator id of an owner.
-    /// @param _user owner address of the validator.
-    /// @return Returns the validator id
-    function getValidatorId(address _user) external view returns (uint256);
-
-    /// @notice Allows to withdraw rewards accumulated in the stakeManager by all
-    /// the operators, then calculate the shares per operator.
-    /// @return Returns the shares of the operators and the receipient addresses
-    function withdrawRewards()
-        external
-        returns (uint256[] memory, address[] memory);
+    /// @notice Allows an owner to withdraw rewards from the stakeManager.
+    function withdrawRewards() external;
 
     /// @notice Allows to update the signer pubkey
     /// @param _signerPubkey update signer public key
@@ -83,52 +82,110 @@ interface INodeOperatorRegistry {
         bytes memory _proof
     ) external;
 
-    /// @notice Allows to update the commision rate of an operator
-    /// @param _operatorId operator id
-    /// @param _newCommissionRate commission rate
+    /// @notice Allows to unjail a validator and switch from UNSTAKE status to STAKED
+    function unjail() external;
+
+    /// @notice Allows an operator's owner to set the operator name.
+    function setOperatorName(string memory _name) external;
+
+    /// @notice Allows an operator's owner to set the operator rewardAddress.
+    function setOperatorRewardAddress(address _rewardAddress) external;
+
+    /// @notice Allows the DAO to set _defaultMaxDelegateLimit.
+    function setDefaultMaxDelegateLimit(uint256 _defaultMaxDelegateLimit)
+        external;
+
+    /// @notice Allows the DAO to set _maxDelegateLimit for an operator.
+    function setMaxDelegateLimit(uint256 _operatorId, uint256 _maxDelegateLimit)
+        external;
+
+    /// @notice Allows the DAO to set _slashingDelay.
+    function setSlashingDelay(uint256 _slashingDelay) external;
+
+    /// @notice Allows the DAO to set _commissionRate.
+    function setCommissionRate(uint256 _commissionRate) external;
+
+    /// @notice Allows the DAO to set _commissionRate for an operator.
+    /// @param _operatorId id of the operator
+    /// @param _newCommissionRate new commission rate
     function updateOperatorCommissionRate(
         uint256 _operatorId,
         uint256 _newCommissionRate
     ) external;
 
-    /// @notice Allows to unjail a validator and switch from UNSTAKE status to STAKED
-    function unjail() external;
+    /// @notice Allows the DAO to set _minAmountStake and _minHeimdallFees.
+    function setStakeAmountAndFees(
+        uint256 _minAmountStake,
+        uint256 _minHeimdallFees
+    ) external;
 
-    /// @notice The version of the actual contract.
-    /// @return return the contract version.
-    function version() external returns (string memory);
+    /// @notice Allows to pause/unpause the node operator contract.
+    function togglePause() external;
 
-    /// @notice Get the all operator ids availablein the system.
-    /// @return Return a list of operator Ids.
-    function getOperators() external returns (uint256[] memory);
+    /// @notice Allows the DAO to enable/disable restake.
+    function setRestake(bool _restake) external;
 
-    /// @notice Allows to get the validator factory address.
-    /// @return Returns the validator factory address.
-    function getValidatorFactory() external view returns (address);
+    /// @notice Allows the DAO to enable/disable unjail.
+    function setUnjail(bool _unjail) external;
 
-    /// @notice Allows to get the stake manager address.
-    /// @return Returns the stake manager address.
-    function getStakeManager() external view returns (address);
+    /// @notice Allows the DAO to set stMATIC contract.
+    function setStMATIC(address _stMATIC) external;
 
-    /// @notice Allows to get the polygon erc20 token address.
-    /// @return Returns the polygon erc20 token address.
-    function getPolygonERC20() external view returns (address);
+    /// @notice Allows the DAO to set validator factory contract.
+    function setValidatorFactory(address _validatorFactory) external;
 
-    /// @notice Allows to get the lido contract address.
-    /// @return Returns the lido contract address.
-    function getLido() external view returns (address);
+    /// @notice Allows the DAO to set stake manager contract.
+    function setStakeManager(address _stakeManager) external;
 
-    /// @notice Allows to get the validatorShare address of an operator.
-    /// @param _operatorId operator id.
-    function getOperatorShare(uint256 _operatorId) external returns (address);
+    /// @notice Allows to set contract version.
+    function setVersion(string memory _version) external;
 
-    /// @notice Allows to list all the staked operator validatorShare address and id.
-    function getOperatorShares()
+    /// @notice Get the stMATIC contract addresses
+    function getContracts()
         external
         view
-        returns (Operator.OperatorShare[] memory);
+        returns (
+            address _validatorFactory,
+            address _stakeManager,
+            address _polygonERC20,
+            address _stMATIC
+        );
 
-    /// @notice get the operator reward addresses.
-    /// @return return a list of staked operator reward addresses.
-    function getOperatorRewardAddresses() external returns (Operator.OperatorReward[] memory);
+    /// @notice Allows to get stats.
+    function getState()
+        external
+        view
+        returns (
+            uint256 _totalNodeOperator,
+            uint256 _totalInactiveNodeOperator,
+            uint256 _totalActiveNodeOperator,
+            uint256 _totalStoppedNodeOperator,
+            uint256 _totalUnstakedNodeOperator,
+            uint256 _totalClaimedNodeOperator,
+            uint256 _totalWaitNodeOperator,
+            uint256 _totalExitNodeOperator
+        );
+
+    /// @notice Allows to get all the active operators info.
+    function getOperatorInfos(bool _rewardData)
+        external
+        view
+        returns (Operator.OperatorInfo[] memory);
+
+    /// @notice Allows slashing all the operators if the local stakedAmount is not equal
+    /// to the stakedAmount on stake manager.
+    function slashOperators(bool[] memory _slashedOperatorIds) external;
+
+    /// @notice Allows listing all the operator's status by checking if the local stakedAmount
+    /// is not equal to the stakedAmount on stake manager.
+    function getIfOperatorsWereSlashed() external view returns (bool[] memory);
+
+    /// @notice Allows update an operator status from WAIT to EXIT
+    function exitOperator(address _validatorShare) external;
+
+    /// @notice Allows to get all the operator ids.
+    function getOperatorIds() external view returns (uint256[] memory);
+
+    /// @notice Allows to get an node operator validatorShare contracts.
+    function getNodeOperatorState() external view returns (address[] memory);
 }

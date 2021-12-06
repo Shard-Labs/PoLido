@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-FileCopyrightText: 2021 ShardLabs
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
 interface IValidatorShare {
@@ -42,11 +43,7 @@ interface IValidatorShare {
         uint256 amount
     ) external;
 
-    function slash(
-        uint256 valPow,
-        uint256 delegatedAmount,
-        uint256 totalAmountToSlash
-    ) external returns (uint256);
+    function slash(uint256 _amount) external;
 
     function updateDelegation(bool delegation) external;
 

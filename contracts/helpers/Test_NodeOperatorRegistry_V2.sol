@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
@@ -9,7 +9,11 @@ import "../NodeOperatorRegistry.sol";
 contract NodeOperatorRegistryV2 is NodeOperatorRegistry {
     uint256 x;
 
-    function version() public pure override returns (string memory) {
-        return "2.0.0";
+    function setX(uint256 _x) public {
+        x = _x;
+    }
+
+    function getX() public view returns (uint256) {
+        return x;
     }
 }

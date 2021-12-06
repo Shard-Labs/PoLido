@@ -1,122 +1,117 @@
-// SPDX-FileCopyrightText: 2021 Shardlabs
+// SPDX-FileCopyrightText: 2021 ShardLabs
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
-import "hardhat/console.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./ValidatorProxy.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "./interfaces/IValidatorProxy.sol";
+import "./interfaces/IValidatorFactory.sol";
 
 /// @title ValidatorFactory
-/// @author 2021 Shardlabs.
-/// @notice Allows to create an remove validator proxy that are used as validator's
-// owner on Polygon StakeManager
-contract ValidatorFactory is
-    Initializable,
-    OwnableUpgradeable
-{
-    // ====================================================================
-    // =========================== Global Vars ============================
-    // ====================================================================
-
-    address[] internal validators;
-
-    ValidatorFactoryState internal state;
-
-    /// @notice State struct
-    struct ValidatorFactoryState {
-        address operator;
-        address validatorImplementation;
-    }
-    // ====================================================================
-    // ============================== EVENTS ==============================
-    // ====================================================================
-
-    event CreateValidator(address validator);
-    event SetOperatorContract(address operator);
-    event SetValidatorImplementation(address validatorImplementation);
-
-    // ====================================================================
-    // =========================== MODIFIERS ==============================
-    // ====================================================================
-
-    /// @notice Check if the msg.sender is the owner.
-    modifier isOwner() {
-        require(owner() == msg.sender, "Permission not found");
-        _;
-    }
+/// @author 2021 ShardLabs.
+/// @notice The validator Factory is the contract that allows creating new validatorProxies
+// and managing them to update the operator and the validator implementation addresses.
+contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
+    /// @notice the list of all the validatorProxies.
+    address[] public validators;
+    /// @notice the contract version.
+    string public version;
+    /// @notice the node operator address.
+    address public operator;
+    /// @notice the validator implementation address.
+    address public validatorImplementation;
 
     /// @notice Check if the operator contract is the msg.sender.
     modifier isOperator() {
-        require(
-            state.operator == msg.sender,
-            "Caller is not the operator contract"
-        );
+        require(operator == msg.sender, "Caller is not the operator contract");
         _;
     }
-
-    // ====================================================================
-    // =========================== FUNCTIONS ==============================
-    // ====================================================================
 
     /// @notice Initialize the NodeOperator contract.
     function initialize(address _validatorImplementation) public initializer {
         __Ownable_init();
-        state.validatorImplementation = _validatorImplementation;
+
+        validatorImplementation = _validatorImplementation;
     }
 
     /// @notice Deploy a new validator contract
     /// @return return the address of the new validator contract deployed
-    function create() external isOperator returns (address) {
-        require(state.operator != address(0), "Operator contract not set");
+    function create() external override isOperator returns (address) {
+        require(operator != address(0), "Operator contract not set");
 
         // create a new validator proxy
         address proxy = address(
-            new ValidatorProxy(
-                owner(),
-                state.validatorImplementation,
-                state.operator
-            )
+            new ValidatorProxy(validatorImplementation, operator, address(this))
         );
 
         validators.push(proxy);
 
-        emit CreateValidator(proxy);
         return proxy;
     }
 
     /// @notice Remove a validator proxy from the list.
-    function remove(address _validatorProxy) external isOperator {
-        for (uint256 idx = 0; idx < validators.length; idx++) {
+    /// @param _validatorProxy validator proxy address.
+    function remove(address _validatorProxy) external override isOperator {
+        require(
+            _validatorProxy != address(0),
+            "Could not remove a zero address"
+        );
+
+        uint256 length = validators.length;
+        for (uint256 idx = 0; idx < length; idx++) {
             if (_validatorProxy == validators[idx]) {
-                validators[idx] = validators[validators.length - 1];
-                validators.pop();
+                validators[idx] = validators[length - 1];
+                break;
             }
         }
+        validators.pop();
     }
 
-    /// @notice Allows to set the NodeOperatorRegistry contract.
-    /// @dev Allows to set the NodeOperatorRegistry contract. this is done only one time.
-    function setOperatorAddress(address _operator) public isOwner {
-        state.operator = _operator;
-        emit SetOperatorContract(_operator);
+    /// @notice Allows to set the NodeOperatorRegistry address and update all the validatorProxies
+    /// with the new address.
+    /// @param _newOperator new operator address.
+    function setOperator(address _newOperator) external override onlyOwner {
+        operator = _newOperator;
+
+        uint256 length = validators.length;
+        for (uint256 idx = 0; idx < length; idx++) {
+            IValidatorProxy(validators[idx]).setOperator(_newOperator);
+        }
+
+        emit SetOperatorContract(_newOperator);
     }
 
-    /// @notice Get validators contracts.
-    /// @return return a list of deployed validator contracts.
-    function getValidators() public view returns (address[] memory) {
+    /// @notice Allows to set the validator implementation address and update all the
+    /// validatorProxies with the new address.
+    /// @param _validatorImplementation new validator implementation address.
+    function setValidatorImplementation(address _validatorImplementation)
+        external
+        override
+        onlyOwner
+    {
+        validatorImplementation = _validatorImplementation;
+
+        uint256 length = validators.length;
+        for (uint256 idx = 0; idx < length; idx++) {
+            IValidatorProxy(validators[idx]).setValidatorImplementation(
+                _validatorImplementation
+            );
+        }
+        emit SetValidatorImplementation(_validatorImplementation);
+    }
+
+    /// @notice set contract version.
+    function setVersion(string memory _version) external onlyOwner {
+        version = _version;
+    }
+
+    /// @notice Get a list of all validatorProxy contracts deployed.
+    /// @return return a list of deployed validatorProxy contracts.
+    function getValidators() external view returns (address[] memory) {
         return validators;
     }
 
-    /// @notice Alows to get the operator contract.
-    /// @dev Returns operator address.
-    function getOperator() external view returns (address) {
-        return state.operator;
-    }
-
-    /// @notice Contract version.
-    /// @dev Returns contract version.
-    function version() public view virtual returns (string memory) {
-        return "1.0.0";
-    }
+    event SetOperatorContract(address operator);
+    event SetValidatorImplementation(address validatorImplementation);
 }

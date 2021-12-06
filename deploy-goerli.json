@@ -5,12 +5,12 @@
     "treasury": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
     "matic_erc20_address": "0x499d11E0b6eAC7c0593d8Fb292DCBbF815Fb29Ae",
     "matic_stake_manager_proxy": "0x00200eA4Ee292E253E6Ca07dBA5EdC07c8Aa37A3",
-    "lido_nft_proxy": "0xEa8d63B27B1A2D2B34faa5D40b612dcaC6e586b8",
-    "lido_nft_implementation": "0x1a023c32BeE49d52cfe2A2d55440506749ab08d4",
-    "lido_matic_proxy": "0xB68d001d705df795B89456E76255eE433A5ac989",
-    "lido_matic_implementation": "0x597D3E1E1194d630DA6D61d6f6C76CCAdDd2f13E",
-    "validator_factory_proxy": "0xf8268B614f45Ce66A80d038e01c4f052cF994904",
-    "validator_factory_implementation": "0x2933F6acbF9D2A5e25Ec6B967EDf7A84031dab7a",
-    "node_operator_registry_proxy": "0x6CFd21C4cD6b2430b7Dcf4Fa24EF3d60e8Dd9895",
-    "node_operator_registry_implementation": "0x4FE766556830891D64211Ee34C92c22953bB8913"
+    "lido_nft_proxy": "0xb7f0F701473458549768753F3176411105ec9693",
+    "lido_nft_implementation": "0x3b5A3946725d49B319A58722c592cc90875219A2",
+    "stMATIC_proxy": "0x9A7c69A167160C507602ecB3Df4911e8E98e1279",
+    "stMATIC_implementation": "0x3563D6DC45c98FfA5b2a64C048C202a65895DCE6",
+    "validator_factory_proxy": "0x392C87754B73CC3A68059803D37D0387f16c8D81",
+    "validator_factory_implementation": "0x0117a088127a9Cd1f2629FD09cbB2842abA180F6",
+    "node_operator_registry_proxy": "0xb1f3f45360Cf0A30793e38C18dfefCD0d5136f9a",
+    "node_operator_registry_implementation": "0x922b32A82265e6BCDf35e26a228979F008A54e05"
 }

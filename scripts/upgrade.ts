@@ -1,13 +1,13 @@
-import { ethers, upgrades } from "hardhat";
-import * as GOERLI_DEPLOYMENT_DETAILS from "../deploy-goerli.json";
+import { ethers, upgrades } from 'hardhat';
+import * as GOERLI_DEPLOYMENT_DETAILS from '../deploy-goerli.json';
 
 const main = async () => {
-    const lidoMaticAddress = GOERLI_DEPLOYMENT_DETAILS.lido_matic;
-    const LidoMatic = await ethers.getContractFactory("LidoMatic");
-    const lidoMatic = await upgrades.upgradeProxy(lidoMaticAddress, LidoMatic);
+    const stMATICAddres = GOERLI_DEPLOYMENT_DETAILS.stMATIC_proxy;
+    const StMATIC = await ethers.getContractFactory('StMATIC');
+    const stMATIC = await upgrades.upgradeProxy(stMATICAddres, StMATIC);
 
-    console.log("LidoMatic upgraded");
-    console.log(lidoMatic.address);
+    console.log('StMATIC upgraded');
+    console.log(stMATIC.address);
 };
 
 main();

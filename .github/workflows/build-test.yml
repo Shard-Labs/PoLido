@@ -3,14 +3,14 @@ on:
   push:    
     branches:
       - main
-      - fix/refactor
+      - pre-testnet-fixes
     paths-ignore:
       - '**.md'
       - 'docs/**'
   pull_request:    
     branches:
       - main
-      - fix/token-submission
+      - pre-testnet-fixes
 jobs:
   build:
     runs-on: ubuntu-latest
