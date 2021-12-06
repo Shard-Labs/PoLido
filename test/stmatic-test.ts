@@ -375,7 +375,7 @@ describe("Starting to test StMATIC contract", () => {
     it("Should delegate and claim tokens from n delegators to 1 validator", async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
-        const withdrawAmounts: string[] = [];
+        const withdrawAmounts: BigNumber[] = [];
 
         const [minAmount, maxAmount] = [0.005, 0.01];
         const delegatorsAmount = Math.floor(Math.random() * (10 - 1)) + 1;
@@ -404,17 +404,23 @@ describe("Starting to test StMATIC contract", () => {
 
         await stMATIC.delegate();
 
-        for (let i = 0; i < delegatorsAmount; i++) {
-            withdrawAmounts.push(
-                (
-                    Math.random() * (Number(submitAmounts[i]) - minAmount) +
-                    minAmount
-                ).toFixed(3)
-            );
-            const withdrawAmountWei = ethers.utils.parseEther(
-                withdrawAmounts[i]
-            );
+        const maxWithdrawPerDelegator = (await stMATIC.getTotalPooledMatic())
+            .sub(await stMATIC.minValidatorBalance())
+            .div(delegatorsAmount);
 
+        for (let i = 0; i < delegatorsAmount; i++) {
+            const randomWithdraw = ethers.BigNumber.from(
+                ethers.utils.randomBytes(32)
+            ).mod(maxWithdrawPerDelegator);
+            const withdrawAmount = randomWithdraw.lt(
+                ethers.utils.parseEther(submitAmounts[i])
+            )
+                ? randomWithdraw
+                : ethers.utils.parseEther(submitAmounts[i]);
+
+            withdrawAmounts.push(withdrawAmount);
+
+            const withdrawAmountWei = withdrawAmounts[i];
             await requestWithdraw(testers[i], withdrawAmountWei);
             ownedTokens.push(
                 await poLidoNFT.getOwnedTokens(testers[i].address)
@@ -429,8 +435,7 @@ describe("Starting to test StMATIC contract", () => {
             await claimTokens(testers[i], ownedTokens[i][0]);
             const balanceAfter = await mockERC20.balanceOf(testers[i].address);
 
-            expect(balanceAfter.eq(ethers.utils.parseEther(withdrawAmounts[i])))
-                .to.be.true;
+            expect(balanceAfter.eq(withdrawAmounts[i])).to.be.true;
         }
     });
 
