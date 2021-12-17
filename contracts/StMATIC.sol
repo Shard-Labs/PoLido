@@ -12,6 +12,7 @@ import "./interfaces/IValidatorShare.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IPoLidoNFT.sol";
+import "./interfaces/IFxStateRootTunnel.sol";
 
 contract StMATIC is
     ERC20Upgradeable,
@@ -42,6 +43,7 @@ contract StMATIC is
     FeeDistribution public entityFees;
     IStakeManager public stakeManager;
     IPoLidoNFT public poLidoNFT;
+    IFxStateRootTunnel public fxStateRootTunnel;
 
     string public version;
     address public dao;
@@ -124,6 +126,10 @@ contract StMATIC is
         _mint(msg.sender, amountToMint);
 
         totalBuffered += _amount;
+
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encodePacked(convertStMaticToMatic(1))
+        );
 
         emit SubmitEvent(msg.sender, _amount);
 
@@ -223,6 +229,11 @@ contract StMATIC is
         }
 
         _burn(msg.sender, _amount);
+
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encodePacked(convertStMaticToMatic(1))
+        );
+
         emit RequestWithdrawEvent(msg.sender, _amount);
     }
 
@@ -399,6 +410,10 @@ contract StMATIC is
         // Add the remainder to totalBuffered
         totalBuffered += (currentBalance - totalBuffered);
 
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encodePacked(convertStMaticToMatic(1))
+        );
+
         emit DistributeRewardsEvent(totalDistributed);
     }
 
@@ -467,6 +482,10 @@ contract StMATIC is
 
         // Update totalBuffered after claiming the amount
         totalBuffered += claimedAmount;
+
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encodePacked(convertStMaticToMatic(1))
+        );
 
         emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
     }

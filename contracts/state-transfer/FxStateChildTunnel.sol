@@ -23,7 +23,7 @@ contract FxStateChildTunnel is FxBaseChildTunnel {
         latestData = data;
     }
 
-    function sendMessageToRoot(bytes memory message) public {
-        _sendMessageToRoot(message);
-    }
+    // function sendMessageToRoot(bytes memory message) public {
+    //     _sendMessageToRoot(message);
+    // }
 }
