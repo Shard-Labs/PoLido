@@ -23,6 +23,15 @@ contract FxStateChildTunnel is FxBaseChildTunnel {
         latestData = data;
     }
 
+    function stMATICToMATIC() public view returns (uint256) {
+        bytes memory latest = latestData;
+        uint256 x;
+        assembly {
+            x := mload(add(latest, 0x20))
+        }
+        return x;
+    }
+
     // function sendMessageToRoot(bytes memory message) public {
     //     _sendMessageToRoot(message);
     // }
