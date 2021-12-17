@@ -8,4 +8,6 @@ interface IFxStateRootTunnel {
     function setFxChildTunnel(address _fxChildTunnel) external;
 
     function sendMessageToChild(bytes memory message) external;
+
+    function setStMATIC(address _stMATIC) external;
 }

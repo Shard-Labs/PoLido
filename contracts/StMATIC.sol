@@ -749,6 +749,13 @@ contract StMATIC is
         poLidoNFT = IPoLidoNFT(_poLidoNFT);
     }
 
+    function setFxStateRootTunnel(address _fxStateRootTunnel)
+        external
+        onlyRole(DAO)
+    {
+        fxStateRootTunnel = IFxStateRootTunnel(_fxStateRootTunnel);
+    }
+
     /**
      * @dev Function that sets the new version
      * @param _version - New version that will be set

@@ -10,16 +10,20 @@ contract FxStateRootTunnel is FxBaseRootTunnel {
     bytes public latestData;
     address public stMATIC;
 
-    constructor(
-        address _checkpointManager,
-        address _fxRoot,
-        address _stMATIC
-    ) FxBaseRootTunnel(_checkpointManager, _fxRoot) {
-        stMATIC = _stMATIC;
-    }
+    constructor(address _checkpointManager, address _fxRoot)
+        FxBaseRootTunnel(_checkpointManager, _fxRoot)
+    {}
 
     function _processMessageFromChild(bytes memory data) internal override {
         latestData = data;
+    }
+
+    function setStMATIC(address _stMATIC) external {
+        require(
+            stMATIC == address(0x0),
+            "FxBaseRootTunnel: STMATIC_ALREADY_SET"
+        );
+        stMATIC = _stMATIC;
     }
 
     function sendMessageToChild(bytes memory message) public {
