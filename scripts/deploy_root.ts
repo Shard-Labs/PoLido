@@ -44,6 +44,10 @@ async function main () {
         "deploy-" + hre.network.name + ".json"
     );
 
+    if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, JSON.stringify({}));
+    }
+
     const goerliData: DeployDetails = JSON.parse(
         fs.readFileSync(filePath, { encoding: "utf-8" })
     );
