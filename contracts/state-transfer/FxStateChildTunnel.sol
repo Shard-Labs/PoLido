@@ -23,13 +23,19 @@ contract FxStateChildTunnel is FxBaseChildTunnel {
         latestData = data;
     }
 
-    function stMATICToMATIC() public view returns (uint256) {
+    /**
+     * @dev Function that will return the amount of stMATIC and MATIC in the PoLido protocol
+     * @return First return value is the number of stMATIC present, second value is MATIC
+     */
+    function getReserves() public view returns (uint256, uint256) {
         bytes memory latest = latestData;
-        uint256 x;
+        uint256 stMATIC;
+        uint256 MATIC;
         assembly {
-            x := mload(add(latest, 0x20))
+            stMATIC := mload(add(latest, 0x20))
+            MATIC := mload(add(latest, add(0x20, 32)))
         }
-        return x;
+        return (stMATIC, MATIC);
     }
 
     // function sendMessageToRoot(bytes memory message) public {

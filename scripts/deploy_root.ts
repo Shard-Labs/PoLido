@@ -16,11 +16,11 @@ async function main () {
     const network = await hre.ethers.provider.getNetwork();
 
     if (network.chainId === 1) {
-    // Polygon Mainnet
+    // Ethereum Mainnet
         fxRoot = config.mainnet.fxRoot.address;
         checkpointManager = config.mainnet.checkpointManager.address;
     } else if (network.chainId === 5) {
-    // Mumbai Testnet
+    // Goerli Testnet
         fxRoot = config.testnet.fxRoot.address;
         checkpointManager = config.testnet.checkpointManager.address;
     } else {

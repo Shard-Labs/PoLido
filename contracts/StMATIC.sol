@@ -121,14 +121,18 @@ contract StMATIC is
             _amount
         );
 
-        uint256 amountToMint = convertMaticToStMatic(_amount);
+        (
+            uint256 amountToMint,
+            uint256 totalShares,
+            uint256 totalPooledMatic
+        ) = convertMaticToStMatic(_amount);
 
         _mint(msg.sender, amountToMint);
 
         totalBuffered += _amount;
 
         fxStateRootTunnel.sendMessageToChild(
-            abi.encodePacked(convertStMaticToMatic(1))
+            abi.encode(totalShares + amountToMint, totalPooledMatic + _amount)
         );
 
         emit SubmitEvent(msg.sender, _amount);
@@ -145,7 +149,11 @@ contract StMATIC is
             .getOperatorInfos(false);
 
         uint256 tokenId;
-        uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
+        (
+            uint256 totalAmount2WithdrawInMatic,
+            uint256 totalShares,
+            uint256 totalPooledMATIC
+        ) = convertStMaticToMatic(_amount);
         uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
@@ -231,7 +239,10 @@ contract StMATIC is
         _burn(msg.sender, _amount);
 
         fxStateRootTunnel.sendMessageToChild(
-            abi.encodePacked(convertStMaticToMatic(1))
+            abi.encode(
+                totalShares - _amount,
+                totalPooledMATIC - totalAmount2WithdrawInMatic
+            )
         );
 
         emit RequestWithdrawEvent(msg.sender, _amount);
@@ -410,10 +421,6 @@ contract StMATIC is
         // Add the remainder to totalBuffered
         totalBuffered += (currentBalance - totalBuffered);
 
-        fxStateRootTunnel.sendMessageToChild(
-            abi.encodePacked(convertStMaticToMatic(1))
-        );
-
         emit DistributeRewardsEvent(totalDistributed);
     }
 
@@ -442,6 +449,10 @@ contract StMATIC is
             IValidatorShare(_validatorShare).unbondNonces(address(this)),
             stakeManager.epoch() + stakeManager.withdrawalDelay(),
             _validatorShare
+        );
+
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encode(totalSupply(), getTotalPooledMatic())
         );
 
         emit WithdrawTotalDelegatedEvent(_validatorShare, stakedAmount);
@@ -484,7 +495,7 @@ contract StMATIC is
         totalBuffered += claimedAmount;
 
         fxStateRootTunnel.sendMessageToChild(
-            abi.encodePacked(convertStMaticToMatic(1))
+            abi.encode(totalSupply(), getTotalPooledMatic())
         );
 
         emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
@@ -625,12 +636,16 @@ contract StMATIC is
     /**
      * @dev Function that converts arbitrary stMATIC to Matic
      * @param _balance - Balance in stMATIC
-     * @return Balance in Matic
+     * @return Balance in Matic, totalShares and totalPooledMATIC
      */
     function convertStMaticToMatic(uint256 _balance)
         public
         view
-        returns (uint256)
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
     {
         uint256 totalShares = totalSupply();
         totalShares = totalShares == 0 ? 1 : totalShares;
@@ -640,18 +655,22 @@ contract StMATIC is
 
         uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
 
-        return balanceInMATIC;
+        return (balanceInMATIC, totalShares, totalPooledMATIC);
     }
 
     /**
      * @dev Function that converts arbitrary Matic to stMATIC
      * @param _balance - Balance in Matic
-     * @return Balance in stMATIC
+     * @return Balance in stMATIC, totalShares and totalPooledMATIC
      */
     function convertMaticToStMatic(uint256 _balance)
         public
         view
-        returns (uint256)
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
     {
         uint256 totalShares = totalSupply();
         totalShares = totalShares == 0 ? 1 : totalShares;
@@ -661,7 +680,7 @@ contract StMATIC is
 
         uint256 balanceInStMatic = (_balance * totalShares) / totalPooledMatic;
 
-        return balanceInStMatic;
+        return (balanceInStMatic, totalShares, totalPooledMatic);
     }
 
     ////////////////////////////////////////////////////////////
