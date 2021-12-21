@@ -12,6 +12,7 @@ import "./interfaces/IValidatorShare.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IPoLidoNFT.sol";
+import "./interfaces/IFxStateRootTunnel.sol";
 
 contract StMATIC is
     ERC20Upgradeable,
@@ -42,6 +43,7 @@ contract StMATIC is
     FeeDistribution public entityFees;
     IStakeManager public stakeManager;
     IPoLidoNFT public poLidoNFT;
+    IFxStateRootTunnel public fxStateRootTunnel;
 
     string public version;
     address public dao;
@@ -119,11 +121,19 @@ contract StMATIC is
             _amount
         );
 
-        uint256 amountToMint = convertMaticToStMatic(_amount);
+        (
+            uint256 amountToMint,
+            uint256 totalShares,
+            uint256 totalPooledMatic
+        ) = convertMaticToStMatic(_amount);
 
         _mint(msg.sender, amountToMint);
 
         totalBuffered += _amount;
+
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encode(totalShares + amountToMint, totalPooledMatic + _amount)
+        );
 
         emit SubmitEvent(msg.sender, _amount);
 
@@ -139,7 +149,11 @@ contract StMATIC is
             .getOperatorInfos(false);
 
         uint256 tokenId;
-        uint256 totalAmount2WithdrawInMatic = convertStMaticToMatic(_amount);
+        (
+            uint256 totalAmount2WithdrawInMatic,
+            uint256 totalShares,
+            uint256 totalPooledMATIC
+        ) = convertStMaticToMatic(_amount);
         uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
@@ -223,6 +237,14 @@ contract StMATIC is
         }
 
         _burn(msg.sender, _amount);
+
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encode(
+                totalShares - _amount,
+                totalPooledMATIC - totalAmount2WithdrawInMatic
+            )
+        );
+
         emit RequestWithdrawEvent(msg.sender, _amount);
     }
 
@@ -429,6 +451,10 @@ contract StMATIC is
             _validatorShare
         );
 
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encode(totalSupply(), getTotalPooledMatic())
+        );
+
         emit WithdrawTotalDelegatedEvent(_validatorShare, stakedAmount);
     }
 
@@ -467,6 +493,10 @@ contract StMATIC is
 
         // Update totalBuffered after claiming the amount
         totalBuffered += claimedAmount;
+
+        fxStateRootTunnel.sendMessageToChild(
+            abi.encode(totalSupply(), getTotalPooledMatic())
+        );
 
         emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
     }
@@ -606,12 +636,16 @@ contract StMATIC is
     /**
      * @dev Function that converts arbitrary stMATIC to Matic
      * @param _balance - Balance in stMATIC
-     * @return Balance in Matic
+     * @return Balance in Matic, totalShares and totalPooledMATIC
      */
     function convertStMaticToMatic(uint256 _balance)
         public
         view
-        returns (uint256)
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
     {
         uint256 totalShares = totalSupply();
         totalShares = totalShares == 0 ? 1 : totalShares;
@@ -621,18 +655,22 @@ contract StMATIC is
 
         uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
 
-        return balanceInMATIC;
+        return (balanceInMATIC, totalShares, totalPooledMATIC);
     }
 
     /**
      * @dev Function that converts arbitrary Matic to stMATIC
      * @param _balance - Balance in Matic
-     * @return Balance in stMATIC
+     * @return Balance in stMATIC, totalShares and totalPooledMATIC
      */
     function convertMaticToStMatic(uint256 _balance)
         public
         view
-        returns (uint256)
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
     {
         uint256 totalShares = totalSupply();
         totalShares = totalShares == 0 ? 1 : totalShares;
@@ -642,7 +680,7 @@ contract StMATIC is
 
         uint256 balanceInStMatic = (_balance * totalShares) / totalPooledMatic;
 
-        return balanceInStMatic;
+        return (balanceInStMatic, totalShares, totalPooledMatic);
     }
 
     ////////////////////////////////////////////////////////////
@@ -728,6 +766,13 @@ contract StMATIC is
      */
     function setPoLidoNFT(address _poLidoNFT) external onlyRole(DAO) {
         poLidoNFT = IPoLidoNFT(_poLidoNFT);
+    }
+
+    function setFxStateRootTunnel(address _fxStateRootTunnel)
+        external
+        onlyRole(DAO)
+    {
+        fxStateRootTunnel = IFxStateRootTunnel(_fxStateRootTunnel);
     }
 
     /**
