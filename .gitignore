@@ -1,5 +1,4 @@
 node_modules
-.openzeppelin
 .env
 
 #Hardhat files
@@ -7,4 +6,5 @@ cache
 artifacts
 typechain
 
-.openzeppelin
+.openzeppelin/dev-*.json
+.openzeppelin/.session
