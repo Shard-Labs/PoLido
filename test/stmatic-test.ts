@@ -12,7 +12,8 @@ import {
     Validator,
     ValidatorFactory,
     FxBaseRootMock,
-    FxBaseRootMock__factory
+    FxBaseRootMock__factory,
+    SelfDestructor
 } from "../typechain";
 
 describe("Starting to test StMATIC contract", () => {
@@ -335,6 +336,37 @@ describe("Starting to test StMATIC contract", () => {
         const balanceAfter = await mockERC20.balanceOf(testers[0].address);
 
         expect(balanceAfter.sub(balanceBefore).eq(withdrawAmount)).to.be.true;
+    });
+
+    it("StMATIC stake should stay the same if an attacker sends matic to the validator", async () => {
+        const submitAmount = ethers.utils.parseEther("0.01");
+
+        await mint(testers[0], ethers.utils.parseEther("100"));
+        await addOperator(
+            "BananaOperator",
+            testers[0].address,
+            ethers.utils.randomBytes(64)
+        );
+        await stakeOperator(1, testers[0], "100");
+        await mint(testers[0], submitAmount);
+        await submit(testers[0], submitAmount);
+        await stMATIC.delegate();
+
+        const balanceBefore = await stMATIC.getTotalStakeAcrossAllValidators();
+        const operator = await nodeOperatorRegistry["getNodeOperator(uint256)"](1);
+
+        const selfDestructor = await (await ethers.getContractFactory("SelfDestructor")).deploy() as SelfDestructor;
+
+        await testers[0].sendTransaction({
+            to: selfDestructor.address,
+            value: ethers.utils.parseEther("1.0")
+        });
+
+        await selfDestructor.selfdestruct(operator.validatorShare);
+
+        const balanceAfter = await stMATIC.getTotalStakeAcrossAllValidators();
+
+        expect(balanceAfter.eq(balanceBefore)).to.be.true;
     });
 
     it("Should update minValidatorBalance correctly", async () => {

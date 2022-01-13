@@ -308,9 +308,9 @@ contract StMATIC is
         minValidatorBalance = type(uint256).max;
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
-            (uint256 validatorShare, ) = IValidatorShare(
-                operatorShares[i].validatorShare
-            ).getTotalStake(operatorShares[i].validatorShare);
+            (uint256 validatorShare, ) = getTotalStake(
+                IValidatorShare(operatorShares[i].validatorShare)
+            );
             uint256 minValidatorBalanceCurrent = (validatorShare * 10) / 100;
 
             if (
