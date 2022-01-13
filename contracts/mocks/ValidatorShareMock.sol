@@ -33,11 +33,13 @@ contract ValidatorShareMock is IValidatorShare {
     }
 
     function withdrawRewards() external override {
-        IERC20(token).transfer(
-            msg.sender,
-            IERC20(token).balanceOf(address(this)) -
-                (totalStaked + withdrawPool)
-        );
+        uint256 thisBalance = IERC20(token).balanceOf(address(this));
+        require(thisBalance > 0, "Balance is 0");
+
+        uint256 reward = thisBalance - (totalStaked + withdrawPool);
+        require(reward > minAmount(), "Reward < minAmount");
+
+        IERC20(token).transfer(msg.sender, reward);
     }
 
     function unstakeClaimTokens() external pure override {
@@ -156,5 +158,9 @@ contract ValidatorShareMock is IValidatorShare {
 
     function activeAmount() external view override returns (uint256) {
         return totalStaked;
+    }
+
+    function minAmount() public override returns (uint256) {
+        return 1 ether;
     }
 }

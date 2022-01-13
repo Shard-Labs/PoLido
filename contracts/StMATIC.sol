@@ -373,7 +373,17 @@ contract StMATIC is
             .getOperatorInfos(true);
 
         for (uint256 i = 0; i < operatorInfos.length; i++) {
-            IValidatorShare(operatorInfos[i].validatorShare).withdrawRewards();
+            IValidatorShare validatorShare = IValidatorShare(
+                operatorInfos[i].validatorShare
+            );
+            uint256 stMaticReward = validatorShare.getLiquidRewards(
+                address(this)
+            );
+            uint256 rewardThreshold = validatorShare.minAmount();
+
+            if (stMaticReward < rewardThreshold) {
+                validatorShare.withdrawRewards();
+            }
         }
 
         uint256 totalRewards = ((IERC20Upgradeable(token).balanceOf(

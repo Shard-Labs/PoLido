@@ -830,7 +830,7 @@ describe("Starting to test StMATIC contract", () => {
                 );
 
                 await expect(stMATIC.distributeRewards()).revertedWith(
-                    "Amount to distribute lower than minimum"
+                    "Reward < minAmount"
                 );
             }
         });

@@ -13,6 +13,8 @@ interface IValidatorShare {
 
     function unstakeClaimTokens() external;
 
+    function minAmount() external returns (uint256);
+
     function getLiquidRewards(address user) external view returns (uint256);
 
     function buyVoucher(uint256 _amount, uint256 _minSharesToMint)
