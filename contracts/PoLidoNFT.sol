@@ -104,6 +104,8 @@ contract PoLidoNFT is
         override(ERC721Upgradeable, ERC721PausableUpgradeable)
         whenNotPaused
     {
+        require(from != to, "Invalid operation");
+        
         super._beforeTokenTransfer(from, to, tokenId);
 
         // Minting
