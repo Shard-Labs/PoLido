@@ -346,6 +346,12 @@ contract NodeOperatorRegistry is
         checkCondition(validatorId != 0, "ValidatorId=0");
 
         IStakeManager.Validator memory poValidator = sm.validators(validatorId);
+
+        checkCondition(
+            poValidator.contractAddress != address(0),
+            "Validator has no ValidatorShare"
+        );
+        
         checkCondition(
             poValidator.status == IStakeManager.Status.Active,
             "Validator isn't ACTIVE"
