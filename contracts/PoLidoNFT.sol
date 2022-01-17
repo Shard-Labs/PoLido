@@ -6,7 +6,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
 
+import "./interfaces/IPoLidoNFT.sol";
+
 contract PoLidoNFT is
+    IPoLidoNFT,
     OwnableUpgradeable,
     ERC721Upgradeable,
     ERC721PausableUpgradeable
@@ -49,7 +52,7 @@ contract PoLidoNFT is
      * @param _to - Address that will be the owner of minted token
      * @return Index of the minted token
      */
-    function mint(address _to) external isLido returns (uint256) {
+    function mint(address _to) external override isLido returns (uint256) {
         uint256 currentIndex = tokenIdIndex;
         currentIndex++;
 
@@ -64,7 +67,7 @@ contract PoLidoNFT is
      * @dev Burn the token with specified _tokenId
      * @param _tokenId - Id of the token that will be burned
      */
-    function burn(uint256 _tokenId) external isLido {
+    function burn(uint256 _tokenId) external override isLido {
         _burn(_tokenId);
     }
 
@@ -73,7 +76,10 @@ contract PoLidoNFT is
      * @param _to - Address that the token will be approved to
      * @param _tokenId - Id of the token that will be approved to _to
      */
-    function approve(address _to, uint256 _tokenId) public override {
+    function approve(address _to, uint256 _tokenId)
+        public
+        override(ERC721Upgradeable, IERC721Upgradeable)
+    {
         // If this token was approved before, remove it from the mapping of approvals
         if (getApproved(_tokenId) != address(0)) {
             _removeApproval(_tokenId);
@@ -145,6 +151,7 @@ contract PoLidoNFT is
     function isApprovedOrOwner(address _spender, uint256 _tokenId)
         external
         view
+        override
         returns (bool)
     {
         return _isApprovedOrOwner(_spender, _tokenId);
@@ -154,7 +161,7 @@ contract PoLidoNFT is
      * @dev Set stMATIC contract address
      * @param _stMATIC - address of the stMATIC contract
      */
-    function setStMATIC(address _stMATIC) external onlyOwner {
+    function setStMATIC(address _stMATIC) external override onlyOwner {
         stMATIC = _stMATIC;
     }
 
