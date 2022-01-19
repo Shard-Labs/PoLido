@@ -10,6 +10,8 @@ import "../interfaces/IStakeManager.sol";
 contract ValidatorShareMock is IValidatorShare {
     address public token;
 
+    bool public override delegation;
+
     uint256 public totalShares;
     uint256 public withdrawPool;
     uint256 public totalStaked;
@@ -30,6 +32,7 @@ contract ValidatorShareMock is IValidatorShare {
         token = _token;
         stakeManager = IStakeManager(_stakeManager);
         validatorId = _id;
+        delegation = true;
     }
 
     function withdrawRewards() external override {
@@ -144,10 +147,6 @@ contract ValidatorShareMock is IValidatorShare {
         totalStaked -= (_amount * totalStaked) / totalAmount;
     }
 
-    function updateDelegation(bool) external pure override {
-        return;
-    }
-
     function migrateOut(address, uint256) external pure override {
         return;
     }
@@ -162,5 +161,9 @@ contract ValidatorShareMock is IValidatorShare {
 
     function minAmount() public override returns (uint256) {
         return 1 ether;
+    }
+
+    function updateDelegation(bool _delegation) external override {
+        delegation = _delegation;
     }
 }

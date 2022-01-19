@@ -524,6 +524,59 @@ describe("Starting to test StMATIC contract", () => {
         }
     });
 
+    it("Shouldn't delegate to validator if delegation flag is false", async () => {
+        const submitAmounts: string[] = [];
+
+        const [minAmount, maxAmount] = [0.001, 0.1];
+        const delegatorsAmount = 2;
+        const testersAmount = Math.floor(Math.random() * (10 - 1)) + 1;
+        for (let i = 0; i < delegatorsAmount; i++) {
+            await mint(testers[i], ethers.utils.parseEther("100"));
+
+            await addOperator(
+                `BananaOperator${i}`,
+                testers[i].address,
+                ethers.utils.randomBytes(64)
+            );
+
+            await stakeOperator(i + 1, testers[i], "10");
+        }
+
+        const validatorShareAddress = (
+            await nodeOperatorRegistry["getNodeOperator(uint256)"](1)
+        ).validatorShare;
+
+        const ValidatorShareMock = await ethers.getContractFactory(
+            "ValidatorShareMock"
+        );
+        const validatorShare = ValidatorShareMock.attach(
+            validatorShareAddress
+        ) as ValidatorShareMock;
+
+        await validatorShare.updateDelegation(false);
+
+        for (let i = 0; i < testersAmount; i++) {
+            submitAmounts.push(
+                (
+                    (Math.random() * (maxAmount - minAmount) + minAmount) *
+          delegatorsAmount
+                ).toFixed(3)
+            );
+            const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
+
+            await mint(testers[i], submitAmountWei);
+            await submit(testers[i], submitAmountWei);
+        }
+
+        await stMATIC.delegate();
+
+        const validatorShareBalance = await mockERC20.balanceOf(
+            validatorShareAddress
+        );
+
+        expect(validatorShareBalance.eq(0)).to.be.true;
+    });
+
     it("Requesting withdraw AFTER slashing should result in lower balance", async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];

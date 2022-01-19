@@ -288,19 +288,24 @@ contract StMATIC is
         uint256 amountDelegated;
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
-            uint256 amountToDelegatePerOperator = (operatorShares[i]
-                .maxDelegateLimit * totalToDelegatedAmount) /
-                maxDelegateLimitsSum;
-
-            buyVoucher(
-                operatorShares[i].validatorShare,
-                amountToDelegatePerOperator,
-                0
+            IValidatorShare validator = IValidatorShare(
+                operatorShares[i].validatorShare
             );
+            if (validator.delegation()) {
+                uint256 amountToDelegatePerOperator = (operatorShares[i]
+                    .maxDelegateLimit * totalToDelegatedAmount) /
+                    maxDelegateLimitsSum;
 
-            amountDelegated += amountToDelegatePerOperator;
+                buyVoucher(
+                    operatorShares[i].validatorShare,
+                    amountToDelegatePerOperator,
+                    0
+                );
+
+                amountDelegated += amountToDelegatePerOperator;
+            }
         }
-        
+
         remainder = availableAmountToDelegate - amountDelegated;
         totalBuffered = remainder + reservedFunds;
 

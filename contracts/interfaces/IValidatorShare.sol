@@ -17,6 +17,10 @@ interface IValidatorShare {
 
     function getLiquidRewards(address user) external view returns (uint256);
 
+    function delegation() external view returns (bool);
+
+    function updateDelegation(bool _delegation) external;
+
     function buyVoucher(uint256 _amount, uint256 _minSharesToMint)
         external
         returns (uint256);
@@ -46,8 +50,6 @@ interface IValidatorShare {
     ) external;
 
     function slash(uint256 _amount) external;
-
-    function updateDelegation(bool delegation) external;
 
     function migrateOut(address user, uint256 amount) external;
 
