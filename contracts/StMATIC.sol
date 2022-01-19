@@ -300,6 +300,7 @@ contract StMATIC is
 
             amountDelegated += amountToDelegatePerOperator;
         }
+        
         remainder = availableAmountToDelegate - amountDelegated;
         totalBuffered = remainder + reservedFunds;
 

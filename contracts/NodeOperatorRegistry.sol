@@ -4,6 +4,7 @@ pragma solidity 0.8.7;
 
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
@@ -17,7 +18,8 @@ import "./interfaces/IStMATIC.sol";
 contract NodeOperatorRegistry is
     INodeOperatorRegistry,
     PausableUpgradeable,
-    AccessControlUpgradeable
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable
 {
     enum NodeOperatorStatus {
         INACTIVE,
@@ -179,6 +181,7 @@ contract NodeOperatorRegistry is
     ) external initializer {
         __Pausable_init();
         __AccessControl_init();
+        __ReentrancyGuard_init();
 
         validatorFactory = _validatorFactory;
         stakeManager = _stakeManager;
@@ -351,7 +354,7 @@ contract NodeOperatorRegistry is
             poValidator.contractAddress != address(0),
             "Validator has no ValidatorShare"
         );
-        
+
         checkCondition(
             poValidator.status == IStakeManager.Status.Active,
             "Validator isn't ACTIVE"
@@ -492,7 +495,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows the operator's owner to migrate the validator ownership to rewardAddress.
     /// This can be done only in the case where this operator was stopped by the DAO.
-    function migrate() external override {
+    function migrate() external override nonReentrant {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
             no.status == NodeOperatorStatus.STOPPED,
