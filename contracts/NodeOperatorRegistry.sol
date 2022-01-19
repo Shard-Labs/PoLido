@@ -974,7 +974,7 @@ contract NodeOperatorRegistry is
         returns (uint256)
     {
         if (_rewardAddress == address(0)) {
-            _rewardAddress == msg.sender;
+            _rewardAddress = msg.sender;
         }
 
         uint256 operatorId = getOperatorId(_rewardAddress);

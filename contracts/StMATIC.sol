@@ -13,8 +13,10 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IPoLidoNFT.sol";
 import "./interfaces/IFxStateRootTunnel.sol";
+import "./interfaces/IStMATIC.sol";
 
 contract StMATIC is
+    IStMATIC,
     ERC20Upgradeable,
     AccessControlUpgradeable,
     PausableUpgradeable
@@ -39,39 +41,26 @@ contract StMATIC is
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    INodeOperatorRegistry public nodeOperator;
-    FeeDistribution public entityFees;
-    IStakeManager public stakeManager;
-    IPoLidoNFT public poLidoNFT;
-    IFxStateRootTunnel public fxStateRootTunnel;
+    INodeOperatorRegistry public override nodeOperator;
+    FeeDistribution public override entityFees;
+    IStakeManager public override stakeManager;
+    IPoLidoNFT public override poLidoNFT;
+    IFxStateRootTunnel public override fxStateRootTunnel;
 
-    string public version;
-    address public dao;
-    address public insurance;
-    address public token;
-    uint256 public lastWithdrawnValidatorId;
-    uint256 public totalBuffered;
-    uint256 public delegationLowerBound;
-    uint256 public rewardDistributionLowerBound;
-    uint256 public reservedFunds;
-    uint256 public minValidatorBalance;
+    string public override version;
+    address public override dao;
+    address public override insurance;
+    address public override token;
+    uint256 public override lastWithdrawnValidatorId;
+    uint256 public override totalBuffered;
+    uint256 public override delegationLowerBound;
+    uint256 public override rewardDistributionLowerBound;
+    uint256 public override reservedFunds;
+    uint256 public override minValidatorBalance;
 
-    mapping(uint256 => RequestWithdraw) public token2WithdrawRequest;
+    mapping(uint256 => RequestWithdraw) public override token2WithdrawRequest;
 
-    bytes32 public constant DAO = keccak256("DAO");
-
-    struct RequestWithdraw {
-        uint256 amount2WithdrawFromStMATIC;
-        uint256 validatorNonce;
-        uint256 requestTime;
-        address validatorAddress;
-    }
-
-    struct FeeDistribution {
-        uint8 dao;
-        uint8 operators;
-        uint8 insurance;
-    }
+    bytes32 public constant override DAO = keccak256("DAO");
 
     /**
      * @param _nodeOperator - Address of the node operator
@@ -88,7 +77,7 @@ contract StMATIC is
         address _insurance,
         address _stakeManager,
         address _poLidoNFT
-    ) public initializer {
+    ) public override initializer {
         __AccessControl_init();
         __Pausable_init();
         __ERC20_init("Staked MATIC", "stMATIC");
@@ -113,7 +102,12 @@ contract StMATIC is
      * @param _amount - Amount of MATIC sent from msg.sender to this contract
      * @return Amount of StMATIC shares generated
      */
-    function submit(uint256 _amount) external whenNotPaused returns (uint256) {
+    function submit(uint256 _amount)
+        external
+        override
+        whenNotPaused
+        returns (uint256)
+    {
         require(_amount > 0, "Invalid amount");
         IERC20Upgradeable(token).safeTransferFrom(
             msg.sender,
@@ -144,7 +138,7 @@ contract StMATIC is
      * @dev Stores users request to withdraw into a RequestWithdraw struct
      * @param _amount - Amount of StMATIC that is requested to withdraw
      */
-    function requestWithdraw(uint256 _amount) external whenNotPaused {
+    function requestWithdraw(uint256 _amount) external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorShares = nodeOperator
             .getOperatorInfos(false);
 
@@ -252,7 +246,7 @@ contract StMATIC is
      * @notice This will be included in the cron job
      * @dev Delegates tokens to validator share contract
      */
-    function delegate() external whenNotPaused {
+    function delegate() external override whenNotPaused {
         require(
             totalBuffered > delegationLowerBound + reservedFunds,
             "Amount to delegate lower than minimum"
@@ -333,7 +327,7 @@ contract StMATIC is
      * user if his request is in the userToWithdrawRequest
      * @param _tokenId - Id of the token that wants to be claimed
      */
-    function claimTokens(uint256 _tokenId) external whenNotPaused {
+    function claimTokens(uint256 _tokenId) external override whenNotPaused {
         require(poLidoNFT.isApprovedOrOwner(msg.sender, _tokenId), "Not owner");
         RequestWithdraw storage usersRequest = token2WithdrawRequest[_tokenId];
 
@@ -374,7 +368,7 @@ contract StMATIC is
     /**
      * @dev Distributes rewards claimed from validator shares based on fees defined in entityFee
      */
-    function distributeRewards() external whenNotPaused {
+    function distributeRewards() external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperator
             .getOperatorInfos(true);
 
@@ -445,7 +439,7 @@ contract StMATIC is
      * @dev Withdraws funds from unstaked validator
      * @param _validatorShare - Address of the validator share that will be withdrawn
      */
-    function withdrawTotalDelegated(address _validatorShare) external {
+    function withdrawTotalDelegated(address _validatorShare) external override {
         require(msg.sender == address(nodeOperator), "Not a node operator");
 
         uint256 tokenId = poLidoNFT.mint(address(this));
@@ -479,7 +473,11 @@ contract StMATIC is
      * StMATIC contract
      * @param _tokenId - Id of the token that is supposed to be claimed
      */
-    function claimTokens2StMatic(uint256 _tokenId) external whenNotPaused {
+    function claimTokens2StMatic(uint256 _tokenId)
+        external
+        override
+        whenNotPaused
+    {
         RequestWithdraw storage lidoRequests = token2WithdrawRequest[_tokenId];
 
         require(
@@ -520,7 +518,7 @@ contract StMATIC is
     /**
      * @dev Flips the pause state
      */
-    function togglePause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function togglePause() external override onlyRole(DEFAULT_ADMIN_ROLE) {
         paused() ? _unpause() : _pause();
     }
 
@@ -595,6 +593,7 @@ contract StMATIC is
     function getTotalStake(IValidatorShare _validatorShare)
         public
         view
+        override
         returns (uint256, uint256)
     {
         return _validatorShare.getTotalStake(address(this));
@@ -608,6 +607,7 @@ contract StMATIC is
     function getLiquidRewards(IValidatorShare _validatorShare)
         external
         view
+        override
         returns (uint256)
     {
         return _validatorShare.getLiquidRewards(address(this));
@@ -623,9 +623,13 @@ contract StMATIC is
      * @dev Helper function for that returns total pooled MATIC
      * @return Total pooled MATIC
      */
-    function getTotalStakeAcrossAllValidators() public view returns (uint256) {
+    function getTotalStakeAcrossAllValidators()
+        public
+        view
+        override
+        returns (uint256)
+    {
         uint256 totalStake;
-
         Operator.OperatorInfo[] memory operatorShares = nodeOperator
             .getOperatorInfos(false);
 
@@ -644,7 +648,7 @@ contract StMATIC is
      * @dev Function that calculates total pooled Matic
      * @return Total pooled Matic
      */
-    function getTotalPooledMatic() public view returns (uint256) {
+    function getTotalPooledMatic() public view override returns (uint256) {
         uint256 totalStaked = getTotalStakeAcrossAllValidators();
         return totalStaked + totalBuffered - reservedFunds;
     }
@@ -657,6 +661,7 @@ contract StMATIC is
     function convertStMaticToMatic(uint256 _balance)
         public
         view
+        override
         returns (
             uint256,
             uint256,
@@ -682,6 +687,7 @@ contract StMATIC is
     function convertMaticToStMatic(uint256 _balance)
         public
         view
+        override
         returns (
             uint256,
             uint256,
@@ -716,7 +722,7 @@ contract StMATIC is
         uint8 _daoFee,
         uint8 _operatorsFee,
         uint8 _insuranceFee
-    ) external onlyRole(DAO) {
+    ) external override onlyRole(DAO) {
         require(
             _daoFee + _operatorsFee + _insuranceFee == 100,
             "sum(fee)!=100"
@@ -731,7 +737,7 @@ contract StMATIC is
      * @notice Callable only by dao
      * @param _address - New dao address
      */
-    function setDaoAddress(address _address) external onlyRole(DAO) {
+    function setDaoAddress(address _address) external override onlyRole(DAO) {
         dao = _address;
     }
 
@@ -740,7 +746,11 @@ contract StMATIC is
      * @notice Callable only by dao
      * @param _address - New insurance address
      */
-    function setInsuranceAddress(address _address) external onlyRole(DAO) {
+    function setInsuranceAddress(address _address)
+        external
+        override
+        onlyRole(DAO)
+    {
         insurance = _address;
     }
 
@@ -749,7 +759,11 @@ contract StMATIC is
      * @notice Only callable by dao
      * @param _address - New node operator address
      */
-    function setNodeOperatorAddress(address _address) external onlyRole(DAO) {
+    function setNodeOperatorAddress(address _address)
+        external
+        override
+        onlyRole(DAO)
+    {
         nodeOperator = INodeOperatorRegistry(_address);
     }
 
@@ -760,6 +774,7 @@ contract StMATIC is
      */
     function setDelegationLowerBound(uint256 _delegationLowerBound)
         external
+        override
         onlyRole(DAO)
     {
         delegationLowerBound = _delegationLowerBound;
@@ -772,7 +787,7 @@ contract StMATIC is
      */
     function setRewardDistributionLowerBound(
         uint256 _rewardDistributionLowerBound
-    ) external onlyRole(DAO) {
+    ) external override onlyRole(DAO) {
         rewardDistributionLowerBound = _rewardDistributionLowerBound;
     }
 
@@ -780,12 +795,13 @@ contract StMATIC is
      * @dev Function that sets the poLidoNFT address
      * @param _poLidoNFT new poLidoNFT address
      */
-    function setPoLidoNFT(address _poLidoNFT) external onlyRole(DAO) {
+    function setPoLidoNFT(address _poLidoNFT) external override onlyRole(DAO) {
         poLidoNFT = IPoLidoNFT(_poLidoNFT);
     }
 
     function setFxStateRootTunnel(address _fxStateRootTunnel)
         external
+        override
         onlyRole(DAO)
     {
         fxStateRootTunnel = IFxStateRootTunnel(_fxStateRootTunnel);
@@ -797,6 +813,7 @@ contract StMATIC is
      */
     function setVersion(string calldata _version)
         external
+        override
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         version = _version;
