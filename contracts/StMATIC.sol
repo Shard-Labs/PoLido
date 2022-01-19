@@ -373,7 +373,12 @@ contract StMATIC is
             .getOperatorInfos(true);
 
         for (uint256 i = 0; i < operatorInfos.length; i++) {
-            IValidatorShare(operatorInfos[i].validatorShare).withdrawRewards();
+            // Bug: Major 1.3
+            IValidatorShare vs = IValidatorShare(operatorInfos[i].validatorShare);
+            if (vs.getLiquidRewards(address(this)) < vs.minAmount()) {
+                continue;
+            }
+            vs.withdrawRewards();
         }
 
         uint256 totalRewards = ((IERC20Upgradeable(token).balanceOf(

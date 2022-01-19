@@ -123,6 +123,8 @@ contract NodeOperatorRegistry is
     /// @notice Mapping of all validatorShare with operatorId
     mapping(address => uint256) private validatorShare2OperatorId;
 
+    // mapping(uint256 => Status) private validatorStatus;
+
     /// @notice Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) private operators;
 
@@ -473,14 +475,22 @@ contract NodeOperatorRegistry is
             no.status == NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
-        IValidator(no.validatorProxy).unstake(no.validatorId, stakeManager);
-        IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
+        // Bug: Major 1.1
+        // If the validator was already unstaked we don't need to call the stake manager
+        IStakeManager.Validator memory validator = IStakeManager(stakeManager)
+            .validators(no.validatorId);
+        if (validator.status == IStakeManager.Status.Active) {
+            IValidator(no.validatorProxy).unstake(no.validatorId, stakeManager);
+        }
+        _unstake(operatorId, no);
+    }
 
+    function _unstake(uint256 operatorId, NodeOperator storage no) private {
+        IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
         no.status = NodeOperatorStatus.UNSTAKED;
         no.statusUpdatedTimestamp = block.timestamp;
         totalActiveNodeOperator--;
         totalUnstakedNodeOperator++;
-
         emit UnstakeOperator(operatorId);
     }
 
@@ -1021,6 +1031,18 @@ contract NodeOperatorRegistry is
                 if (!(no.status == NodeOperatorStatus.ACTIVE)) {
                     continue;
                 }
+
+                // Bug: Major 1.1
+                // If validator status is Lock in stakeManager and active in nodeoperator.
+                // Call _unstake function
+                IStakeManager.Validator memory validator = sm.validators(
+                    no.validatorId
+                );
+                if (validator.status == IStakeManager.Status.Locked) {
+                    _unstake(operatorId, no);
+                    continue;
+                }
+
                 uint256 amountStakedSM = sm.validatorStake(no.validatorId);
                 uint256 slashedTimestamp = no.slashedTimestamp;
 
@@ -1057,11 +1079,19 @@ contract NodeOperatorRegistry is
         uint256 length = operatorIds.length;
         uint256 index;
 
+        IStakeManager sm = IStakeManager(stakeManager);
         for (uint256 idx = 0; idx < length; idx++) {
             uint256 operatorId = operatorIds[idx];
             NodeOperator storage no = operators[operatorId];
 
-            if (no.status == NodeOperatorStatus.ACTIVE) {
+            // Bug: Major 1.2
+            IStakeManager.Validator memory validator = sm.validators(
+                no.validatorId
+            );
+            if (
+                no.status == NodeOperatorStatus.ACTIVE &&
+                validator.status == IStakeManager.Status.Active
+            ) {
                 operatorInfos[index] = Operator.OperatorInfo({
                     operatorId: operatorId,
                     validatorShare: no.validatorShare,
@@ -1074,6 +1104,22 @@ contract NodeOperatorRegistry is
                 index++;
             }
         }
+
+        // Bug: Major 1.3 and 1.4
+        // If (index != totalActiveNodeOperator - 1) that mean there are empty fields
+        // in the array, it happens only in the case when a validator was unstaked
+        // directly from the stakeManager and the node operator registry not yet updated
+        // the operator status.
+        if (index != totalActiveNodeOperator - 1) {
+            Operator.OperatorInfo[]
+                memory operatorInfosOut = new Operator.OperatorInfo[](index + 1);
+
+            for (uint256 i = 0; i < totalActiveNodeOperator - index - 1; i++) {
+                operatorInfosOut[i] = operatorInfos[i];
+            }
+            return operatorInfosOut;
+        }
+
         return operatorInfos;
     }
 

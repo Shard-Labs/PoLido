@@ -50,4 +50,6 @@ interface IValidatorShare {
     function migrateOut(address user, uint256 amount) external;
 
     function migrateIn(address user, uint256 amount) external;
+
+    function minAmount() external view returns (uint256);
 }
