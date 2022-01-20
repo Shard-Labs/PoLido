@@ -144,6 +144,8 @@ contract StMATIC is
         Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
             .getOperatorInfos(false);
 
+        uint256 operatorSharesLength = operatorShares.length;
+
         uint256 tokenId;
         (
             uint256 totalAmount2WithdrawInMatic,
@@ -161,13 +163,13 @@ contract StMATIC is
                 (totalDelegated + totalBuffered) >=
                     currentAmount2WithdrawInMatic +
                         minValidatorBalance *
-                        operatorShares.length,
+                        operatorSharesLength,
                 "Too much to withdraw"
             );
             allowedAmount2RequestFromValidators =
                 totalDelegated -
                 minValidatorBalance *
-                operatorShares.length;
+                operatorSharesLength;
         } else {
             require(
                 totalBuffered >= currentAmount2WithdrawInMatic,
@@ -179,7 +181,7 @@ contract StMATIC is
             tokenId = poLidoNFT.mint(msg.sender);
 
             if (allowedAmount2RequestFromValidators != 0) {
-                if (lastWithdrawnValidatorId > operatorShares.length - 1) {
+                if (lastWithdrawnValidatorId > operatorSharesLength - 1) {
                     lastWithdrawnValidatorId = 0;
                 }
 
@@ -256,8 +258,10 @@ contract StMATIC is
         Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
             .getOperatorInfos(true);
 
+        uint256 operatorSharesLength = operatorShares.length;
+
         require(
-            operatorShares.length > 0,
+            operatorSharesLength > 0,
             "No operator shares, cannot delegate"
         );
 
@@ -265,7 +269,7 @@ contract StMATIC is
         uint256 maxDelegateLimitsSum;
         uint256 remainder;
 
-        for (uint256 i = 0; i < operatorShares.length; i++) {
+        for (uint256 i = 0; i < operatorSharesLength; i++) {
             maxDelegateLimitsSum += operatorShares[i].maxDelegateLimit;
         }
 
@@ -283,7 +287,7 @@ contract StMATIC is
 
         uint256 amountDelegated;
 
-        for (uint256 i = 0; i < operatorShares.length; i++) {
+        for (uint256 i = 0; i < operatorSharesLength; i++) {
             IValidatorShare validator = IValidatorShare(
                 operatorShares[i].validatorShare
             );
@@ -309,7 +313,7 @@ contract StMATIC is
 
         minValidatorBalance = type(uint256).max;
 
-        for (uint256 i = 0; i < operatorShares.length; i++) {
+        for (uint256 i = 0; i < operatorSharesLength; i++) {
             (uint256 validatorShare, ) = getTotalStake(
                 IValidatorShare(operatorShares[i].validatorShare)
             );
@@ -375,7 +379,9 @@ contract StMATIC is
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
             .getOperatorInfos(true);
 
-        for (uint256 i = 0; i < operatorInfos.length; i++) {
+        uint256 operatorInfosLength = operatorInfos.length;
+
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
             IValidatorShare validatorShare = IValidatorShare(
                 operatorInfos[i].validatorShare
             );
@@ -409,16 +415,16 @@ contract StMATIC is
         IERC20Upgradeable(token).safeTransfer(dao, daoRewards);
         IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
 
-        uint256[] memory ratios = new uint256[](operatorInfos.length);
+        uint256[] memory ratios = new uint256[](operatorInfosLength);
         uint256 totalRatio = 0;
 
-        for (uint256 idx = 0; idx < operatorInfos.length; idx++) {
+        for (uint256 idx = 0; idx < operatorInfosLength; idx++) {
             uint256 rewardRatio = operatorInfos[idx].rewardPercentage;
             ratios[idx] = rewardRatio;
             totalRatio += rewardRatio;
         }
 
-        for (uint256 i = 0; i < operatorInfos.length; i++) {
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
             IERC20Upgradeable(token).safeTransfer(
                 operatorInfos[i].rewardAddress,
                 (operatorsRewards * ratios[i]) / totalRatio
@@ -639,7 +645,8 @@ contract StMATIC is
         Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
             .getOperatorInfos(false);
 
-        for (uint256 i = 0; i < operatorShares.length; i++) {
+        uint256 operatorSharesLength = operatorShares.length;
+        for (uint256 i = 0; i < operatorSharesLength; i++) {
             (uint256 currValidatorShare, ) = getTotalStake(
                 IValidatorShare(operatorShares[i].validatorShare)
             );
