@@ -311,7 +311,8 @@ contract StMATIC is
             (uint256 validatorShare, ) = getTotalStake(
                 IValidatorShare(operatorShares[i].validatorShare)
             );
-            uint256 minValidatorBalanceCurrent = (validatorShare * 10) / 100;
+            // 10% of current validatorShare
+            uint256 minValidatorBalanceCurrent = validatorShare / 10;
 
             if (
                 minValidatorBalanceCurrent != 0 &&
