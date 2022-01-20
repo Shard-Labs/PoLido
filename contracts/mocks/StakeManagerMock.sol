@@ -64,7 +64,7 @@ contract StakeManagerMock is IStakeManager {
         });
         state.id++;
         state.stakedAmount[id] = _amount;
-        state.signer[id] = address(uint160(uint256(keccak256(_signerPubkey))));
+        // state.signer[id] = address(uint160(uint256(keccak256(_signerPubkey))));
         state.validatorShares[id] = address(
             new ValidatorShareMock(state.token, address(this), id)
         );
@@ -123,6 +123,7 @@ contract StakeManagerMock is IStakeManager {
         override
         returns (uint256)
     {
+        // return smValidators[_validatorId].amount;
         return state.stakedAmount[_validatorId];
     }
 
@@ -142,7 +143,9 @@ contract StakeManagerMock is IStakeManager {
         uint256 _newCommissionRate
     ) external override {}
 
-    function unjail(uint256 _validatorId) external override {}
+    function unjail(uint256 _validatorId) external override {
+        require(smValidators[_validatorId].status == IStakeManager.Status.Locked);
+    }
 
     function withdrawalDelay() external pure override returns (uint256) {
         return (2**13);
@@ -163,6 +166,7 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function slash(uint256 _validatorId) external {
+        // smValidators[_validatorId].amount -= 1 ether;
         state.stakedAmount[_validatorId] -= 1 ether;
     }
 

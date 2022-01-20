@@ -1546,6 +1546,22 @@ describe("NodeOperator", function () {
 
             it("success slash operators and getRewardPercentage ", async function () {
                 await stakeOperator(1, user1, user1Address, "100", "20");
+                await stakeManagerMockContract.slash(1);
+
+                const res =
+                    await nodeOperatorRegistryContract.getIfOperatorsWereSlashed();
+                await nodeOperatorRegistryContract.slashOperators(res);
+
+                await ethers.provider.send("evm_increaseTime", [300000]);
+                await ethers.provider.send("evm_mine", []);
+
+                await stakeManagerMockContract.slash(1);
+                await nodeOperatorRegistryContract.slashOperators(res);
+                await checkOperator(1, { slashed: BigNumber.from(2) });
+            });
+
+            it("success slash operators and getRewardPercentage ", async function () {
+                await stakeOperator(1, user1, user1Address, "100", "20");
                 await stakeOperator(2, user2, user2Address, "100", "20");
                 await stakeOperator(3, user3, user3Address, "100", "20");
 

@@ -1051,14 +1051,16 @@ contract NodeOperatorRegistry is
                 uint256 slashedTimestamp = no.slashedTimestamp;
 
                 if (no.amountStaked != amountStakedSM) {
+                    if (slashedTimestamp < block.timestamp) {
+                        no.slashedTimestamp = 0;
+                    }
                     no.slashed++;
-                    no.slashedTimestamp += slashedTimestamp != 0
-                        ? slashingDelay
+                    no.slashedTimestamp = slashedTimestamp != 0
+                        ? slashedTimestamp + slashingDelay
                         : block.timestamp + slashingDelay;
                     no.amountStaked = amountStakedSM;
                 } else if (
-                    slashedTimestamp != 0 &&
-                    no.slashedTimestamp < block.timestamp
+                    slashedTimestamp != 0 && slashedTimestamp < block.timestamp
                 ) {
                     no.slashedTimestamp = 0;
                 }
