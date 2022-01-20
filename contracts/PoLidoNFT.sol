@@ -36,7 +36,7 @@ contract PoLidoNFT is
     }
 
     function initialize(string memory _name, string memory _symbol)
-        public
+        external
         initializer
     {
         __Context_init_unchained();

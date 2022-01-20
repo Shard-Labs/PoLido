@@ -77,7 +77,7 @@ contract StMATIC is
         address _insurance,
         address _stakeManager,
         address _poLidoNFT
-    ) public override initializer {
+    ) external override initializer {
         __AccessControl_init();
         __Pausable_init();
         __ERC20_init("Staked MATIC", "stMATIC");
