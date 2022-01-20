@@ -1098,6 +1098,20 @@ contract NodeOperatorRegistry is
                 no.validatorId
             );
             if (validator.status == IStakeManager.Status.Active) {
+
+                if (_rewardData) {
+                    // check if the operators accumulated rewards.
+                    IValidatorShare validatorShare = IValidatorShare(
+                        no.validatorShare
+                    );
+                    uint256 stMaticReward = validatorShare.getLiquidRewards(
+                        stMATIC
+                    );
+                    uint256 rewardThreshold = validatorShare.minAmount();
+                    if (stMaticReward < rewardThreshold) {
+                        continue;
+                    }
+                }
                 operatorInfos[index] = Operator.OperatorInfo({
                     operatorId: operatorId,
                     validatorShare: no.validatorShare,

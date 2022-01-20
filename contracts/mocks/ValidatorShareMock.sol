@@ -11,6 +11,7 @@ contract ValidatorShareMock is IValidatorShare {
     address public token;
 
     bool public override delegation;
+    uint256 mAmount;
 
     uint256 public totalShares;
     uint256 public withdrawPool;
@@ -159,8 +160,12 @@ contract ValidatorShareMock is IValidatorShare {
         return totalStaked;
     }
 
-    function minAmount() public override returns (uint256) {
-        return 1 ether;
+    function setMinAmount(uint256 _mAmount) public {
+        mAmount = _mAmount;
+    }
+
+    function minAmount() public view override returns (uint256) {
+        return mAmount;
     }
 
     function updateDelegation(bool _delegation) external override {

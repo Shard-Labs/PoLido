@@ -14,7 +14,8 @@ import {
     ValidatorFactoryV2,
     NodeOperatorRegistryV2,
     StMATICMock,
-    Polygon
+    Polygon,
+    ValidatorShareMock
 } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
@@ -1482,6 +1483,25 @@ describe("NodeOperator", function () {
                         i + " Operator should be slashed"
                     ).true;
                 }
+            });
+
+            it("success getOperatorInfos validator rewards", async function () {
+                // If the rewards accumulated by a validator are not enough, the operator is ignored.
+                await stakeOperator(1, user1, user1Address, "100", "20");
+                await stakeOperator(2, user2, user2Address, "100", "20");
+                await stakeOperator(3, user3, user3Address, "100", "20");
+
+                const op3 = await nodeOperatorRegistryContract["getNodeOperator(uint256)"].call(this, 3);
+                const validatorShareOperator3: ValidatorShareMock = (await ethers.getContractAt("ValidatorShareMock", op3.validatorShare)) as ValidatorShareMock;
+                await validatorShareOperator3.setMinAmount(ethers.utils.parseEther("10000"));
+
+                const operators =
+                    await nodeOperatorRegistryContract.getOperatorInfos(true);
+
+                expect(operators.length).eq(2);
+                operators.forEach((op, index) => {
+                    expect(op.operatorId).eq(index + 1);
+                });
             });
 
             // success getOperatorInfos when a validator was unstaked from stakeManager
