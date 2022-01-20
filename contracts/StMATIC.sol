@@ -41,7 +41,7 @@ contract StMATIC is
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    INodeOperatorRegistry public override nodeOperator;
+    INodeOperatorRegistry public override nodeOperatorRegistry;
     FeeDistribution public override entityFees;
     IStakeManager public override stakeManager;
     IPoLidoNFT public override poLidoNFT;
@@ -63,7 +63,7 @@ contract StMATIC is
     bytes32 public constant override DAO = keccak256("DAO");
 
     /**
-     * @param _nodeOperator - Address of the node operator
+     * @param _nodeOperatorRegistry - Address of the node operator registry
      * @param _token - Address of MATIC token on Ethereum Mainnet
      * @param _dao - Address of the DAO
      * @param _insurance - Address of the insurance
@@ -71,7 +71,7 @@ contract StMATIC is
      * @param _poLidoNFT - Address of the stMATIC NFT
      */
     function initialize(
-        address _nodeOperator,
+        address _nodeOperatorRegistry,
         address _token,
         address _dao,
         address _insurance,
@@ -85,7 +85,7 @@ contract StMATIC is
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(DAO, _dao);
 
-        nodeOperator = INodeOperatorRegistry(_nodeOperator);
+        nodeOperatorRegistry = INodeOperatorRegistry(_nodeOperatorRegistry);
         stakeManager = IStakeManager(_stakeManager);
         poLidoNFT = IPoLidoNFT(_poLidoNFT);
         dao = _dao;
@@ -139,7 +139,7 @@ contract StMATIC is
      * @param _amount - Amount of StMATIC that is requested to withdraw
      */
     function requestWithdraw(uint256 _amount) external override whenNotPaused {
-        Operator.OperatorInfo[] memory operatorShares = nodeOperator
+        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
             .getOperatorInfos(false);
 
         uint256 tokenId;
@@ -251,7 +251,7 @@ contract StMATIC is
             totalBuffered > delegationLowerBound + reservedFunds,
             "Amount to delegate lower than minimum"
         );
-        Operator.OperatorInfo[] memory operatorShares = nodeOperator
+        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
             .getOperatorInfos(true);
 
         require(
@@ -369,7 +369,7 @@ contract StMATIC is
      * @dev Distributes rewards claimed from validator shares based on fees defined in entityFee
      */
     function distributeRewards() external override whenNotPaused {
-        Operator.OperatorInfo[] memory operatorInfos = nodeOperator
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
             .getOperatorInfos(true);
 
         for (uint256 i = 0; i < operatorInfos.length; i++) {
@@ -435,12 +435,12 @@ contract StMATIC is
     }
 
     /**
-     * @notice Only NodeOperator can call this function
+     * @notice Only NodeOperatorRegistry can call this function
      * @dev Withdraws funds from unstaked validator
      * @param _validatorShare - Address of the validator share that will be withdrawn
      */
     function withdrawTotalDelegated(address _validatorShare) external override {
-        require(msg.sender == address(nodeOperator), "Not a node operator");
+        require(msg.sender == address(nodeOperatorRegistry), "Not a node operator");
 
         uint256 tokenId = poLidoNFT.mint(address(this));
 
@@ -630,7 +630,7 @@ contract StMATIC is
         returns (uint256)
     {
         uint256 totalStake;
-        Operator.OperatorInfo[] memory operatorShares = nodeOperator
+        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
             .getOperatorInfos(false);
 
         for (uint256 i = 0; i < operatorShares.length; i++) {
@@ -759,12 +759,12 @@ contract StMATIC is
      * @notice Only callable by dao
      * @param _address - New node operator address
      */
-    function setNodeOperatorAddress(address _address)
+    function setNodeOperatorRegistryAddress(address _address)
         external
         override
         onlyRole(DAO)
     {
-        nodeOperator = INodeOperatorRegistry(_address);
+        nodeOperatorRegistry = INodeOperatorRegistry(_address);
     }
 
     /**

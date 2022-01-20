@@ -29,7 +29,7 @@ interface IStMATIC is IERC20Upgradeable {
 
     function withdrawTotalDelegated(address _validatorShare) external;
 
-    function nodeOperator() external returns (INodeOperatorRegistry);
+    function nodeOperatorRegistry() external returns (INodeOperatorRegistry);
 
     function entityFees()
         external
@@ -141,7 +141,7 @@ interface IStMATIC is IERC20Upgradeable {
 
     function setInsuranceAddress(address _address) external;
 
-    function setNodeOperatorAddress(address _address) external;
+    function setNodeOperatorRegistryAddress(address _address) external;
 
     function setDelegationLowerBound(uint256 _delegationLowerBound) external;
 
