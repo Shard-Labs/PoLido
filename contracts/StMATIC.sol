@@ -152,7 +152,7 @@ contract StMATIC is
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
 
-        uint256 allowedAmount2RequestFromValidators;
+        uint256 allowedAmount2RequestFromValidators = 0;
 
         if (totalDelegated != 0) {
             require(

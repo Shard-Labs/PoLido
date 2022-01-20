@@ -890,7 +890,7 @@ contract NodeOperatorRegistry is
             totalWaitNodeOperator;
 
         address[] memory adds = new address[](num);
-        uint256 index;
+        uint256 index = 0;
 
         uint256[] memory memOperatorIds = operatorIds;
 
