@@ -332,7 +332,7 @@ contract StMATIC is
         RequestWithdraw storage usersRequest = token2WithdrawRequest[_tokenId];
 
         require(
-            stakeManager.epoch() >= usersRequest.requestTime,
+            stakeManager.epoch() >= usersRequest.requestEpoch,
             "Not able to claim yet"
         );
 
@@ -488,7 +488,7 @@ contract StMATIC is
         poLidoNFT.burn(_tokenId);
 
         require(
-            stakeManager.epoch() >= lidoRequests.requestTime,
+            stakeManager.epoch() >= lidoRequests.requestEpoch,
             "Not able to claim yet"
         );
 

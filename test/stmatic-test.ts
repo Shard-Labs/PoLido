@@ -967,7 +967,7 @@ describe("Starting to test StMATIC contract", () => {
                             nftTokenId
                         );
                         expect(withdrawRequest.validatorNonce).not.eq(0);
-                        expect(withdrawRequest.requestTime).not.eq(epoch);
+                        expect(withdrawRequest.requestEpoch).not.eq(epoch);
                         expect(withdrawRequest.validatorAddress).eq(
                             await getValidatorShareAddress(i + 1)
                         );

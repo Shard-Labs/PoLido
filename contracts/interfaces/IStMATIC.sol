@@ -17,7 +17,7 @@ interface IStMATIC is IERC20Upgradeable {
     struct RequestWithdraw {
         uint256 amount2WithdrawFromStMATIC;
         uint256 validatorNonce;
-        uint256 requestTime;
+        uint256 requestEpoch;
         address validatorAddress;
     }
 
