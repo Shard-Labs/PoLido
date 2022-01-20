@@ -204,12 +204,12 @@ contract PoLidoNFT is
      * @param _tokenId - Id of the token that will be removed
      */
     function _removeApproval(uint256 _tokenId) internal {
-        uint256[] storage lastApprovedTokens = address2Approved[
+        uint256[] storage approvedTokens = address2Approved[
             getApproved(_tokenId)
         ];
         uint256 approvedIndex = tokenId2ApprovedIndex[_tokenId];
 
-        delete lastApprovedTokens[approvedIndex];
+        delete approvedTokens[approvedIndex];
         tokenId2ApprovedIndex[_tokenId] = 0;
     }
 }
