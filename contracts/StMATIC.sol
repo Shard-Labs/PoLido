@@ -387,9 +387,9 @@ contract StMATIC is
             }
         }
 
-        uint256 totalRewards = ((IERC20Upgradeable(token).balanceOf(
-            address(this)
-        ) - totalBuffered) * 1) / 10;
+        uint256 totalRewards = (
+            (IERC20Upgradeable(token).balanceOf(address(this)) - totalBuffered)
+        ) / 10;
 
         require(
             totalRewards > rewardDistributionLowerBound,
@@ -441,7 +441,10 @@ contract StMATIC is
      * @param _validatorShare - Address of the validator share that will be withdrawn
      */
     function withdrawTotalDelegated(address _validatorShare) external override {
-        require(msg.sender == address(nodeOperatorRegistry), "Not a node operator");
+        require(
+            msg.sender == address(nodeOperatorRegistry),
+            "Not a node operator"
+        );
 
         uint256 tokenId = poLidoNFT.mint(address(this));
 
