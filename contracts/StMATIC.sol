@@ -140,7 +140,7 @@ contract StMATIC is
      */
     function requestWithdraw(uint256 _amount) external override whenNotPaused {
         require(_amount > 0, "Invalid amount");
-        
+
         Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
             .getOperatorInfos(false);
 
@@ -455,7 +455,7 @@ contract StMATIC is
         );
 
         if (stakedAmount == 0) {
-            return;
+            revert("Nothing to withdraw");
         }
 
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
