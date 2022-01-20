@@ -430,7 +430,7 @@ contract StMATIC is
         uint256 totalDistributed = balanceBeforeDistribution - currentBalance;
 
         // Add the remainder to totalBuffered
-        totalBuffered += (currentBalance - totalBuffered);
+        totalBuffered = currentBalance;
 
         emit DistributeRewardsEvent(totalDistributed);
     }
