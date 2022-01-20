@@ -507,6 +507,20 @@ describe("NodeOperator", function () {
             await checkStats(2, 0, 1, 0, 1, 0, 0, 0);
         });
 
+        it("Success unstake when the operator was unstaked by the stakeManager", async function () {
+            await stakeOperator(1, user1, user1Address, "10", "20");
+            await stakeOperator(2, user2, user2Address, "10", "20");
+
+            await stakeManagerMockContract.unstake(1);
+            // unstake a node operator
+            expect(await nodeOperatorRegistryContract.connect(user1).unstake())
+                .to.emit(nodeOperatorRegistryContract, "UnstakeOperator")
+                .withArgs(1);
+
+            await checkOperator(1, { status: 3 });
+            await checkStats(2, 0, 1, 0, 1, 0, 0, 0);
+        });
+
         it("Fail to unstake an operator", async function () {
             // revert caller try to unstake a operator that not exist.
             await expect(
@@ -1470,6 +1484,23 @@ describe("NodeOperator", function () {
                 }
             });
 
+            // success getOperatorInfos when a validator was unstaked from stakeManager
+            // but not yest syncd with nodeOperator contract
+            it("success getOperatorInfos when a validator was unstaked from stakeManager", async function () {
+                await stakeOperator(1, user1, user1Address, "100", "20");
+                await stakeOperator(2, user2, user2Address, "100", "20");
+                await stakeOperator(3, user3, user3Address, "100", "20");
+
+                await stakeManagerMockContract.unstake(3);
+                const operators =
+                    await nodeOperatorRegistryContract.getOperatorInfos(false);
+
+                expect(operators.length).eq(2);
+                operators.forEach((op, index) => {
+                    expect(op.operatorId).eq(index + 1);
+                });
+            });
+
             it("success getOperatorInfos", async function () {
                 await stakeOperator(1, user1, user1Address, "100", "20");
                 await stakeOperator(2, user2, user2Address, "100", "20");
@@ -1937,7 +1968,7 @@ describe("NodeOperator", function () {
 
             expect(
                 (await nodeOperatorRegistryContract.address) ===
-                    NodeOperatorRegistryV2Contract.address
+                NodeOperatorRegistryV2Contract.address
             );
         });
     });

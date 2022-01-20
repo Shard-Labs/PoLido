@@ -10,6 +10,7 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/IStMATIC.sol";
+import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 ShardLabs.
@@ -483,13 +484,21 @@ contract NodeOperatorRegistry is
             "Invalid status"
         );
         IValidator(no.validatorProxy).unstake(no.validatorId, stakeManager);
-        IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
 
+        IStakeManager.Validator memory validator = IStakeManager(stakeManager)
+            .validators(no.validatorId);
+        if (validator.status == IStakeManager.Status.Active) {
+            IValidator(no.validatorProxy).unstake(no.validatorId, stakeManager);
+        }
+        _unstake(operatorId, no);
+    }
+
+    function _unstake(uint256 operatorId, NodeOperator storage no) private {
+        IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
         no.status = NodeOperatorStatus.UNSTAKED;
         no.statusUpdatedTimestamp = block.timestamp;
         totalActiveNodeOperator--;
         totalUnstakedNodeOperator++;
-
         emit UnstakeOperator(operatorId);
     }
 
@@ -1030,6 +1039,14 @@ contract NodeOperatorRegistry is
                 if (!(no.status == NodeOperatorStatus.ACTIVE)) {
                     continue;
                 }
+
+                IStakeManager.Validator memory validator = sm.validators(
+                    no.validatorId
+                );
+                if (validator.status == IStakeManager.Status.Locked) {
+                    _unstake(operatorId, no);
+                    continue;
+                }
                 uint256 amountStakedSM = sm.validatorStake(no.validatorId);
                 uint256 slashedTimestamp = no.slashedTimestamp;
 
@@ -1063,14 +1080,22 @@ contract NodeOperatorRegistry is
                 totalActiveNodeOperator
             );
 
+        if (totalActiveNodeOperator == 0) {
+            return operatorInfos;
+        }
+
         uint256 length = operatorIds.length;
         uint256 index;
+        IStakeManager sm = IStakeManager(stakeManager);
 
         for (uint256 idx = 0; idx < length; idx++) {
             uint256 operatorId = operatorIds[idx];
             NodeOperator storage no = operators[operatorId];
 
-            if (no.status == NodeOperatorStatus.ACTIVE) {
+            IStakeManager.Validator memory validator = sm.validators(
+                no.validatorId
+            );
+            if (validator.status == IStakeManager.Status.Active) {
                 operatorInfos[index] = Operator.OperatorInfo({
                     operatorId: operatorId,
                     validatorShare: no.validatorShare,
@@ -1082,6 +1107,16 @@ contract NodeOperatorRegistry is
                 });
                 index++;
             }
+        }
+
+        if (index != totalActiveNodeOperator) {
+            Operator.OperatorInfo[]
+                memory operatorInfosOut = new Operator.OperatorInfo[](index);
+
+            for (uint256 i = 0; i < index; i++) {
+                operatorInfosOut[i] = operatorInfos[i];
+            }
+            return operatorInfosOut;
         }
         return operatorInfos;
     }
