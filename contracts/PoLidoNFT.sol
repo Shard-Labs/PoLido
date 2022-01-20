@@ -179,7 +179,7 @@ contract PoLidoNFT is
      * @return - Array of owned tokens
      */
     function getOwnedTokens(address _address)
-        public
+        external
         view
         returns (uint256[] memory)
     {
@@ -192,7 +192,7 @@ contract PoLidoNFT is
      * @return - Array of approved tokens
      */
     function getApprovedTokens(address _address)
-        public
+        external
         view
         returns (uint256[] memory)
     {
