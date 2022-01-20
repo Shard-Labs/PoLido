@@ -35,14 +35,14 @@ contract PoLidoNFT is
         _;
     }
 
-    function initialize(string memory _name, string memory _symbol)
+    function initialize(string memory name_, string memory symbol_)
         external
         initializer
     {
         __Context_init_unchained();
         __ERC165_init_unchained();
         __Ownable_init_unchained();
-        __ERC721_init_unchained(_name, _symbol);
+        __ERC721_init_unchained(name_, symbol_);
         __Pausable_init_unchained();
         __ERC721Pausable_init_unchained();
     }
