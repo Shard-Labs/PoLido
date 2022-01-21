@@ -10,7 +10,6 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/IStMATIC.sol";
-import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 ShardLabs.

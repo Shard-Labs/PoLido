@@ -13,7 +13,8 @@ import {
     ValidatorFactory,
     FxBaseRootMock,
     FxBaseRootMock__factory,
-    SelfDestructor
+    SelfDestructor,
+    ERC721Test
 } from "../typechain";
 
 describe("Starting to test StMATIC contract", () => {
@@ -28,6 +29,7 @@ describe("Starting to test StMATIC contract", () => {
     let mockStakeManager: StakeManagerMock;
     let mockERC20: Polygon;
     let fxBaseRootMock: FxBaseRootMock;
+    let erc721Contract: ERC721Test;
 
     let submit: (
     signer: SignerWithAddress,
@@ -176,11 +178,16 @@ describe("Starting to test StMATIC contract", () => {
         )) as PoLidoNFT;
         await poLidoNFT.deployed();
 
+        erc721Contract = (await (
+            await ethers.getContractFactory("ERC721Test")
+        ).deploy()) as ERC721Test;
+        await erc721Contract.deployed();
+
         mockStakeManager = (await (
             await ethers.getContractFactory("StakeManagerMock")
         ).deploy(
             mockERC20.address,
-            ethers.constants.AddressZero
+            erc721Contract.address
         )) as StakeManagerMock;
         await mockStakeManager.deployed();
 
@@ -1014,6 +1021,11 @@ describe("Starting to test StMATIC contract", () => {
                     message: "stop operator",
                     fn: async function () {
                         await stopOperator(1);
+                        const no = await nodeOperatorRegistry[
+                            "getNodeOperator(uint256)"
+                        ].call(this, 1);
+                        await erc721Contract.mint(no.validatorProxy, 1);
+                        await nodeOperatorRegistry.connect(testers[1]).migrate();
                     }
                 },
                 {

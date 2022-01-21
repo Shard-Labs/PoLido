@@ -524,6 +524,7 @@ contract StMATIC is
             abi.encode(totalSupply(), getTotalPooledMatic())
         );
 
+        nodeOperator.exitOperator(lidoRequests.validatorAddress);
         emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
     }
 
