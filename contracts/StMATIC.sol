@@ -381,8 +381,20 @@ contract StMATIC is
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
             .getOperatorInfos(true);
 
-        for (uint256 i = 0; i < operatorInfos.length; i++) {
-            IValidatorShare(operatorInfos[i].validatorShare).withdrawRewards();
+        uint256 operatorInfosLength = operatorInfos.length;
+
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
+            IValidatorShare validatorShare = IValidatorShare(
+                operatorInfos[i].validatorShare
+            );
+            uint256 stMaticReward = validatorShare.getLiquidRewards(
+                address(this)
+            );
+            uint256 rewardThreshold = validatorShare.minAmount();
+
+            if (stMaticReward < rewardThreshold) {
+                validatorShare.withdrawRewards();
+            }
         }
 
         uint256 totalRewards = (
