@@ -1,5 +1,3 @@
-import * as dotenv from "dotenv";
-import * as path from "path";
 import { HardhatUserConfig, task } from "hardhat/config";
 
 import "@typechain/hardhat";
@@ -22,18 +20,11 @@ import {
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperatorArgs } from "./scripts/types";
 import { getPublicKey } from "./scripts/utils";
-
-dotenv.config({ path: path.join(__dirname, ".env") });
+import { ETHERSCAN_API_KEY, GOERLI_PRIVATE_KEY, INFURA_API_KEY, MAINNET_PRIVATE_KEY, VALIDATOR_PRIVATE_KEY } from "./environment";
 
 // Used to bypass hardhat compilation error in case user doesn't use one of the private keys
 const DEFAULT_PRIVATE_KEY =
   "ab776418850f4b06cba804f364aeba754f29f5164de6c068dc85f3091253faf0";
-
-const INFURA_API_KEY = process.env.INFURA_API_KEY;
-const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY;
-const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY;
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
-const VALIDATOR_PRIVATE_KEY = process.env.VALIDATOR_PRIVATE_KEY;
 
 task("verifyLido", "StMATIC contracts verification").setAction(
     async (args, hre: HardhatRuntimeEnvironment) => {
@@ -48,7 +39,7 @@ task("addOperator", "Assigns an operator")
     .addOptionalParam("privateKey", "Private key of stMATIC admin")
     .setAction(async (args: OperatorArgs, hre: HardhatRuntimeEnvironment) => {
         const { operatorName, rewardAddress, privateKey } = args;
-        const pubKey = args.pubKey || getPublicKey(VALIDATOR_PRIVATE_KEY!);
+        const pubKey = args.pubKey || getPublicKey(VALIDATOR_PRIVATE_KEY);
 
         await addOperator(hre, operatorName, rewardAddress, pubKey, privateKey);
     });
