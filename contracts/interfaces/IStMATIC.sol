@@ -77,12 +77,13 @@ interface IStMATIC is IERC20Upgradeable {
     function DAO() external returns (bytes32);
 
     function initialize(
-        address _nodeOperator,
+        address _nodeOperatorRegistry,
         address _token,
         address _dao,
         address _insurance,
         address _stakeManager,
-        address _poLidoNFT
+        address _poLidoNFT,
+        address _fxStateRootTunnel
     ) external;
 
     function submit(uint256 _amount) external returns (uint256);

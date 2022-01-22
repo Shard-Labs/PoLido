@@ -89,10 +89,10 @@ contract StMATIC is
         nodeOperatorRegistry = INodeOperatorRegistry(_nodeOperatorRegistry);
         stakeManager = IStakeManager(_stakeManager);
         poLidoNFT = IPoLidoNFT(_poLidoNFT);
+        fxStateRootTunnel = IFxStateRootTunnel(_fxStateRootTunnel);
         dao = _dao;
         token = _token;
         insurance = _insurance;
-        fxStateRootTunnel = _fxStateRootTunnel;
 
         minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(25, 50, 25);
