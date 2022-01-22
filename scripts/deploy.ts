@@ -7,11 +7,25 @@ import {
     NodeOperatorRegistry,
     StMATIC__factory,
     Validator__factory,
-    PoLidoNFT__factory
+    PoLidoNFT__factory,
+    FxStateRootTunnel__factory,
+    FxStateChildTunnel__factory
 } from "../typechain";
 
 import { DeployDetails } from "./types";
 import { getContractFactory } from "@nomiclabs/hardhat-ethers/types";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
+const getContractAddress = (address: string, nonce: number) => {
+    const rlpEncoded = ethers.utils.RLP.encode([
+        address,
+        ethers.BigNumber.from(nonce.toString()).toHexString()
+    ]);
+    const contractAddressLong = ethers.utils.keccak256(rlpEncoded);
+    const contractAddress = "0x".concat(contractAddressLong.substring(26));
+
+    return ethers.utils.getAddress(contractAddress);
+};
 
 const saveDeploymentDetails = (data: any, networkName: string) => {
     const filePath = path.join(process.cwd(), "deploy-" + networkName + ".json");
@@ -79,6 +93,7 @@ const deployPoLidoNFT = async () => {
     const PoLidoNFT = (await getContractFactory(
         "PoLidoNFT"
     )) as PoLidoNFT__factory;
+
     const poLidoNFT = await upgrades.deployProxy(PoLidoNFT, ["PoLido", "PLO"]);
     await poLidoNFT.deployed();
 
@@ -91,21 +106,62 @@ const deployStMATIC = async (
     daoAddress: string,
     insuranceAddress: string,
     stakeManagerAddress: string,
-    poLidoNFTAddress: string
+    poLidoNFTAddress: string,
+    fxStateRootTunnelAddress: string
 ) => {
     const StMATIC = (await getContractFactory("StMATIC")) as StMATIC__factory;
+
     const stMATIC = await upgrades.deployProxy(StMATIC, [
         nodeOperatorRegistryAddress,
         maticTokenAddress,
         daoAddress,
         insuranceAddress,
         stakeManagerAddress,
-        poLidoNFTAddress
+        poLidoNFTAddress,
+        fxStateRootTunnelAddress
     ]);
-
     await stMATIC.deployed();
 
     return stMATIC;
+};
+
+const deployFxStateRoot = async (
+    signer: SignerWithAddress
+) => {
+    const nonce = await signer.getTransactionCount();
+    const fxChildTunnelAddress = getContractAddress(signer.address, nonce + 1);
+    const stMATICAddress = getContractAddress(signer.address, nonce + 2);
+    const checkpointManagerAddress = process.env.CHECKPOINT_MANAGER;
+    const fxRootAddress = process.env.FX_ROOT;
+
+    const FxStateRootTunnel = (await getContractFactory(
+        "FxStateRootTunnel"
+    )) as FxStateRootTunnel__factory;
+
+    const fxStateRootTunnel = await FxStateRootTunnel.deploy(
+    checkpointManagerAddress!,
+    fxRootAddress!,
+    fxChildTunnelAddress,
+    stMATICAddress
+    );
+    await fxStateRootTunnel.deployed();
+
+    return fxStateRootTunnel;
+};
+
+const deployFxStateChild = async (fxStateRootTunnel: string) => {
+    const fxChildAddress = process.env.FX_CHILD;
+
+    const FxStateChildTunnel = (await getContractFactory(
+        "FxStateChildTunnel"
+    )) as FxStateChildTunnel__factory;
+    const fxStateChildTunnel = await FxStateChildTunnel.deploy(
+    fxChildAddress!,
+    fxStateRootTunnel
+    );
+    await fxStateChildTunnel.deployed();
+
+    return fxStateChildTunnel;
 };
 
 async function main () {
@@ -140,10 +196,14 @@ async function main () {
         nodeOperatorRegistry.address
     );
 
-    console.log("Deploying PoLidoNFT...");
     const poLidoNFT = await deployPoLidoNFT();
-
     console.log("PoLidoNFT contract deployed to:", poLidoNFT.address);
+
+    const fxStateRootTunnel = await deployFxStateRoot(signer);
+    console.log("FxStateRoot contract deployed to:", fxStateRootTunnel.address);
+
+    const fxStateChildTunnel = await deployFxStateChild(fxStateRootTunnel.address);
+    console.log("FxStateChild contract deployed to:", fxStateChildTunnel.address);
 
     // deploy stMATIC contract
     const stMATIC = await deployStMATIC(
@@ -152,19 +212,13 @@ async function main () {
         daoAddress,
         insuranceAddress,
         stakeManagerAddress,
-        poLidoNFT.address
+        poLidoNFT.address,
+        fxStateRootTunnel.address
     );
-
-    // await stMATIC.setFxStateRootTunnel(
-    //     GOERLI_DEPLOYMENT_DETAILS.fx_state_root_tunnel
-    // );
-
     console.log("StMATIC contract deployed to:", stMATIC.address);
 
     // set operator address for the validator factory
-    await validatorFactory.setOperator(
-        nodeOperatorRegistry.address
-    );
+    await validatorFactory.setOperator(nodeOperatorRegistry.address);
     console.log("validatorFactory operator set");
 
     // set stMATIC contract fot the operator
