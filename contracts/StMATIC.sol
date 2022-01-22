@@ -76,7 +76,8 @@ contract StMATIC is
         address _dao,
         address _insurance,
         address _stakeManager,
-        address _poLidoNFT
+        address _poLidoNFT,
+        address _fxStateRootTunnel
     ) external override initializer {
         __AccessControl_init();
         __Pausable_init();
@@ -91,6 +92,7 @@ contract StMATIC is
         dao = _dao;
         token = _token;
         insurance = _insurance;
+        fxStateRootTunnel = _fxStateRootTunnel;
 
         minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(25, 50, 25);

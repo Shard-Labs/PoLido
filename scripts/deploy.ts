@@ -1,184 +1,174 @@
 import hardhat, { ethers, upgrades } from "hardhat";
-import { Signer } from "ethers";
 import fs from "fs";
 import path from "path";
-import { Artifact } from "hardhat/types";
 import {
-    ValidatorFactory,
     ValidatorFactory__factory,
     NodeOperatorRegistry__factory,
     NodeOperatorRegistry,
     StMATIC__factory,
-    StMATIC,
-    FxStateRootTunnel
+    Validator__factory,
+    PoLidoNFT__factory
 } from "../typechain";
-import * as GOERLI_DEPLOYMENT_DETAILS from "../deploy-goerli.json";
+
 import { DeployDetails } from "./types";
+import { getContractFactory } from "@nomiclabs/hardhat-ethers/types";
 
-const { deployContract } = hardhat.waffle;
+const saveDeploymentDetails = (data: any, networkName: string) => {
+    const filePath = path.join(process.cwd(), "deploy-" + networkName + ".json");
+    const oldData: DeployDetails = JSON.parse(
+        fs.readFileSync(filePath, { encoding: "utf-8" })
+    );
 
-async function main () {
-    // get network
-    const networkName: string = hardhat.network.name;
+    fs.writeFileSync(
+        filePath,
+        JSON.stringify({ ...oldData, ...data }, null, 4),
+        "utf8"
+    );
+};
 
-    // get signer
-    const accounts = await ethers.getSigners();
-    const signer: Signer = accounts[0];
-    const signerAddress = await signer.getAddress();
-
-    let polygonStakeManager: string;
-    let maticERC20Address: string;
-
-    // parse config file
+const getDeploymentData = (networkName: string) => {
     const configData: string = fs.readFileSync(
         path.join(process.cwd(), "config.json"),
         "utf-8"
     );
-    const config = JSON.parse(configData);
 
-    if (networkName === "goerli" || networkName === "mainnet") {
-    // matic token address
-        maticERC20Address = config.networks[networkName].Token;
+    return JSON.parse(configData).networks[networkName];
+};
 
-        // polygon stake manager address
-        polygonStakeManager = config.networks[networkName].StakeManagerProxy;
-    } else {
-    // if the network is localhost, deploy mock for erc20 token and stakeManager
-    // deploy ERC20 token
-        const polygonERC20Artifact: Artifact = await hardhat.artifacts.readArtifact(
-            "Polygon"
-        );
-        maticERC20Address = (await deployContract(signer, polygonERC20Artifact))
-            .address;
-        console.log("polygonERC20 mock contract deployed");
-
-        // deploy stake manager mock
-        const stakeManagerMockArtifact: Artifact =
-      await hardhat.artifacts.readArtifact("StakeManagerMock");
-        polygonStakeManager = (
-            await deployContract(signer, stakeManagerMockArtifact, [
-                maticERC20Address
-            ])
-        ).address;
-        console.log("polygonStakeManager mock contract deployed");
-    }
-    console.log("start deployment on:", networkName);
-
-    // deploy validator implementation
-    const validatorArtifact: Artifact = await hardhat.artifacts.readArtifact(
+const deployValidator = async () => {
+    const Validator = (await getContractFactory(
         "Validator"
-    );
-    const validatorContract: ValidatorFactory = (await deployContract(
-        signer,
-        validatorArtifact,
-        []
-    )) as ValidatorFactory;
-    console.log("Validator contract deployed to:", validatorContract.address);
+    )) as Validator__factory;
 
-    // deploy validator factory
-    const validatorFactoryArtifact: ValidatorFactory__factory =
-    (await ethers.getContractFactory(
+    const validator = await Validator.deploy();
+    await validator.deployed();
+
+    return validator;
+};
+
+const deployValidatorFactory = async () => {
+    const ValidatorFactory = (await getContractFactory(
         "ValidatorFactory"
     )) as ValidatorFactory__factory;
 
-    const validatorFactoryContract: ValidatorFactory =
-    (await upgrades.deployProxy(validatorFactoryArtifact, [
-        validatorContract.address
-    ])) as ValidatorFactory;
+    const validatorFactory = await ValidatorFactory.deploy();
+    await validatorFactory.deployed();
 
-    await validatorFactoryContract.deployed();
-    const validatorFactoryImplAddress =
-    await upgrades.erc1967.getImplementationAddress(
-        validatorFactoryContract.address
-    );
+    return validatorFactory;
+};
 
-    console.log(
-        "ValidatorFactory proxy contract deployed to:",
-        validatorFactoryContract.address
-    );
-    console.log(
-        "ValidatorFactory implementation contract deployed to:",
-        validatorFactoryImplAddress
-    );
-
-    // deploy node operator
-    const nodeOperatorRegistryArtifact: NodeOperatorRegistry__factory =
-    (await ethers.getContractFactory(
+const deployNodeOperatorRegistry = async (
+    validatorFactoryAddress: string,
+    stakeManagerAddress: string,
+    maticTokenAddress: string
+) => {
+    const NodeOperatorRegistry = (await getContractFactory(
         "NodeOperatorRegistry"
     )) as NodeOperatorRegistry__factory;
 
-    const nodeOperatorRegistryContract: NodeOperatorRegistry =
-    (await upgrades.deployProxy(nodeOperatorRegistryArtifact, [
-        validatorFactoryContract.address,
-        polygonStakeManager,
-        maticERC20Address
-    ])) as NodeOperatorRegistry;
+    const nodeOperatorRegistry = (await upgrades.deployProxy(
+        NodeOperatorRegistry,
+        [validatorFactoryAddress, stakeManagerAddress, maticTokenAddress]
+    )) as NodeOperatorRegistry;
+    await nodeOperatorRegistry.deployed();
 
-    await nodeOperatorRegistryContract.deployed();
-    const nodeOperatorRegistryContractImplAddress =
-    await upgrades.erc1967.getImplementationAddress(
-        nodeOperatorRegistryContract.address
-    );
+    return nodeOperatorRegistry;
+};
 
-    console.log(
-        "NodeOperatorRegistry contract deployed to:",
-        nodeOperatorRegistryContract.address
-    );
-    console.log(
-        "NodeOperatorRegistry implementation contract deployed to:",
-        nodeOperatorRegistryContractImplAddress
-    );
-
-    console.log("deploy PoLidoNFT...");
-    const PoLidoNFT = await ethers.getContractFactory("PoLidoNFT");
+const deployPoLidoNFT = async () => {
+    const PoLidoNFT = (await getContractFactory(
+        "PoLidoNFT"
+    )) as PoLidoNFT__factory;
     const poLidoNFT = await upgrades.deployProxy(PoLidoNFT, ["PoLido", "PLO"]);
     await poLidoNFT.deployed();
-    const lidoNFTImplAddress = await upgrades.erc1967.getImplementationAddress(
-        poLidoNFT.address
-    );
 
-    console.log("PoLidoNFT contract deployed to:", poLidoNFT.address);
-    console.log(
-        "PoLidoNFT implementation contract deployed to:",
-        lidoNFTImplAddress
-    );
+    return poLidoNFT;
+};
 
-    // deploy stMATIC contract
-    const StMATICFactory: StMATIC__factory = (await ethers.getContractFactory(
-        "StMATIC"
-    )) as StMATIC__factory;
-    const stMATIC: StMATIC = (await upgrades.deployProxy(StMATICFactory, [
-        nodeOperatorRegistryContract.address,
-        maticERC20Address,
-        config.dao,
-        config.insurance,
-        polygonStakeManager,
-        poLidoNFT.address
-    ])) as StMATIC;
+const deployStMATIC = async (
+    nodeOperatorRegistryAddress: string,
+    maticTokenAddress: string,
+    daoAddress: string,
+    insuranceAddress: string,
+    stakeManagerAddress: string,
+    poLidoNFTAddress: string
+) => {
+    const StMATIC = (await getContractFactory("StMATIC")) as StMATIC__factory;
+    const stMATIC = await upgrades.deployProxy(StMATIC, [
+        nodeOperatorRegistryAddress,
+        maticTokenAddress,
+        daoAddress,
+        insuranceAddress,
+        stakeManagerAddress,
+        poLidoNFTAddress
+    ]);
 
     await stMATIC.deployed();
-    await stMATIC.setFxStateRootTunnel(
-        GOERLI_DEPLOYMENT_DETAILS.fx_state_root_tunnel
+
+    return stMATIC;
+};
+
+async function main () {
+    const [signer] = await ethers.getSigners();
+    const networkName = hardhat.network.name;
+    const config = getDeploymentData(networkName);
+
+    const stakeManagerAddress = config.StakeManagerProxy;
+    const maticTokenAddress = config.Token;
+    const daoAddress = config.dao;
+    const insuranceAddress = config.insurance;
+    const treasuryAddress = config.treasury;
+
+    console.log("Starting deployment on:", networkName);
+
+    const validator = await deployValidator();
+    console.log("Validator contract deployed to:", validator.address);
+
+    const validatorFactory = await deployValidatorFactory();
+    console.log(
+        "ValidatorFactory proxy contract deployed to:",
+        validatorFactory.address
     );
 
-    const stMATICImplAddress = await upgrades.erc1967.getImplementationAddress(
-        stMATIC.address
+    const nodeOperatorRegistry = await deployNodeOperatorRegistry(
+        validatorFactory.address,
+        stakeManagerAddress,
+        maticTokenAddress
     );
+    console.log(
+        "NodeOperatorRegistry contract deployed to:",
+        nodeOperatorRegistry.address
+    );
+
+    console.log("Deploying PoLidoNFT...");
+    const poLidoNFT = await deployPoLidoNFT();
+
+    console.log("PoLidoNFT contract deployed to:", poLidoNFT.address);
+
+    // deploy stMATIC contract
+    const stMATIC = await deployStMATIC(
+        nodeOperatorRegistry.address,
+        maticTokenAddress,
+        daoAddress,
+        insuranceAddress,
+        stakeManagerAddress,
+        poLidoNFT.address
+    );
+
+    // await stMATIC.setFxStateRootTunnel(
+    //     GOERLI_DEPLOYMENT_DETAILS.fx_state_root_tunnel
+    // );
 
     console.log("StMATIC contract deployed to:", stMATIC.address);
-    console.log(
-        "StMATIC contract implementation deployed to:",
-        stMATICImplAddress
-    );
 
     // set operator address for the validator factory
-    await validatorFactoryContract.setOperator(
-        nodeOperatorRegistryContract.address
+    await validatorFactory.setOperator(
+        nodeOperatorRegistry.address
     );
     console.log("validatorFactory operator set");
 
     // set stMATIC contract fot the operator
-    await nodeOperatorRegistryContract.setStMATIC(stMATIC.address);
+    await nodeOperatorRegistry.setStMATIC(stMATIC.address);
     console.log("NodeOperatorRegistry stMATIC set");
 
     // set stMATIC contract fot the PoLidoNFT
@@ -186,44 +176,29 @@ async function main () {
     console.log("PoLidoNFT stMATIC set");
 
     // configure root tunnel
-    const fxStateRootTunnel = await ethers.getContractAt(
-        "IFxStateRootTunnel", GOERLI_DEPLOYMENT_DETAILS.fx_state_root_tunnel
-    ) as FxStateRootTunnel;
+    // const fxStateRootTunnel = (await ethers.getContractAt(
+    //     "IFxStateRootTunnel",
+    //     GOERLI_DEPLOYMENT_DETAILS.fx_state_root_tunnel
+    // )) as FxStateRootTunnel;
 
-    await fxStateRootTunnel.setFxChildTunnel(
-        GOERLI_DEPLOYMENT_DETAILS.fx_state_child_tunnel
-    );
-    await fxStateRootTunnel.setStMATIC(stMATIC.address);
-
-    const filePath = path.join(process.cwd(), "deploy-" + networkName + ".json");
-    const oldData: DeployDetails = JSON.parse(
-        fs.readFileSync(filePath, { encoding: "utf-8" })
-    );
-
-    // write addreses into json file
+    // await fxStateRootTunnel.setFxChildTunnel(
+    //     GOERLI_DEPLOYMENT_DETAILS.fx_state_child_tunnel
+    // );
+    // await fxStateRootTunnel.setStMATIC(stMATIC.address);
     const data = {
         network: networkName,
-        signer: signerAddress,
-        dao: config.dao,
-        treasury: config.treasury,
-        matic_erc20_address: maticERC20Address,
-        matic_stake_manager_proxy: polygonStakeManager,
+        signer: signer.address,
+        dao: daoAddress,
+        treasury: treasuryAddress,
+        matic_erc20_address: maticTokenAddress,
+        matic_stake_manager_proxy: stakeManagerAddress,
         lido_nft_proxy: poLidoNFT.address,
-        lido_nft_implementation: lidoNFTImplAddress,
         stMATIC_proxy: stMATIC.address,
-        stMATIC_implementation: stMATICImplAddress,
-        validator_factory_proxy: validatorFactoryContract.address,
-        validator_factory_implementation: validatorContract.address,
-        node_operator_registry_proxy: nodeOperatorRegistryContract.address,
-        node_operator_registry_implementation:
-      nodeOperatorRegistryContractImplAddress
+        validator_factory_proxy: validatorFactory.address,
+        node_operator_registry_proxy: nodeOperatorRegistry.address
     };
 
-    fs.writeFileSync(
-        filePath,
-        JSON.stringify({ ...oldData, ...data }, null, 4),
-        "utf8"
-    );
+    saveDeploymentDetails(data, networkName);
 }
 
 main()
