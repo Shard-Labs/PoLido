@@ -11,7 +11,9 @@ contract FxStateChildTunnel is FxBaseChildTunnel {
     address public latestRootMessageSender;
     bytes public latestData;
 
-    constructor(address _fxChild) FxBaseChildTunnel(_fxChild) {}
+    constructor(address _fxChild, address _fxRoot) FxBaseChildTunnel(_fxChild) {
+        setFxRootTunnel(_fxRoot);
+    }
 
     function _processMessageFromRoot(
         uint256 stateId,
