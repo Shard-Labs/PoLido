@@ -27,3 +27,14 @@ export const attachContract = async (
 
     return contract;
 };
+
+export const getContractAddress = (address: string, nonce: number) => {
+    const rlpEncoded = ethers.utils.RLP.encode([
+        address,
+        ethers.BigNumber.from(nonce.toString()).toHexString()
+    ]);
+    const contractAddressLong = ethers.utils.keccak256(rlpEncoded);
+    const contractAddress = "0x".concat(contractAddressLong.substring(26));
+
+    return ethers.utils.getAddress(contractAddress);
+};
