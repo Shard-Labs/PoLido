@@ -177,7 +177,8 @@ contract NodeOperatorRegistry is
     function initialize(
         address _validatorFactory,
         address _stakeManager,
-        address _polygonERC20
+        address _polygonERC20,
+        address _stMATIC
     ) external initializer {
         __Pausable_init();
         __AccessControl_init();
@@ -186,6 +187,7 @@ contract NodeOperatorRegistry is
         validatorFactory = _validatorFactory;
         stakeManager = _stakeManager;
         polygonERC20 = _polygonERC20;
+        stMATIC = _stMATIC;
 
         minAmountStake = 10 * 10**18;
         minHeimdallFees = 20 * 10**18;

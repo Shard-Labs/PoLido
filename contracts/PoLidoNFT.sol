@@ -35,7 +35,7 @@ contract PoLidoNFT is
         _;
     }
 
-    function initialize(string memory name_, string memory symbol_)
+    function initialize(string memory name_, string memory symbol_, address _stMATIC)
         external
         initializer
     {
@@ -45,6 +45,8 @@ contract PoLidoNFT is
         __ERC721_init_unchained(name_, symbol_);
         __Pausable_init_unchained();
         __ERC721Pausable_init_unchained();
+
+        stMATIC = _stMATIC;
     }
 
     /**
