@@ -29,10 +29,14 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     }
 
     /// @notice Initialize the NodeOperator contract.
-    function initialize(address _validatorImplementation) external initializer {
+    function initialize(
+        address _validatorImplementation,
+        address _nodeOperatorRegisty
+    ) external initializer {
         __Ownable_init();
 
         validatorImplementation = _validatorImplementation;
+        setOperator(_nodeOperatorRegisty);
     }
 
     /// @notice Deploy a new validator contract
@@ -71,7 +75,7 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     /// @notice Allows to set the NodeOperatorRegistry address and update all the validatorProxies
     /// with the new address.
     /// @param _newOperator new operator address.
-    function setOperator(address _newOperator) external override onlyOwner {
+    function setOperator(address _newOperator) public override onlyOwner {
         operator = _newOperator;
 
         uint256 length = validators.length;
