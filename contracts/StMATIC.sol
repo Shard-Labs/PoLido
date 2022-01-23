@@ -384,17 +384,7 @@ contract StMATIC is
         uint256 operatorInfosLength = operatorInfos.length;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
-            IValidatorShare validatorShare = IValidatorShare(
-                operatorInfos[i].validatorShare
-            );
-            uint256 stMaticReward = validatorShare.getLiquidRewards(
-                address(this)
-            );
-            uint256 rewardThreshold = validatorShare.minAmount();
-
-            if (stMaticReward < rewardThreshold) {
-                validatorShare.withdrawRewards();
-            }
+            IValidatorShare(operatorInfos[i].validatorShare).withdrawRewards();
         }
 
         uint256 totalRewards = (
@@ -421,7 +411,7 @@ contract StMATIC is
         uint256 totalRatio = 0;
 
         for (uint256 idx = 0; idx < operatorInfosLength; idx++) {
-            uint256 rewardRatio = operatorInfos[idx].rewardPercentage;
+            uint256 rewardRatio = operatorInfos[idx].maxDelegateLimit;
             ratios[idx] = rewardRatio;
             totalRatio += rewardRatio;
         }
