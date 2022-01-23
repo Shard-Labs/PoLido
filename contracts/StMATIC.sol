@@ -68,6 +68,7 @@ contract StMATIC is
      * @param _insurance - Address of the insurance
      * @param _stakeManager - Address of the stake manager
      * @param _poLidoNFT - Address of the stMATIC NFT
+     * @param _fxStateRootTunnel - Address of the FxStateRootTunnel
      */
     function initialize(
         address _nodeOperatorRegistry,
@@ -437,9 +438,7 @@ contract StMATIC is
             IValidatorShare(_validatorShare)
         );
 
-        if (stakedAmount == 0) {
-            revert("Nothing to withdraw");
-        }
+        require(stakedAmount > 0, "Nothing to withdraw");
 
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
