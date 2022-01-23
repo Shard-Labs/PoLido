@@ -1,12 +1,8 @@
-import { Wallet } from "@ethersproject/wallet";
-import hardhat, { ethers } from "hardhat";
+
+import { ethers } from "hardhat";
 import {
-    POLYGON_RPC,
-    MUMBAI_RPC,
-    MAINNET_PRIVATE_KEY,
-    GOERLI_PRIVATE_KEY,
-    MAINNET_RPC,
-    GOERLI_RPC
+    DEPLOYER_PRIVATE_KEY,
+    CHILD_CHAIN_RPC
 } from "../environment";
 import { PoLidoDeployer } from "./deployers";
 
@@ -18,19 +14,15 @@ const initSigner = (privateKey: string, rpc: string) => {
 };
 
 const main = async () => {
-    let rootSigner: Wallet;
-    let childSigner: Wallet;
+    const [rootSigner] = await ethers.getSigners();
+    const childSigner = initSigner(DEPLOYER_PRIVATE_KEY, CHILD_CHAIN_RPC);
 
-    if (hardhat.network.name === "mainnet") {
-        rootSigner = initSigner(MAINNET_PRIVATE_KEY, MAINNET_RPC);
-        childSigner = initSigner(MAINNET_PRIVATE_KEY, POLYGON_RPC);
-    } else {
-        rootSigner = initSigner(GOERLI_PRIVATE_KEY, GOERLI_RPC);
-        childSigner = initSigner(GOERLI_PRIVATE_KEY, MUMBAI_RPC);
-    }
-
-    const poLidoDeployer = await PoLidoDeployer.CreatePoLidoDeployer(childSigner, rootSigner);
+    const poLidoDeployer = await PoLidoDeployer.CreatePoLidoDeployer(
+        rootSigner,
+        childSigner
+    );
     await poLidoDeployer.deploy();
+    poLidoDeployer.export();
 };
 
 main()

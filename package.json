@@ -7,7 +7,9 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "deploy:main": "cross-env NODE_ENV=main npx hardhat run ./scripts/deploy.ts --network mainnet",
+    "deploy:test": "cross-env NODE_ENV=test npx hardhat run ./scripts/deploy.ts --network testnet",
+    "test": "cross-env NODE_ENV=test npx hardhat test --network testnet"
   },
   "repository": {
     "type": "git",
@@ -51,6 +53,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts-upgradeable": "^4.3.2",
+    "cross-env": "^7.0.3",
     "dotenv": "^10.0.0",
     "solc": "^0.8.2"
   }

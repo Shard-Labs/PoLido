@@ -1,9 +1,8 @@
-import * as fs from "fs";
-import { getContractFactory } from "@nomiclabs/hardhat-ethers/types";
 import { Contract, Wallet } from "ethers";
-import { upgrades } from "hardhat";
+import { ethers, upgrades } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import { getContractAddress } from "./utils";
+import { predictContractAddress } from "./utils";
 import {
     FxStateChildTunnel,
     FxStateRootTunnel,
@@ -16,18 +15,17 @@ import {
 import {
     CHECKPOINT_MANAGER,
     DAO,
+    FX_CHILD,
     FX_ROOT,
     INSURANCE,
-    MAINNET_MATIC_TOKEN,
-    POLYGON_STAKE_MANAGER
+    MATIC_TOKEN,
+    STAKE_MANAGER
 } from "../environment";
-import path from "path/posix";
 
 type DeploymentData = {
   Network: string;
   Signer: string;
   Dao: string;
-  Treasury: string;
   PoLidoNFT: string;
   StMATIC: string;
   ValidatorFactory: string;
@@ -52,119 +50,134 @@ type ChildDeploymentOrder = Record<ChildContractNames, number>;
 type RootDeploymentOrder = Record<RootContractNames, number>;
 
 const childDeploymentOrder: ChildDeploymentOrder = {
-    FxStateChildTunnel: 1
+    FxStateChildTunnel: 0
 };
 
 const rootDeploymentOrder: RootDeploymentOrder = {
-    Validator: 1,
-    ValidatorFactory: 2,
-    NodeOperatorRegistry: 3,
-    PoLidoNFT: 4,
-    FxStateRootTunnel: 5,
-    StMATIC: 6
+    Validator: 0,
+    ValidatorFactory: 1,
+    NodeOperatorRegistry: 2,
+    PoLidoNFT: 3,
+    FxStateRootTunnel: 4,
+    StMATIC: 5
 };
 
 interface Exportable {
   data: Record<any, string>;
-
   export(): void;
 }
 
-abstract class MultichainDeployer {
-  childSigner: Wallet;
-  rootSigner: Wallet;
+interface Deployable {
+  deploy(): void;
+}
 
-  childNonce: number;
-  rootNonce: number;
+class BlockchainDeployer {
+  signer: Wallet | SignerWithAddress;
+  nonce: number;
 
-  deploymentData: Partial<DeploymentData>;
-
-  protected constructor (
-      childSigner: Wallet,
-      childNonce: number,
-      rootSigner: Wallet,
-      rootNonce: number
-  ) {
-      this.childSigner = childSigner;
-      this.rootSigner = rootSigner;
-      this.childNonce = childNonce;
-      this.rootNonce = rootNonce;
-
-      this.deploymentData = {};
+  constructor (signer: Wallet | SignerWithAddress, nonce: number) {
+      this.signer = signer;
+      this.nonce = nonce;
   }
 
-  protected deployContractRoot = async <T extends Contract>(
-      contractName: keyof DeploymentData
+  deployContract = async <T extends Contract>(
+      contractName: keyof DeploymentData,
+      ...args: any[]
   ) => {
-      const Contract = await getContractFactory(contractName, this.rootSigner);
-      const contract = (await Contract.deploy()) as T;
+      // console.log(`Deploying ${contractName}: ${args}, ${args.length}`);
+      const Contract = await ethers.getContractFactory(contractName, this.signer);
+      const contract = args.length
+          ? ((await Contract.deploy(...args)) as T)
+          : ((await Contract.deploy()) as T);
       await contract.deployed();
+      // console.log(`Deployed at ${contract.address}`);
 
-      this.deploymentData[contractName] = contract.address;
-      this.rootNonce++;
+      this.nonce++;
 
       return contract;
   };
 
-  protected deployContractChild = async <T extends Contract>(
-      contractName: keyof DeploymentData
+  deployProxy = async <T extends Contract>(
+      contractName: keyof DeploymentData,
+      ...args: any[]
   ) => {
-      const Contract = await getContractFactory(contractName, this.childSigner);
-      const contract = (await Contract.deploy()) as T;
+      // console.log(`Deploying ${contractName}: ${args}, ${args.length}`);
+      const Contract = await ethers.getContractFactory(contractName, this.signer);
+      const contract = args.length
+          ? ((await upgrades.deployProxy(Contract, args)) as T)
+          : ((await upgrades.deployProxy(Contract)) as T);
       await contract.deployed();
-
-      this.deploymentData[contractName] = contract.address;
-      this.childNonce++;
+      // console.log(`Deployed at ${contract.address}`);
+      this.nonce++;
 
       return contract;
+  };
+}
+
+abstract class MultichainDeployer {
+  rootDeployer: BlockchainDeployer;
+  childDeployer: BlockchainDeployer;
+
+  constructor (
+      rootDeployer: BlockchainDeployer,
+      childDeployer: BlockchainDeployer
+  ) {
+      this.rootDeployer = rootDeployer;
+      this.childDeployer = childDeployer;
+  }
+
+  protected deployContractRoot = async <T extends Contract>(
+      contractName: keyof DeploymentData,
+      ...args: any[]
+  ) => {
+      return this.rootDeployer.deployContract<T>(contractName, args);
+  };
+
+  protected deployContractChild = async <T extends Contract>(
+      contractName: keyof DeploymentData,
+      ...args: any[]
+  ) => {
+      return this.childDeployer.deployContract<T>(contractName, args);
   };
 
   protected deployProxyRoot = async <T extends Contract>(
       contractName: keyof DeploymentData,
       ...args: any[]
   ) => {
-      const Contract = await getContractFactory(contractName, this.rootSigner);
-      const contract = (await upgrades.deployProxy(Contract, args)) as T;
-      await contract.deployed();
-
-      this.deploymentData[contractName] = contract.address;
-      this.rootNonce++;
-
-      return contract;
+      return this.rootDeployer.deployProxy<T>(contractName, args);
   };
 
   protected deployProxyChild = async <T extends Contract>(
       contractName: keyof DeploymentData,
       ...args: any[]
   ) => {
-      const Contract = await getContractFactory(contractName, this.childSigner);
-      const contract = (await upgrades.deployProxy(Contract, args)) as T;
-      await contract.deployed();
-
-      this.deploymentData[contractName] = contract.address;
-      this.rootNonce++;
-
-      return contract;
+      return this.childDeployer.deployProxy<T>(contractName, args);
   };
 }
 
-export class PoLidoDeployer extends MultichainDeployer implements Exportable {
-  data!: Record<ContractNames, string>;
+export class PoLidoDeployer
+    extends MultichainDeployer
+    implements Exportable, Deployable {
+  data: Partial<Record<ContractNames, string>> = {};
 
   public static CreatePoLidoDeployer = async (
-      childSigner: Wallet,
-      rootSigner: Wallet
+      rootSigner: Wallet | SignerWithAddress,
+      childSigner: Wallet | SignerWithAddress
   ) => {
-      const childNonce = await childSigner.getTransactionCount();
       const rootNonce = await rootSigner.getTransactionCount();
-      const poLidoDeployer = new PoLidoDeployer(
-          childSigner,
-          childNonce,
+      const childNonce = await childSigner.getTransactionCount();
+      const rootDeployer = new BlockchainDeployer(
           rootSigner,
           rootNonce
       );
+      const childDeployer = new BlockchainDeployer(
+          childSigner,
+          childNonce
+      );
+      const poLidoDeployer = new PoLidoDeployer(rootDeployer, childDeployer);
 
-      poLidoDeployer.calculateContractAddresses();
+      poLidoDeployer.predictAddresses();
+
       return poLidoDeployer;
   };
 
@@ -179,81 +192,70 @@ export class PoLidoDeployer extends MultichainDeployer implements Exportable {
   };
 
   private deployValidator = async () => {
-      return await this.deployContractRoot<Validator>("Validator");
+      return this.rootDeployer.deployContract<Validator>("Validator");
   };
 
   private deployValidatorFactory = async () => {
-      return await this.deployProxyRoot<ValidatorFactory>("ValidatorFactory", [
-          this.deploymentData.Validator,
+      return this.rootDeployer.deployProxy<ValidatorFactory>(
+          "ValidatorFactory",
+          this.data.Validator,
           this.data.NodeOperatorRegistry
-      ]);
+      );
   };
 
   private deployNodeOperatorRegistry = async () => {
-      return await this.deployProxyRoot<NodeOperatorRegistry>(
+      return this.rootDeployer.deployProxy<NodeOperatorRegistry>(
           "NodeOperatorRegistry",
-          [
-              this.data.ValidatorFactory,
-              POLYGON_STAKE_MANAGER,
-              MAINNET_MATIC_TOKEN,
-              this.data.StMATIC
-          ]
+          this.data.ValidatorFactory,
+          STAKE_MANAGER,
+          MATIC_TOKEN,
+          this.data.StMATIC
       );
   };
 
   private deployPoLidoNFT = async () => {
-      return await this.deployProxyRoot<PoLidoNFT>("PoLidoNFT", [
+      return this.rootDeployer.deployProxy<PoLidoNFT>(
+          "PoLidoNFT",
           "PoLido",
           "PLO",
           this.data.StMATIC
-      ]);
+      );
   };
 
   private deployFxStateRootTunnel = async () => {
-      return await this.deployProxyRoot<FxStateRootTunnel>("FxStateRootTunnel", [
+      return this.rootDeployer.deployContract<FxStateRootTunnel>(
+          "FxStateRootTunnel",
           CHECKPOINT_MANAGER,
           FX_ROOT,
           this.data.FxStateChildTunnel,
           this.data.StMATIC
-      ]);
+      );
   };
 
   private deployFxStateChildTunnel = async () => {
-      return await this.deployProxyChild<FxStateChildTunnel>(
+      return this.childDeployer.deployContract<FxStateChildTunnel>(
           "FxStateChildTunnel",
-          [this.data.FxStateRootTunnel]
+          FX_CHILD,
+          this.data.FxStateRootTunnel
       );
   };
 
   private deployStMATIC = async () => {
-      return await this.deployProxyRoot<StMATIC>("StMATIC", [
+      return this.rootDeployer.deployProxy<StMATIC>(
+          "StMATIC",
           this.data.NodeOperatorRegistry,
-          MAINNET_MATIC_TOKEN,
+          MATIC_TOKEN,
           DAO,
           INSURANCE,
-          POLYGON_STAKE_MANAGER,
+          STAKE_MANAGER,
           this.data.PoLidoNFT,
           this.data.FxStateRootTunnel
-      ]);
-  };
-
-  export = () => {
-      const filePath = path.join(
-          process.cwd(),
-          "deploy-" + this.rootSigner.address + ".json"
-      );
-      const oldData: DeploymentData = JSON.parse(
-          fs.readFileSync(filePath, { encoding: "utf-8" })
-      );
-
-      fs.writeFileSync(
-          filePath,
-          JSON.stringify({ ...oldData, ...this.data }, null, 4),
-          "utf8"
       );
   };
 
-  private calculateContractAddresses = () => {
+  export = () => {};
+
+  private predictAddresses = () => {
       this.calculateRootContractAddresses();
       this.calculateChildContractAddresses();
   };
@@ -261,9 +263,10 @@ export class PoLidoDeployer extends MultichainDeployer implements Exportable {
   private calculateRootContractAddresses = () => {
       (Object.keys(rootDeploymentOrder) as Array<RootContractNames>).forEach(
           (k) => {
-              this.data[k] = getContractAddress(
-                  this.rootSigner.address,
-                  this.rootNonce + rootDeploymentOrder[k]
+              console.log(k, this.rootDeployer.nonce, rootDeploymentOrder[k]);
+              this.data[k] = predictContractAddress(
+                  this.rootDeployer.signer.address,
+                  this.rootDeployer.nonce + rootDeploymentOrder[k]
               );
           }
       );
@@ -272,9 +275,9 @@ export class PoLidoDeployer extends MultichainDeployer implements Exportable {
   private calculateChildContractAddresses = () => {
       (Object.keys(childDeploymentOrder) as Array<ChildContractNames>).forEach(
           (k) => {
-              this.data[k] = getContractAddress(
-                  this.childSigner.address,
-                  this.childNonce + childDeploymentOrder[k]
+              this.data[k] = predictContractAddress(
+                  this.childDeployer.signer.address,
+                  this.childDeployer.nonce + childDeploymentOrder[k]
               );
           }
       );
