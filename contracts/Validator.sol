@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IStakeManager.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/INodeOperatorRegistry.sol";
+import "hardhat/console.sol";
 
 /// @title ValidatorImplementation
 /// @author 2021 ShardLabs.
@@ -83,33 +84,22 @@ contract Validator is IERC721Receiver, IValidator {
     /// @param _validatorId validator id.
     /// @param _amount amount to stake.
     /// @param _stakeRewards restake rewards.
-    /// @param _amountStaked total amount staked by the operator in stake manager.
     /// @param _stakeManager stake manager address
     /// @param _polygonERC20 address of the MATIC token
-    /// @return return a bool and the new total amount staked in stake manager.
     function restake(
         address _sender,
         uint256 _validatorId,
         uint256 _amount,
         bool _stakeRewards,
-        uint256 _amountStaked,
         address _stakeManager,
         address _polygonERC20
-    ) external override isOperator returns (bool, uint256) {
-        IStakeManager stakeManager = IStakeManager(_stakeManager);
-
+    ) external override isOperator {
         if (_amount > 0) {
             IERC20 polygonERC20 = IERC20(_polygonERC20);
             polygonERC20.safeTransferFrom(_sender, address(this), _amount);
-            polygonERC20.safeApprove(address(stakeManager), _amount);
+            polygonERC20.safeApprove(address(_stakeManager), _amount);
         }
-        if (stakeManager.validatorStake(_validatorId) != _amountStaked) {
-            return (false, 0);
-        }
-
-        stakeManager.restake(_validatorId, _amount, _stakeRewards);
-
-        return (true, stakeManager.validatorStake(_validatorId));
+        IStakeManager(_stakeManager).restake(_validatorId, _amount, _stakeRewards);
     }
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.

@@ -419,7 +419,7 @@ contract StMATIC is
         uint256 totalRatio = 0;
 
         for (uint256 idx = 0; idx < operatorInfosLength; idx++) {
-            uint256 rewardRatio = operatorInfos[idx].rewardPercentage;
+            uint256 rewardRatio = operatorInfos[idx].maxDelegateLimit;
             ratios[idx] = rewardRatio;
             totalRatio += rewardRatio;
         }

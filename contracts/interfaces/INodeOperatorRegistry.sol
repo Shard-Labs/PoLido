@@ -57,14 +57,6 @@ interface INodeOperatorRegistry {
     /// withdraw delay
     function unstakeClaim() external;
 
-    /// @notice Allows to get the total staked by a validator.
-    /// @param _rewardAddress reward address.
-    /// @return Returns the total staked.
-    function getValidatorStake(address _rewardAddress)
-        external
-        view
-        returns (uint256);
-
     /// @notice Allows an owner to withdraw rewards from the stakeManager.
     function withdrawRewards() external;
 
@@ -99,9 +91,6 @@ interface INodeOperatorRegistry {
     function setMaxDelegateLimit(uint256 _operatorId, uint256 _maxDelegateLimit)
         external;
 
-    /// @notice Allows the DAO to set _slashingDelay.
-    function setSlashingDelay(uint256 _slashingDelay) external;
-
     /// @notice Allows the DAO to set _commissionRate.
     function setCommissionRate(uint256 _commissionRate) external;
 
@@ -124,9 +113,6 @@ interface INodeOperatorRegistry {
 
     /// @notice Allows the DAO to enable/disable restake.
     function setRestake(bool _restake) external;
-
-    /// @notice Allows the DAO to enable/disable unjail.
-    function setUnjail(bool _unjail) external;
 
     /// @notice Allows the DAO to set stMATIC contract.
     function setStMATIC(address _stMATIC) external;
@@ -163,7 +149,8 @@ interface INodeOperatorRegistry {
             uint256 _totalUnstakedNodeOperator,
             uint256 _totalClaimedNodeOperator,
             uint256 _totalWaitNodeOperator,
-            uint256 _totalExitNodeOperator
+            uint256 _totalExitNodeOperator,
+            uint256 _totalSlashedNodeOperator
         );
 
     /// @notice Allows to get all the active operators info.
@@ -172,20 +159,9 @@ interface INodeOperatorRegistry {
         view
         returns (Operator.OperatorInfo[] memory);
 
-    /// @notice Allows slashing all the operators if the local stakedAmount is not equal
-    /// to the stakedAmount on stake manager.
-    function slashOperators(bool[] memory _slashedOperatorIds) external;
-
-    /// @notice Allows listing all the operator's status by checking if the local stakedAmount
-    /// is not equal to the stakedAmount on stake manager.
-    function getIfOperatorsWereSlashed() external view returns (bool[] memory);
-
     /// @notice Allows update an operator status from WAIT to EXIT
     function exitOperator(address _validatorShare) external;
 
     /// @notice Allows to get all the operator ids.
     function getOperatorIds() external view returns (uint256[] memory);
-
-    /// @notice Allows to get an node operator validatorShare contracts.
-    function getNodeOperatorState() external view returns (address[] memory);
 }
