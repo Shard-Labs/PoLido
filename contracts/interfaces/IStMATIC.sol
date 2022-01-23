@@ -63,7 +63,7 @@ interface IStMATIC is IERC20Upgradeable {
 
     function reservedFunds() external view returns (uint256);
 
-    function minValidatorBalance() external view returns (uint256);
+    function getMinValidatorBalance() external view returns (uint256);
 
     function token2WithdrawRequest(uint256 _requestId)
         external
