@@ -284,6 +284,11 @@ contract StMATIC is
 
         IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
+            0
+        );
+
+        IERC20Upgradeable(token).safeApprove(
+            address(stakeManager),
             totalToDelegatedAmount
         );
 
