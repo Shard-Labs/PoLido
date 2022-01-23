@@ -28,7 +28,7 @@ export const attachContract = async (
     return contract;
 };
 
-export const getContractAddress = (address: string, nonce: number) => {
+export const predictContractAddress = (address: string, nonce: number) => {
     const rlpEncoded = ethers.utils.RLP.encode([
         address,
         ethers.BigNumber.from(nonce.toString()).toHexString()

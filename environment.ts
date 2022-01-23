@@ -1,45 +1,42 @@
 import * as dotenv from "dotenv";
+import * as path from "path";
 
-dotenv.config();
+const envSuffix = process.env.NODE_ENV === "main" ? "" : ".test";
 
-const INFURA_API_KEY = process.env.INFURA_API_KEY || "";
-const GOERLI_PRIVATE_KEY = process.env.GOERLI_PRIVATE_KEY || "";
-const MAINNET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY || "";
+dotenv.config({ path: path.join(__dirname + "/.env" + envSuffix) });
+
+const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY || "";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 const VALIDATOR_PRIVATE_KEY = process.env.VALIDATOR_PRIVATE_KEY || "";
-const POLYGON_RPC = process.env.POLYGON_RPC || "";
-const MUMBAI_RPC = process.env.MUMBAI_RPC || "";
-const MAINNET_RPC = process.env.MAINNET_RPC || "";
-const GOERLI_RPC = process.env.GOERLI_RPC || "";
-const MAINET_PRIVATE_KEY = process.env.MAINNET_PRIVATE_KEY || "";
+const CHILD_CHAIN_RPC = process.env.CHILD_CHAIN_RPC || "";
+const ROOT_CHAIN_RPC = process.env.ROOT_CHAIN_RPC || "";
 const CHECKPOINT_MANAGER = process.env.CHECKPOINT_MANAGER || "";
-const POLYGON_STAKE_MANAGER = process.env.POLYGON_STAKE_MANAGER || "";
-const GOERLI_STAKE_MANAGER = process.env.GOERLI_STAKE_MANAGER || "";
-const MAINNET_MATIC_TOKEN = process.env.MAINNET_MATIC_TOKEN || "";
-const GOERLI_MATIC_TOKEN = process.env.GOERLI_MATIC_TOKEN || "";
+const STAKE_MANAGER = process.env.STAKE_MANAGER || "";
+const MATIC_TOKEN = process.env.MATIC_TOKEN || "";
 const FX_ROOT = process.env.FX_ROOT || "";
 const FX_CHILD = process.env.FX_CHILD || "";
 const DAO = process.env.DAO || "";
 const INSURANCE = process.env.INSURANCE || "";
+const CHILD_GAS_PRICE = process.env.CHILD_GAS_PRICE || "";
+const CHILD_GAS_LIMIT = process.env.CHILD_GAS_LIMIT || "";
+const ROOT_GAS_PRICE = process.env.ROOT_GAS_PRICE || "";
+const ROOT_GAS_LIMIT = process.env.ROOT_GAS_LIMIT || "";
 
 export {
-    INFURA_API_KEY,
-    GOERLI_PRIVATE_KEY,
-    MAINNET_PRIVATE_KEY,
+    DEPLOYER_PRIVATE_KEY,
     ETHERSCAN_API_KEY,
     VALIDATOR_PRIVATE_KEY,
-    POLYGON_RPC,
-    MUMBAI_RPC,
-    MAINET_PRIVATE_KEY,
+    CHILD_CHAIN_RPC,
+    ROOT_CHAIN_RPC,
     CHECKPOINT_MANAGER,
-    POLYGON_STAKE_MANAGER,
-    GOERLI_STAKE_MANAGER,
-    MAINNET_MATIC_TOKEN,
-    GOERLI_MATIC_TOKEN,
+    STAKE_MANAGER,
+    MATIC_TOKEN,
     FX_ROOT,
     FX_CHILD,
     DAO,
     INSURANCE,
-    MAINNET_RPC,
-    GOERLI_RPC
+    CHILD_GAS_PRICE,
+    CHILD_GAS_LIMIT,
+    ROOT_GAS_PRICE,
+    ROOT_GAS_LIMIT
 };

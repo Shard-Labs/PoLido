@@ -1,3 +1,4 @@
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { HardhatUserConfig, task } from "hardhat/config";
 
 import "@typechain/hardhat";
@@ -17,14 +18,16 @@ import {
     claimUnstakeOperator,
     getValidatorDetails
 } from "./scripts/tasks";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { OperatorArgs } from "./scripts/types";
 import { getPublicKey } from "./scripts/utils";
-import { ETHERSCAN_API_KEY, GOERLI_PRIVATE_KEY, INFURA_API_KEY, MAINNET_PRIVATE_KEY, VALIDATOR_PRIVATE_KEY } from "./environment";
-
-// Used to bypass hardhat compilation error in case user doesn't use one of the private keys
-const DEFAULT_PRIVATE_KEY =
-  "ab776418850f4b06cba804f364aeba754f29f5164de6c068dc85f3091253faf0";
+import {
+    DEPLOYER_PRIVATE_KEY,
+    ETHERSCAN_API_KEY,
+    ROOT_CHAIN_RPC,
+    ROOT_GAS_LIMIT,
+    ROOT_GAS_PRICE,
+    VALIDATOR_PRIVATE_KEY
+} from "./environment";
 
 task("verifyLido", "StMATIC contracts verification").setAction(
     async (args, hre: HardhatRuntimeEnvironment) => {
@@ -99,21 +102,17 @@ const config: HardhatUserConfig = {
         localhost: {
             url: "http://127.0.0.1:8545"
         },
-        goerli: {
-            url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${GOERLI_PRIVATE_KEY || DEFAULT_PRIVATE_KEY}`],
-            gasPrice: 10000000000,
-            gas: 10000000
+        testnet: {
+            url: ROOT_CHAIN_RPC,
+            accounts: [DEPLOYER_PRIVATE_KEY],
+            gasPrice: Number(ROOT_GAS_PRICE),
+            gas: Number(ROOT_GAS_LIMIT)
         },
         mainnet: {
-            url: `https://mainnet.infura.io/v3/${INFURA_API_KEY}`,
-            accounts: [`0x${MAINNET_PRIVATE_KEY || DEFAULT_PRIVATE_KEY}`]
-        },
-        mumbai: {
-            url: "https://rpc-mumbai.maticvigil.com",
-            gas: 10000000,
-            gasPrice: 1500000000,
-            accounts: [`0x${GOERLI_PRIVATE_KEY || DEFAULT_PRIVATE_KEY}`]
+            url: ROOT_CHAIN_RPC,
+            accounts: [DEPLOYER_PRIVATE_KEY],
+            gasPrice: Number(ROOT_GAS_PRICE),
+            gas: Number(ROOT_GAS_LIMIT)
         }
     },
     typechain: {
@@ -126,12 +125,6 @@ const config: HardhatUserConfig = {
     etherscan: {
         apiKey: ETHERSCAN_API_KEY
     }
-    // contractSizer: {
-    //     alphaSort: true,
-    //     disambiguatePaths: false,
-    //     runOnCompile: true,
-    //     strict: true
-    // }
 };
 
 export default config;
