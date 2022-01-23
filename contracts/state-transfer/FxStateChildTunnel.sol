@@ -39,8 +39,4 @@ contract FxStateChildTunnel is FxBaseChildTunnel {
         }
         return (stMATIC, MATIC);
     }
-
-    // function sendMessageToRoot(bytes memory message) public {
-    //     _sendMessageToRoot(message);
-    // }
 }
