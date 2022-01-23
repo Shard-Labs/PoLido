@@ -6,6 +6,7 @@ import "../interfaces/IStakeManager.sol";
 import "../helpers/ERC721Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../mocks/ValidatorShareMock.sol";
+import "hardhat/console.sol";
 
 contract StakeManagerMock is IStakeManager {
     mapping(uint256 => IStakeManager.Validator) smValidators;
@@ -79,7 +80,7 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function unstake(uint256 _validatorId) external override {
-        smValidators[_validatorId].status = IStakeManager.Status.Locked;
+        smValidators[_validatorId].deactivationEpoch = block.timestamp;
     }
 
     function topUpForFee(address _user, uint256 _heimdallFee)
@@ -109,12 +110,13 @@ contract StakeManagerMock is IStakeManager {
         IERC20(state.token).transfer(msg.sender, 1000);
     }
 
-    function unstakeClaim(uint256) external override {
+    function unstakeClaim(uint256 _validatorId) external override {
         IERC20(state.token).transfer(
             msg.sender,
             IERC20(state.token).balanceOf(address(this))
         );
         state.delegator2Amount[msg.sender] = 0;
+        smValidators[_validatorId].status = IStakeManager.Status.Unstaked;
     }
 
     function validatorStake(uint256 _validatorId)
@@ -144,7 +146,11 @@ contract StakeManagerMock is IStakeManager {
     ) external override {}
 
     function unjail(uint256 _validatorId) external override {
-        require(smValidators[_validatorId].status == IStakeManager.Status.Locked);
+        require(
+            smValidators[_validatorId].status == IStakeManager.Status.Locked,
+            "validator not locked"
+        );
+        smValidators[_validatorId].status = IStakeManager.Status.Active;
     }
 
     function withdrawalDelay() external pure override returns (uint256) {
@@ -166,8 +172,9 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function slash(uint256 _validatorId) external {
+        smValidators[_validatorId].status = IStakeManager.Status.Locked;
         // smValidators[_validatorId].amount -= 1 ether;
-        state.stakedAmount[_validatorId] -= 1 ether;
+        state.stakedAmount[_validatorId] -= 100;
     }
 
     function validators(uint256 _validatorId)

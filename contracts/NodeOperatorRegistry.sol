@@ -28,7 +28,8 @@ contract NodeOperatorRegistry is
         UNSTAKED,
         CLAIMED,
         WAIT,
-        EXIT
+        EXIT,
+        JAILED
     }
     /// @notice The node operator struct
     /// @param status node operator status(INACTIVE, ACTIVE, STOPPED, CLAIMED, UNSTAKED, WAIT, EXIT).
@@ -52,11 +53,11 @@ contract NodeOperatorRegistry is
         address validatorProxy;
         uint256 validatorId;
         uint256 commissionRate;
-        uint256 slashed;
-        uint256 slashedTimestamp;
+        uint256 slashed; // delete
+        uint256 slashedTimestamp; // delete
         uint256 statusUpdatedTimestamp;
         uint256 maxDelegateLimit;
-        uint256 amountStaked;
+        uint256 amountStaked; // delete
     }
 
     /// @notice all the roles.
@@ -71,19 +72,19 @@ contract NodeOperatorRegistry is
     /// @notice total node operators.
     uint256 private totalNodeOperator;
     /// @notice total inactive node operators.
-    uint256 private totalInactiveNodeOperator;
+    uint256 private totalInactiveNodeOperator; // delete
     /// @notice total active node operators.
-    uint256 private totalActiveNodeOperator;
+    uint256 private totalActiveNodeOperator; // delete
     /// @notice total stopped node operators.
-    uint256 private totalStoppedNodeOperator;
+    uint256 private totalStoppedNodeOperator; // delete
     /// @notice total unstaked node operators.
-    uint256 private totalUnstakedNodeOperator;
+    uint256 private totalUnstakedNodeOperator; // delete
     /// @notice total claimed node operators.
-    uint256 private totalClaimedNodeOperator;
+    uint256 private totalClaimedNodeOperator; // delete
     /// @notice total wait node operators.
-    uint256 private totalWaitNodeOperator;
+    uint256 private totalWaitNodeOperator; // delete
     /// @notice total exited node operators.
-    uint256 private totalExitNodeOperator;
+    uint256 private totalExitNodeOperator; // delete
 
     /// @notice validatorFactory address.
     address private validatorFactory;
@@ -104,13 +105,13 @@ contract NodeOperatorRegistry is
     uint256 public commissionRate;
 
     /// @notice allows restake.
-    bool public allowsRestake;
+    bool public allowsRestake; 
 
     /// @notice allows unjail a validator.
-    bool public allowsUnjail;
+    bool public allowsUnjail; // delete
 
     /// @notice the default period where an operator will marked as "was slashed".
-    uint256 public slashingDelay;
+    uint256 public slashingDelay; // delete
 
     /// @notice default max delgation limit.
     uint256 public defaultMaxDelegateLimit;
@@ -191,7 +192,6 @@ contract NodeOperatorRegistry is
 
         minAmountStake = 10 * 10**18;
         minHeimdallFees = 20 * 10**18;
-        slashingDelay = 2**13;
         defaultMaxDelegateLimit = 10 ether;
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -242,8 +242,6 @@ contract NodeOperatorRegistry is
         });
         operatorIds.push(operatorId);
         totalNodeOperator++;
-        totalInactiveNodeOperator++;
-
         operatorOwners[_rewardAddress] = operatorId;
 
         emit AddOperator(operatorId);
@@ -257,24 +255,19 @@ contract NodeOperatorRegistry is
         userHasRole(DAO_ROLE)
     {
         (, NodeOperator storage no) = getOperator(_operatorId);
-        NodeOperatorStatus status = no.status;
+        NodeOperatorStatus status = getOperatorStatus(no);
         checkCondition(
-            no.rewardAddress != address(0) &&
+                no.rewardAddress != address(0) &&
                 status <= NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
-
         if (status == NodeOperatorStatus.INACTIVE) {
             no.status = NodeOperatorStatus.EXIT;
-            totalInactiveNodeOperator--;
-            totalExitNodeOperator++;
-        } else if (status == NodeOperatorStatus.ACTIVE) {
+        } else {
             IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
             no.status = NodeOperatorStatus.STOPPED;
-            totalActiveNodeOperator--;
-            totalStoppedNodeOperator++;
         }
-
+        no.statusUpdatedTimestamp = block.timestamp;
         emit StopOperator(_operatorId);
     }
 
@@ -283,13 +276,8 @@ contract NodeOperatorRegistry is
     function exitOperator(address _validatorShare) external override {
         checkCondition(msg.sender == stMATIC, "Caller is not stMATIC contract");
 
-        uint256 operatorId = validatorShare2OperatorId[_validatorShare];
-        checkCondition(operatorId != 0, "Operator not found");
-
-        NodeOperator storage no = operators[operatorId];
-        NodeOperatorStatus status = no.status;
-
-        delete validatorShare2OperatorId[no.validatorShare];
+        (, NodeOperator storage no) = getOperator(validatorShare2OperatorId[_validatorShare]);
+        NodeOperatorStatus status = getOperatorStatus(no);
 
         if (
             status == NodeOperatorStatus.UNSTAKED ||
@@ -300,9 +288,8 @@ contract NodeOperatorRegistry is
 
         checkCondition(status == NodeOperatorStatus.WAIT, "Invalid status");
         no.status = NodeOperatorStatus.EXIT;
-
-        totalWaitNodeOperator--;
-        totalExitNodeOperator++;
+        // no.statusUpdatedTimestamp = block.timestamp;
+        delete validatorShare2OperatorId[no.validatorShare];
     }
 
     /// @notice Allows to remove an operator from the system.when the operator status is
@@ -328,7 +315,6 @@ contract NodeOperatorRegistry is
         operatorIds.pop();
 
         totalNodeOperator--;
-        totalExitNodeOperator--;
         IValidatorFactory(validatorFactory).remove(no.validatorProxy);
         delete operatorOwners[no.rewardAddress];
         delete operators[_operatorId];
@@ -341,7 +327,7 @@ contract NodeOperatorRegistry is
     function joinOperator() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status == NodeOperatorStatus.INACTIVE,
+            getOperatorStatus(no) == NodeOperatorStatus.INACTIVE,
             "Invalid status"
         );
 
@@ -377,17 +363,13 @@ contract NodeOperatorRegistry is
         );
 
         no.amountStaked = sm.validatorStake(no.validatorId);
-        no.status = NodeOperatorStatus.ACTIVE;
         no.validatorId = validatorId;
         no.statusUpdatedTimestamp = block.timestamp;
 
         address validatorShare = sm.getValidatorContract(validatorId);
         no.validatorShare = validatorShare;
         validatorShare2OperatorId[validatorShare] = operatorId;
-
-        totalActiveNodeOperator++;
-        totalInactiveNodeOperator--;
-
+        
         emit JoinOperator(operatorId);
     }
 
@@ -408,9 +390,10 @@ contract NodeOperatorRegistry is
     {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status == NodeOperatorStatus.INACTIVE,
+            getOperatorStatus(no) == NodeOperatorStatus.INACTIVE,
             "Invalid status"
         );
+
         (uint256 validatorId, address validatorShare) = IValidator(
             no.validatorProxy
         ).stake(
@@ -427,11 +410,7 @@ contract NodeOperatorRegistry is
         no.validatorId = validatorId;
         no.validatorShare = validatorShare;
         no.amountStaked += _amount;
-        no.status = NodeOperatorStatus.ACTIVE;
         no.statusUpdatedTimestamp = block.timestamp;
-
-        totalInactiveNodeOperator--;
-        totalActiveNodeOperator++;
         validatorShare2OperatorId[validatorShare] = operatorId;
 
         emit StakeOperator(operatorId, _amount, _heimdallFee);
@@ -456,21 +435,17 @@ contract NodeOperatorRegistry is
 
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status == NodeOperatorStatus.ACTIVE,
+            getOperatorStatus(no) == NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
-        (bool ok, uint256 newAmount) = IValidator(no.validatorProxy).restake(
+        IValidator(no.validatorProxy).restake(
             msg.sender,
             no.validatorId,
             _amount,
             false,
-            no.amountStaked,
             stakeManager,
             polygonERC20
         );
-
-        checkCondition(ok, "Could not restake, try later");
-        no.amountStaked = newAmount;
 
         emit RestakeOperator(operatorId, _amount, _restakeRewards);
     }
@@ -481,25 +456,15 @@ contract NodeOperatorRegistry is
     function unstake() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status == NodeOperatorStatus.ACTIVE,
+            getOperatorStatus(no) == NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
+
         IValidator(no.validatorProxy).unstake(no.validatorId, stakeManager);
-
-        IStakeManager.Validator memory validator = IStakeManager(stakeManager)
-            .validators(no.validatorId);
-        if (validator.status == IStakeManager.Status.Active) {
-            IValidator(no.validatorProxy).unstake(no.validatorId, stakeManager);
-        }
-        _unstake(operatorId, no);
-    }
-
-    function _unstake(uint256 operatorId, NodeOperator storage no) private {
         IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
-        no.status = NodeOperatorStatus.UNSTAKED;
         no.statusUpdatedTimestamp = block.timestamp;
-        totalActiveNodeOperator--;
-        totalUnstakedNodeOperator++;
+        no.status = NodeOperatorStatus.UNSTAKED;
+
         emit UnstakeOperator(operatorId);
     }
 
@@ -517,9 +482,8 @@ contract NodeOperatorRegistry is
             no.rewardAddress
         );
 
-        totalStoppedNodeOperator--;
-        totalWaitNodeOperator++;
         no.status = NodeOperatorStatus.WAIT;
+        no.statusUpdatedTimestamp = block.timestamp;
 
         emit MigrateOperator(operatorId);
     }
@@ -529,20 +493,8 @@ contract NodeOperatorRegistry is
     /// operator by calling the unjail func, in this case, the operator status is set
     /// to back ACTIVE.
     function unjail() external override whenNotPaused {
-        checkCondition(allowsUnjail, "Unjail is disabled");
-
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
-        checkCondition(
-            no.status == NodeOperatorStatus.UNSTAKED,
-            "Invalid status"
-        );
         IValidator(no.validatorProxy).unjail(no.validatorId, stakeManager);
-
-        no.status = NodeOperatorStatus.ACTIVE;
-        no.statusUpdatedTimestamp = block.timestamp;
-
-        totalActiveNodeOperator++;
-        totalUnstakedNodeOperator--;
 
         emit Unjail(operatorId);
     }
@@ -560,7 +512,7 @@ contract NodeOperatorRegistry is
     {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status == NodeOperatorStatus.ACTIVE,
+            getOperatorStatus(no) == NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
         IValidator(no.validatorProxy).topUpForFee(
@@ -576,11 +528,11 @@ contract NodeOperatorRegistry is
     /// @notice Allows to unstake staked tokens after withdraw delay.
     /// @dev after the unstake the operator and waiting for the Polygon withdraw_delay
     /// the owner can transfer back his staked balance by calling
-    /// unstakeClaim, after that the operator status is set to CLAIMED
+    /// unsttakeClaim, after that the operator status is set to CLAIMED
     function unstakeClaim() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status == NodeOperatorStatus.UNSTAKED,
+            getOperatorStatus(no) == NodeOperatorStatus.UNSTAKED,
             "Invalid status"
         );
         uint256 amount = IValidator(no.validatorProxy).unstakeClaim(
@@ -592,10 +544,6 @@ contract NodeOperatorRegistry is
 
         no.status = NodeOperatorStatus.CLAIMED;
         no.statusUpdatedTimestamp = block.timestamp;
-        no.amountStaked = 0;
-
-        totalUnstakedNodeOperator--;
-        totalClaimedNodeOperator++;
 
         emit UnstakeClaim(operatorId, amount);
     }
@@ -625,14 +573,10 @@ contract NodeOperatorRegistry is
             polygonERC20
         );
 
-        totalClaimedNodeOperator--;
-
         if (validatorShare2OperatorId[no.validatorShare] != 0) {
             no.status = NodeOperatorStatus.WAIT;
-            totalWaitNodeOperator++;
         } else {
             no.status = NodeOperatorStatus.EXIT;
-            totalExitNodeOperator++;
             delete validatorShare2OperatorId[no.validatorShare];
         }
         no.statusUpdatedTimestamp = block.timestamp;
@@ -644,7 +588,7 @@ contract NodeOperatorRegistry is
     function withdrawRewards() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status == NodeOperatorStatus.ACTIVE,
+            getOperatorStatus(no) == NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
         address rewardAddress = no.rewardAddress;
@@ -667,7 +611,7 @@ contract NodeOperatorRegistry is
     {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status <= NodeOperatorStatus.ACTIVE,
+            getOperatorStatus(no) <= NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
         if (no.status == NodeOperatorStatus.ACTIVE) {
@@ -694,7 +638,7 @@ contract NodeOperatorRegistry is
         // NodeOperator storage no = operators[operatorId];
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status <= NodeOperatorStatus.ACTIVE,
+            getOperatorStatus(no) <= NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
         no.name = _name;
@@ -745,16 +689,6 @@ contract NodeOperatorRegistry is
         (, NodeOperator storage no) = getOperator(_operatorId);
         checkCondition(no.rewardAddress != address(0), "Invalid status");
         no.maxDelegateLimit = _maxDelegateLimit;
-    }
-
-    /// @notice Allows the DAO to set the slashingDelay.
-    /// @param _slashingDelay slashing delay in seconds.
-    function setSlashingDelay(uint256 _slashingDelay)
-        external
-        override
-        userHasRole(DAO_ROLE)
-    {
-        slashingDelay = _slashingDelay;
     }
 
     /// @notice Allows to set the commission rate used.
@@ -820,11 +754,6 @@ contract NodeOperatorRegistry is
         allowsRestake = _restake;
     }
 
-    /// @notice Allows to toggle unjail.
-    function setUnjail(bool _unjail) external override userHasRole(DAO_ROLE) {
-        allowsUnjail = _unjail;
-    }
-
     /// @notice Allows to set the StMATIC contract address.
     function setStMATIC(address _stMATIC)
         external
@@ -864,60 +793,82 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows to get a node operator by msg.sender.
     /// @param _owner a valid address of an operator owner, if not set msg.sender will be used.
-    /// @return Returns a node operator.
+    /// @return op returns a node operator.
     function getNodeOperator(address _owner)
         external
         view
         returns (NodeOperator memory)
     {
         uint256 operatorId = operatorOwners[_owner];
-        return operators[operatorId];
+        return _getNodeOperator(operatorId);
     }
 
     /// @notice Allows to get a node operator by _operatorId.
     /// @param _operatorId the id of the operator.
-    /// @return Returns a node operator.
+    /// @return op returns a node operator.
     function getNodeOperator(uint256 _operatorId)
         external
         view
         returns (NodeOperator memory)
     {
-        return operators[_operatorId];
+        return _getNodeOperator(_operatorId);
     }
 
-    /// @notice Allows to get a list of node operators that are in ACTIVE, UNSTAKE,
-    /// STOPPED CLAIMED or WAIT.
-    function getNodeOperatorState()
+    function _getNodeOperator(uint256 _operatorId)
+        private
+        view
+        returns (NodeOperator memory)
+    {
+        (, NodeOperator memory op) = getOperator(_operatorId);
+        op.status = getOperatorStatus(op);
+        return op;
+    }
+
+    function getOperatorStatus(NodeOperator memory _op) private view returns (NodeOperatorStatus res) {
+        if (_op.status == NodeOperatorStatus.STOPPED){
+            res = NodeOperatorStatus.STOPPED;
+        }else if (_op.status == NodeOperatorStatus.WAIT){
+            res = NodeOperatorStatus.WAIT;
+        }else if (_op.status == NodeOperatorStatus.CLAIMED){
+            res = NodeOperatorStatus.CLAIMED;
+        }else if (_op.status == NodeOperatorStatus.EXIT){
+            res = NodeOperatorStatus.EXIT;
+        } else {
+            IStakeManager.Validator memory v = IStakeManager(stakeManager).validators(_op.validatorId);
+            if (v.deactivationEpoch != 0) {
+                res = NodeOperatorStatus.UNSTAKED;
+            }else if(v.status == IStakeManager.Status.Active){
+                res = NodeOperatorStatus.ACTIVE;
+            } else if (v.status == IStakeManager.Status.Locked && v.deactivationEpoch == 0) {
+                res = NodeOperatorStatus.JAILED;
+            }else {
+                res = NodeOperatorStatus.INACTIVE;
+            }
+        }
+    }
+
+    /// @notice Allows to get a validator from stake manager.
+    /// @param _operatorId the id of the operator.
+    /// @return va returns a stake manager validator.
+    function getValidator(uint256 _operatorId)
         external
         view
-        override
-        returns (address[] memory)
+        returns (IStakeManager.Validator memory va)
     {
-        uint256 num = totalActiveNodeOperator +
-            totalStoppedNodeOperator +
-            totalUnstakedNodeOperator +
-            totalClaimedNodeOperator +
-            totalWaitNodeOperator;
+        (, NodeOperator memory op) = getOperator(_operatorId);
+        va = IStakeManager(stakeManager).validators(op.validatorId);
+    }
 
-        address[] memory adds = new address[](num);
-        uint256 index = 0;
-
-        uint256[] memory memOperatorIds = operatorIds;
-
-        for (uint256 i = 0; i < memOperatorIds.length; i++) {
-            NodeOperator memory no = operators[memOperatorIds[i]];
-            NodeOperatorStatus status = no.status;
-            if (
-                status == NodeOperatorStatus.INACTIVE ||
-                status == NodeOperatorStatus.EXIT
-            ) {
-                continue;
-            }
-            adds[index] = no.validatorShare;
-            index++;
-        }
-
-        return adds;
+    /// @notice Allows to get a validator from stake manager.
+    /// @param _owner user address.
+    /// @return va returns a stake manager validator.
+    function getValidator(address _owner)
+        external
+        view
+        returns (IStakeManager.Validator memory va)
+    {
+        (, NodeOperator memory op) = getOperator(operatorOwners[_owner]);
+        va = IStakeManager(stakeManager).validators(op.validatorId);
     }
 
     /// @notice Get the stMATIC contract addresses
@@ -941,8 +892,8 @@ contract NodeOperatorRegistry is
     /// @notice Get the global state
     function getState()
         external
-        view
         override
+        view
         returns (
             uint256 _totalNodeOperator,
             uint256 _totalInactiveNodeOperator,
@@ -951,17 +902,35 @@ contract NodeOperatorRegistry is
             uint256 _totalUnstakedNodeOperator,
             uint256 _totalClaimedNodeOperator,
             uint256 _totalWaitNodeOperator,
-            uint256 _totalExitNodeOperator
+            uint256 _totalExitNodeOperator,
+            uint256 _totalSlashedNodeOperator
         )
     {
-        _totalNodeOperator = totalNodeOperator;
-        _totalInactiveNodeOperator = totalInactiveNodeOperator;
-        _totalActiveNodeOperator = totalActiveNodeOperator;
-        _totalStoppedNodeOperator = totalStoppedNodeOperator;
-        _totalUnstakedNodeOperator = totalUnstakedNodeOperator;
-        _totalClaimedNodeOperator = totalClaimedNodeOperator;
-        _totalWaitNodeOperator = totalWaitNodeOperator;
-        _totalExitNodeOperator = totalExitNodeOperator;
+        uint256 length = operatorIds.length;
+        _totalNodeOperator = length;
+        for (uint256 idx = 0; idx < length; idx++) {
+            uint256 operatorId = operatorIds[idx];
+            NodeOperator memory op = operators[operatorId];
+            NodeOperatorStatus status = getOperatorStatus(op);
+
+            if (status == NodeOperatorStatus.INACTIVE){
+                _totalInactiveNodeOperator++;
+            }else if (status == NodeOperatorStatus.ACTIVE){
+                _totalActiveNodeOperator++;
+            }else if (op.status == NodeOperatorStatus.STOPPED){
+                _totalStoppedNodeOperator++;
+            }else if (op.status == NodeOperatorStatus.UNSTAKED){
+                _totalUnstakedNodeOperator++;
+            }else if (op.status == NodeOperatorStatus.CLAIMED){
+                _totalClaimedNodeOperator++;
+            }else if (op.status == NodeOperatorStatus.WAIT){
+                _totalWaitNodeOperator++;
+            }else if (op.status == NodeOperatorStatus.JAILED ){
+                _totalSlashedNodeOperator++;
+            }else {
+                _totalExitNodeOperator++;
+            }
+        }
     }
 
     /// @notice Get operatorIds.
@@ -972,101 +941,6 @@ contract NodeOperatorRegistry is
         returns (uint256[] memory)
     {
         return operatorIds;
-    }
-
-    /// @notice Get validator total stake.
-    /// @param _rewardAddress reward address.
-    /// @return Returns the total staked by the validator.
-    function getValidatorStake(address _rewardAddress)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        if (_rewardAddress == address(0)) {
-            _rewardAddress = msg.sender;
-        }
-
-        uint256 operatorId = getOperatorId(_rewardAddress);
-        NodeOperator memory no = operators[operatorId];
-        return IStakeManager(stakeManager).validatorStake(no.validatorId);
-    }
-
-    /// @notice Allows listing all the operator's status by checking if the local stakedAmount
-    /// is not equal to the stakedAmount on stake manager.
-    function getIfOperatorsWereSlashed()
-        external
-        view
-        override
-        returns (bool[] memory)
-    {
-        IStakeManager sm = IStakeManager(stakeManager);
-        uint256 length = operatorIds.length;
-        bool[] memory slashedOperatorIds = new bool[](length);
-
-        for (uint256 idx = 0; idx < length; idx++) {
-            uint256 operatorId = operatorIds[idx];
-            NodeOperator memory no = operators[operatorId];
-
-            if (no.status == NodeOperatorStatus.ACTIVE) {
-                uint256 amountStakedSM = sm.validatorStake(no.validatorId);
-                if (no.amountStaked != amountStakedSM) {
-                    slashedOperatorIds[idx] = true;
-                    continue;
-                }
-            }
-            slashedOperatorIds[idx] = false;
-        }
-        return slashedOperatorIds;
-    }
-
-    /// @notice Allows slashing all the operators if the local stakedAmount is not equal
-    /// to the stakedAmount on stake manager.
-    function slashOperators(bool[] memory _slashedOperatorIds)
-        external
-        override
-    {
-        IStakeManager sm = IStakeManager(stakeManager);
-        uint256 length = _slashedOperatorIds.length;
-
-        checkCondition(length == operatorIds.length, "slahed operators length");
-
-        uint256[] memory _operatorIds = operatorIds;
-
-        for (uint256 idx = 0; idx < length; idx++) {
-            if (_slashedOperatorIds[idx]) {
-                uint256 operatorId = _operatorIds[idx];
-                NodeOperator storage no = operators[operatorId];
-                if (!(no.status == NodeOperatorStatus.ACTIVE)) {
-                    continue;
-                }
-
-                IStakeManager.Validator memory validator = sm.validators(
-                    no.validatorId
-                );
-                if (validator.status == IStakeManager.Status.Locked) {
-                    _unstake(operatorId, no);
-                    continue;
-                }
-                uint256 amountStakedSM = sm.validatorStake(no.validatorId);
-                uint256 slashedTimestamp = no.slashedTimestamp;
-
-                if (no.amountStaked != amountStakedSM) {
-                    if (slashedTimestamp < block.timestamp) {
-                        no.slashedTimestamp = 0;
-                    }
-                    no.slashed++;
-                    no.slashedTimestamp = slashedTimestamp != 0
-                        ? slashedTimestamp + slashingDelay
-                        : block.timestamp + slashingDelay;
-                    no.amountStaked = amountStakedSM;
-                } else if (
-                    slashedTimestamp != 0 && slashedTimestamp < block.timestamp
-                ) {
-                    no.slashedTimestamp = 0;
-                }
-            }
-        }
     }
 
     /// @notice Allows to get a list of operatorInfo for all active operators.
@@ -1080,28 +954,19 @@ contract NodeOperatorRegistry is
     {
         Operator.OperatorInfo[]
             memory operatorInfos = new Operator.OperatorInfo[](
-                totalActiveNodeOperator
+                totalNodeOperator
             );
-
-        if (totalActiveNodeOperator == 0) {
-            return operatorInfos;
-        }
 
         uint256 length = operatorIds.length;
         uint256 index;
-        IStakeManager sm = IStakeManager(stakeManager);
 
         for (uint256 idx = 0; idx < length; idx++) {
             uint256 operatorId = operatorIds[idx];
             NodeOperator storage no = operators[operatorId];
-
-            IStakeManager.Validator memory validator = sm.validators(
-                no.validatorId
-            );
-            if (validator.status == IStakeManager.Status.Active) {
-
+            if (
+                getOperatorStatus(no) == NodeOperatorStatus.ACTIVE
+            ) {
                 if (_rewardData) {
-                    // check if the operators accumulated rewards.
                     IValidatorShare validatorShare = IValidatorShare(
                         no.validatorShare
                     );
@@ -1117,16 +982,13 @@ contract NodeOperatorRegistry is
                     operatorId: operatorId,
                     validatorShare: no.validatorShare,
                     maxDelegateLimit: no.maxDelegateLimit,
-                    rewardPercentage: _rewardData
-                        ? _getRewardPercentage(no.slashedTimestamp)
-                        : 0,
+                    rewardPercentage: 100,
                     rewardAddress: no.rewardAddress
                 });
                 index++;
             }
         }
-
-        if (index != totalActiveNodeOperator) {
+        if (index != totalNodeOperator) {
             Operator.OperatorInfo[]
                 memory operatorInfosOut = new Operator.OperatorInfo[](index);
 
@@ -1136,23 +998,6 @@ contract NodeOperatorRegistry is
             return operatorInfosOut;
         }
         return operatorInfos;
-    }
-
-    function _getRewardPercentage(uint256 _slashedTimestamp)
-        private
-        view
-        returns (uint8)
-    {
-        if (_slashedTimestamp == 0 || _slashedTimestamp <= block.timestamp) {
-            return 100;
-        }
-
-        uint256 t = _slashedTimestamp - block.timestamp;
-        uint256 penalty = ((t / slashingDelay) + (t == slashingDelay ? 0 : 1)) *
-            10;
-        uint8 p = penalty > 100 ? 100 : uint8(penalty);
-        uint8 percentage = 100 - p;
-        return percentage > 0 ? percentage : 1;
     }
 
     /// @notice Checks condition and displays the message

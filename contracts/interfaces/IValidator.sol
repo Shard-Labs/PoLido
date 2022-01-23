@@ -28,22 +28,20 @@ interface IValidator {
     ) external returns (uint256, address);
 
     /// @notice Restake Matics for a validator on polygon stake manager.
-    /// @param _sender operator owner which approved tokens to the validato contract.
+    /// @param sender operator owner which approved tokens to the validato contract.
     /// @param validatorId validator id.
     /// @param amount amount to stake.
     /// @param stakeRewards restake rewards.
-    /// @param amountStaked total amount staked by the operator in stake manager.
-    /// @param _stakeManager stake manager address
-    /// @param _polygonERC20 address of the MATIC token
+    /// @param stakeManager stake manager address
+    /// @param polygonERC20 address of the MATIC token
     function restake(
-        address _sender,
+        address sender,
         uint256 validatorId,
         uint256 amount,
         bool stakeRewards,
-        uint256 amountStaked,
-        address _stakeManager,
-        address _polygonERC20
-    ) external returns (bool, uint256);
+        address stakeManager,
+        address polygonERC20
+    ) external;
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
     /// @dev Unstake a validator from the Polygon stakeManager contract by passing the validatorId
