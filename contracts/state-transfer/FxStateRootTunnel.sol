@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 import {FxBaseRootTunnel} from "../tunnel/FxBaseRootTunnel.sol";
 
 /**
  * @title FxStateRootTunnel
  */
-contract FxStateRootTunnel is FxBaseRootTunnel {
+contract FxStateRootTunnel is FxBaseRootTunnel, Ownable {
     bytes public latestData;
     address public stMATIC;
 
@@ -27,5 +29,9 @@ contract FxStateRootTunnel is FxBaseRootTunnel {
     function sendMessageToChild(bytes memory message) public {
         require(msg.sender == stMATIC, "Not stMATIC");
         _sendMessageToChild(message);
+    }
+
+    function setStMATIC(address _stMATIC) external onlyOwner {
+        stMATIC = _stMATIC;
     }
 }
