@@ -494,7 +494,6 @@ contract StMATIC is
             address(this)
         ) - balanceBeforeClaim;
 
-        // Update totalBuffered after claiming the amount
         totalBuffered += claimedAmount;
 
         fxStateRootTunnel.sendMessageToChild(
