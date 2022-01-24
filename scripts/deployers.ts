@@ -1,5 +1,6 @@
+import * as fs from "fs";
 import { Contract, Wallet } from "ethers";
-import { ethers, upgrades } from "hardhat";
+import { ethers, network, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import { predictContractAddress } from "./utils";
@@ -21,6 +22,7 @@ import {
     MATIC_TOKEN,
     STAKE_MANAGER
 } from "../environment";
+import path from "path";
 
 type DeploymentData = {
   Network: string;
@@ -163,14 +165,8 @@ export class PoLidoDeployer
   ) => {
       const rootNonce = await rootSigner.getTransactionCount();
       const childNonce = await childSigner.getTransactionCount();
-      const rootDeployer = new BlockchainDeployer(
-          rootSigner,
-          rootNonce
-      );
-      const childDeployer = new BlockchainDeployer(
-          childSigner,
-          childNonce
-      );
+      const rootDeployer = new BlockchainDeployer(rootSigner, rootNonce);
+      const childDeployer = new BlockchainDeployer(childSigner, childNonce);
       const poLidoDeployer = new PoLidoDeployer(rootDeployer, childDeployer);
 
       poLidoDeployer.predictAddresses();
@@ -250,7 +246,14 @@ export class PoLidoDeployer
       );
   };
 
-  export = () => {};
+  export = () => {
+      const fileName = path.join(
+          __dirname,
+          "../",
+          `${network.name}-deployment-info.json`
+      );
+      fs.writeFileSync(fileName, JSON.stringify(this.data));
+  };
 
   private predictAddresses = () => {
       this.calculateRootContractAddresses();
@@ -260,7 +263,6 @@ export class PoLidoDeployer
   private calculateRootContractAddresses = () => {
       (Object.keys(rootDeploymentOrder) as Array<RootContractNames>).forEach(
           (k) => {
-              console.log(k, this.rootDeployer.nonce, rootDeploymentOrder[k]);
               this.data[k] = predictContractAddress(
                   this.rootDeployer.signer.address,
                   this.rootDeployer.nonce + rootDeploymentOrder[k]
