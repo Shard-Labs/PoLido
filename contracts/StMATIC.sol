@@ -382,17 +382,7 @@ contract StMATIC is
         uint256 operatorInfosLength = operatorInfos.length;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
-            IValidatorShare validatorShare = IValidatorShare(
-                operatorInfos[i].validatorShare
-            );
-            uint256 stMaticReward = validatorShare.getLiquidRewards(
-                address(this)
-            );
-            uint256 rewardThreshold = validatorShare.minAmount();
-
-            if (stMaticReward < rewardThreshold) {
-                validatorShare.withdrawRewards();
-            }
+            IValidatorShare(operatorInfos[i].validatorShare).withdrawRewards();
         }
 
         uint256 totalRewards = (
@@ -524,7 +514,7 @@ contract StMATIC is
             abi.encode(totalSupply(), getTotalPooledMatic())
         );
 
-        nodeOperator.exitOperator(lidoRequests.validatorAddress);
+        nodeOperatorRegistry.exitOperator(lidoRequests.validatorAddress);
         emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
     }
 
