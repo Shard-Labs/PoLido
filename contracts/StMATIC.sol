@@ -452,7 +452,9 @@ contract StMATIC is
             IValidatorShare(_validatorShare)
         );
 
-        require(stakedAmount > 0, "Nothing to withdraw");
+        if (stakedAmount == 0) {
+            return;
+        }
 
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
