@@ -117,9 +117,9 @@ contract StMATIC is
     {
         require(_amount > 0, "Invalid amount");
 
-        if(submitHandler) {
+        if (submitHandler) {
             require(
-                _amount + totalBuffered < submitThreshold,
+                _amount + totalBuffered <= submitThreshold,
                 "Submit threshold reached"
             );
         }
@@ -847,7 +847,11 @@ contract StMATIC is
      * @dev Function that sets the submitThreshold
      * @param _submitThreshold new value for submit threshold
      */
-    function setSubmitThreshold(uint256 _submitThreshold) external override onlyRole(DAO) {
+    function setSubmitThreshold(uint256 _submitThreshold)
+        external
+        override
+        onlyRole(DAO)
+    {
         submitThreshold = _submitThreshold;
     }
 
