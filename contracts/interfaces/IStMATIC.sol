@@ -63,6 +63,10 @@ interface IStMATIC is IERC20Upgradeable {
 
     function reservedFunds() external view returns (uint256);
 
+    function submitThreshold() external view returns (uint256);
+
+    function submitHandler() external view returns (bool);
+
     function getMinValidatorBalance() external view returns (uint256);
 
     function token2WithdrawRequest(uint256 _requestId)
@@ -84,7 +88,8 @@ interface IStMATIC is IERC20Upgradeable {
         address _insurance,
         address _stakeManager,
         address _poLidoNFT,
-        address _fxStateRootTunnel
+        address _fxStateRootTunnel,
+        uint256 _submitThreshold
     ) external;
 
     function submit(uint256 _amount) external returns (uint256);
@@ -154,6 +159,10 @@ interface IStMATIC is IERC20Upgradeable {
     function setPoLidoNFT(address _poLidoNFT) external;
 
     function setFxStateRootTunnel(address _fxStateRootTunnel) external;
+
+    function setSubmitThreshold(uint256 _submitThreshold) external;
+
+    function flipSubmitHandler() external;
 
     function setVersion(string calldata _version) external;
 }
