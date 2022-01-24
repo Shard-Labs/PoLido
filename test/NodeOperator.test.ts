@@ -86,7 +86,7 @@ describe("NodeOperator", function () {
             )) as ValidatorFactory__factory;
         validatorFactoryContract = (await upgrades.deployProxy(
             validatorFactoryArtifact,
-            [validatorContract.address, ethers.constants.AddressZero]
+            [validatorContract.address]
         )) as ValidatorFactory;
 
         // deploy node operator contract
@@ -1712,14 +1712,6 @@ async function checkOperator (
     }
     if (no.commissionRate) {
         expect(res.commissionRate, "commissionRate").equal(no.commissionRate);
-    }
-    if (no.slashed) {
-        expect(res.slashed, "slashed").equal(no.slashed);
-    }
-    if (no.slashedTimestamp) {
-        expect(res.slashedTimestamp, "slashedTimestamp").equal(
-            no.slashedTimestamp
-        );
     }
     if (no.statusUpdatedTimestamp) {
         expect(res.statusUpdatedTimestamp, "statusUpdatedTimestamp").not.equal(
