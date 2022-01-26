@@ -875,4 +875,27 @@ contract StMATIC is
     {
         version = _version;
     }
+
+    /**
+     * @dev Function that retrieves the amount of matic that will be claimed from the NFT token
+     * @param _tokenId - Id of the PolidoNFT
+     */
+    function getMaticFromTokenId(uint256 _tokenId)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        RequestWithdraw memory requestData = token2WithdrawRequest[_tokenId];
+        IValidatorShare validatorShare = IValidatorShare(
+            requestData.validatorAddress
+        );
+        uint256 validatorId = validatorShare.validatorId();
+        uint256 exchangeRatePrecision = validatorId < 8 ? 100 : 10**29;
+        uint256 withdrawExchangeRate = validatorShare.withdrawExchangeRate();
+        IValidatorShare.DelegatorUnbond memory unbond = validatorShare
+            .unbonds_new(address(this), requestData.validatorNonce);
+
+        return (withdrawExchangeRate * unbond.shares) / exchangeRatePrecision;
+    }
 }

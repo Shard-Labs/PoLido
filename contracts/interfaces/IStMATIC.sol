@@ -39,6 +39,11 @@ interface IStMATIC is IERC20Upgradeable {
             uint8
         );
 
+    function getMaticFromTokenId(uint256 _tokenId)
+        external
+        view
+        returns (uint256);
+
     function stakeManager() external view returns (IStakeManager);
 
     function poLidoNFT() external view returns (IPoLidoNFT);

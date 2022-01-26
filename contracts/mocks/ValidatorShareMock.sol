@@ -117,6 +117,15 @@ contract ValidatorShareMock is IValidatorShare {
         return (totalStaked, 1);
     }
 
+    function withdrawExchangeRate() external view override returns (uint256) {
+        return 0;
+    }
+
+    function unbonds_new(address _address, uint256 _unbondNonce) external view override returns (DelegatorUnbond memory) {
+        DelegatorUnbond memory unbond = DelegatorUnbond(1,2);
+        return unbond;
+    }
+
     function owner() external pure override returns (address) {
         return address(0);
     }
