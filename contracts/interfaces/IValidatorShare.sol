@@ -3,11 +3,18 @@
 pragma solidity 0.8.7;
 
 interface IValidatorShare {
+    struct DelegatorUnbond {
+        uint256 shares;
+        uint256 withdrawEpoch;
+    }
+
     function unbondNonces(address _address) external view returns (uint256);
 
     function activeAmount() external view returns (uint256);
 
-    function validatorId() external returns (uint256);
+    function validatorId() external view returns (uint256);
+
+    function withdrawExchangeRate() external view returns (uint256);
 
     function withdrawRewards() external;
 
@@ -29,6 +36,11 @@ interface IValidatorShare {
         external;
 
     function unstakeClaimTokens_new(uint256 unbondNonce) external;
+
+    function unbonds_new(address _address, uint256 _unbondNonce)
+        external
+        view
+        returns (DelegatorUnbond memory);
 
     function getTotalStake(address user)
         external

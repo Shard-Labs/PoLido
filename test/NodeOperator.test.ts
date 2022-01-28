@@ -1200,8 +1200,7 @@ describe("NodeOperator", function () {
             it("Fail setStakeAmountAndFees", async function () {
                 const minAmountStake = BigNumber.from(10);
                 const minHeimdallFees = BigNumber.from(100);
-                await expect(getNodeOperatorState
-                    nodeOperatorRegistry
+                await expect(nodeOperatorRegistry
                         .connect(user1)
                         .setStakeAmountAndFees(minAmountStake, minHeimdallFees)
                 ).revertedWith("unauthorized");
