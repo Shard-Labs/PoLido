@@ -65,7 +65,7 @@ contract NodeOperatorRegistry is
     /// @notice contract version.
     string public version;
     /// @notice total node operators.
-    uint256 private totalNodeOperator;
+    uint256 private totalNodeOperators;
 
     /// @notice validatorFactory address.
     address private validatorFactory;
@@ -197,7 +197,7 @@ contract NodeOperatorRegistry is
         userHasRole(DAO_ROLE)
         checkIfRewardAddressIsUsed(_rewardAddress)
     {
-        uint256 operatorId = totalNodeOperator + 1;
+        uint256 operatorId = totalNodeOperators + 1;
         address validatorProxy = IValidatorFactory(validatorFactory).create();
 
         operators[operatorId] = NodeOperator({
@@ -213,7 +213,7 @@ contract NodeOperatorRegistry is
             maxDelegateLimit: defaultMaxDelegateLimit
         });
         operatorIds.push(operatorId);
-        totalNodeOperator++;
+        totalNodeOperators++;
         operatorOwners[_rewardAddress] = operatorId;
 
         emit AddOperator(operatorId);
@@ -288,7 +288,7 @@ contract NodeOperatorRegistry is
         }
         operatorIds.pop();
 
-        totalNodeOperator--;
+        totalNodeOperators--;
         IValidatorFactory(validatorFactory).remove(no.validatorProxy);
         delete operatorOwners[no.rewardAddress];
         delete operators[_operatorId];
@@ -946,7 +946,7 @@ contract NodeOperatorRegistry is
     {
         Operator.OperatorInfo[]
             memory operatorInfos = new Operator.OperatorInfo[](
-                totalNodeOperator
+            totalNodeOperators
             );
 
         uint256 length = operatorIds.length;
@@ -977,7 +977,7 @@ contract NodeOperatorRegistry is
                 index++;
             }
         }
-        if (index != totalNodeOperator) {
+        if (index != totalNodeOperators) {
             Operator.OperatorInfo[]
                 memory operatorInfosOut = new Operator.OperatorInfo[](index);
 
