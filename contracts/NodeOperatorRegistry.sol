@@ -262,7 +262,6 @@ contract NodeOperatorRegistry is
 
         checkCondition(status == NodeOperatorStatus.WAIT, "Invalid status");
         no.status = NodeOperatorStatus.EXIT;
-        // no.statusUpdatedTimestamp = block.timestamp;
         delete validatorShare2OperatorId[no.validatorShare];
     }
 
