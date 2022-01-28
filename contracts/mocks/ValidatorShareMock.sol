@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IValidatorShare.sol";
 import "../interfaces/IStakeManager.sol";
+import "hardhat/console.sol";
 
 contract ValidatorShareMock is IValidatorShare {
     address public token;
@@ -36,13 +37,15 @@ contract ValidatorShareMock is IValidatorShare {
         delegation = true;
     }
 
-    function withdrawRewards() external override {
+    function calculateRewards() private view returns (uint256) {
         uint256 thisBalance = IERC20(token).balanceOf(address(this));
-        require(thisBalance > 0, "Balance is 0");
+        return thisBalance - (totalStaked + withdrawPool);
+    }
 
-        uint256 reward = thisBalance - (totalStaked + withdrawPool);
+    function withdrawRewards() external override {
+        uint256 reward = calculateRewards();
         require(reward > minAmount(), "Reward < minAmount");
-
+        console.log("reward", reward);
         IERC20(token).transfer(msg.sender, reward);
     }
 
@@ -52,11 +55,11 @@ contract ValidatorShareMock is IValidatorShare {
 
     function getLiquidRewards(address)
         external
-        pure
+        view
         override
         returns (uint256)
     {
-        return 1;
+        return calculateRewards();
     }
 
     function buyVoucher(uint256 _amount, uint256)

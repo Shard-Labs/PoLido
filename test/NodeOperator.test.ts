@@ -671,9 +671,9 @@ describe("NodeOperator", function () {
             // revert user2 try to unjail
             await expect(
                 nodeOperatorRegistry.connect(user2).unjail()
-            ).revertedWith("validator not locked");
+            ).revertedWith("Invalid status");
 
-            await stakeManagerMock.slash(1);
+            await nodeOperatorRegistry.connect(user2).unstake();
 
             // unjail the operator
             await nodeOperatorRegistry.connect(user2).unjail();
@@ -1200,7 +1200,7 @@ describe("NodeOperator", function () {
             it("Fail setStakeAmountAndFees", async function () {
                 const minAmountStake = BigNumber.from(10);
                 const minHeimdallFees = BigNumber.from(100);
-                await expect(
+                await expect(getNodeOperatorState
                     nodeOperatorRegistry
                         .connect(user1)
                         .setStakeAmountAndFees(minAmountStake, minHeimdallFees)
@@ -1323,7 +1323,6 @@ describe("NodeOperator", function () {
                 let operators = await nodeOperatorRegistry.getOperatorInfos(
                     false
                 );
-
                 for (let i = 0; i < operators.length; i++) {
                     const op = operators[i];
                     await checkOperator(i + 1, {

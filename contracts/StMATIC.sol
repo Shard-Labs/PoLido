@@ -56,6 +56,9 @@ contract StMATIC is
     uint256 public override delegationLowerBound;
     uint256 public override rewardDistributionLowerBound;
     uint256 public override reservedFunds;
+    uint256 public override submitThreshold;
+
+    bool public override submitHandler;
 
     mapping(uint256 => RequestWithdraw) public override token2WithdrawRequest;
 
@@ -77,7 +80,8 @@ contract StMATIC is
         address _insurance,
         address _stakeManager,
         address _poLidoNFT,
-        address _fxStateRootTunnel
+        address _fxStateRootTunnel,
+        uint256 _submitThreshold
     ) external override initializer {
         __AccessControl_init();
         __Pausable_init();
@@ -95,6 +99,8 @@ contract StMATIC is
         insurance = _insurance;
 
         entityFees = FeeDistribution(25, 50, 25);
+        submitThreshold = _submitThreshold;
+        submitHandler = true;
     }
 
     /**
@@ -110,6 +116,14 @@ contract StMATIC is
         returns (uint256)
     {
         require(_amount > 0, "Invalid amount");
+
+        if (submitHandler) {
+            require(
+                _amount + totalBuffered <= submitThreshold,
+                "Submit threshold reached"
+            );
+        }
+
         IERC20Upgradeable(token).safeTransferFrom(
             msg.sender,
             address(this),
@@ -438,7 +452,9 @@ contract StMATIC is
             IValidatorShare(_validatorShare)
         );
 
-        require(stakedAmount > 0, "Nothing to withdraw");
+        if (stakedAmount == 0) {
+            return;
+        }
 
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
@@ -817,12 +833,35 @@ contract StMATIC is
         poLidoNFT = IPoLidoNFT(_poLidoNFT);
     }
 
+    /**
+     * @dev Function that sets the fxStateRootTunnel address
+     * @param _fxStateRootTunnel address of fxStateRootTunnel
+     */
     function setFxStateRootTunnel(address _fxStateRootTunnel)
         external
         override
         onlyRole(DAO)
     {
         fxStateRootTunnel = IFxStateRootTunnel(_fxStateRootTunnel);
+    }
+
+    /**
+     * @dev Function that sets the submitThreshold
+     * @param _submitThreshold new value for submit threshold
+     */
+    function setSubmitThreshold(uint256 _submitThreshold)
+        external
+        override
+        onlyRole(DAO)
+    {
+        submitThreshold = _submitThreshold;
+    }
+
+    /**
+     * @dev Function that sets the submitHandler value to its NOT value
+     */
+    function flipSubmitHandler() external override onlyRole(DAO) {
+        submitHandler = !submitHandler;
     }
 
     /**
