@@ -253,7 +253,9 @@ describe("Starting to test StMATIC contract", () => {
         await mint(testers[0], sumbitThreshold.add(1));
         await submit(testers[0], sumbitThreshold);
 
-        await expect(submit(testers[0], 1)).to.be.revertedWith("Submit threshold reached");
+        await expect(submit(testers[0], 1)).to.be.revertedWith(
+            "Submit threshold reached"
+        );
     });
 
     it("Should successfuly disable the submit threshold handler", async () => {
@@ -622,6 +624,53 @@ describe("Starting to test StMATIC contract", () => {
         );
 
         expect(validatorShareBalance.eq(0)).to.be.true;
+    });
+
+    it.only("Shouldn't delegate to a delegator that has disabled delegation", async () => {
+        const validatorsAmount = 2;
+        const testersAmount = 2;
+        const submitAmount = ethers.utils.parseEther("1");
+
+        for (let i = 0; i < validatorsAmount; i++) {
+            await mint(testers[i], ethers.utils.parseEther("100"));
+
+            await addOperator(
+                `BananaOperator${i}`,
+                testers[i].address,
+                ethers.utils.randomBytes(64)
+            );
+
+            await stakeOperator(i + 1, testers[i], "10");
+        }
+
+        const validatorShareAddress = (
+            await nodeOperatorRegistry["getNodeOperator(uint256)"](1)
+        ).validatorShare;
+
+        const ValidatorShareMock = await ethers.getContractFactory(
+            "ValidatorShareMock"
+        );
+        const validatorShare = ValidatorShareMock.attach(
+            validatorShareAddress
+        ) as ValidatorShareMock;
+
+        await validatorShare.updateDelegation(false);
+
+        for (let i = 0; i < testersAmount; i++) {
+            await mint(testers[i], submitAmount);
+            await submit(testers[i], submitAmount);
+        }
+
+        await stMATIC.delegate();
+
+        const validatorShareBalance = await mockERC20.balanceOf(
+            validatorShareAddress
+        );
+
+        expect(validatorShareBalance.eq(0)).to.be.true;
+
+        const delegatedAmount = await stMATIC.getTotalStakeAcrossAllValidators();
+        expect(delegatedAmount.eq(submitAmount.mul(testersAmount))).to.be.true;
     });
 
     it("Requesting withdraw AFTER slashing should result in lower balance", async () => {
