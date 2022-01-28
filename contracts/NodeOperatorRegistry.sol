@@ -1005,7 +1005,7 @@ contract NodeOperatorRegistry is
             _operatorId = getOperatorId(msg.sender);
         }
         NodeOperator storage no = operators[_operatorId];
-
+        require(no.rewardAddress != address(0), "Operator not found");
         return (_operatorId, no);
     }
 
