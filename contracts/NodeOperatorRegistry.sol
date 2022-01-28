@@ -458,7 +458,7 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Allows to unjail the validator and turn his status from UNSTAKED to ACTIVE.
-    /// @dev when an operator is JAIED the owner can switch back and stake the
+    /// @dev when an operator is JAILED the owner can switch back and stake the
     /// operator by calling the unjail func, in this case, the operator status is set
     /// to back ACTIVE.
     function unjail() external override whenNotPaused {
