@@ -272,9 +272,8 @@ contract StMATIC is
             totalBuffered > delegationLowerBound + reservedFunds,
             "Amount to delegate lower than minimum"
         );
-        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
-            .getOperatorInfos(true);
-
+        Operator.OperatorInfo[]
+            memory operatorShares = getOperatorsWithDelegationEnabled();
         uint256 operatorSharesLength = operatorShares.length;
 
         require(
@@ -897,5 +896,60 @@ contract StMATIC is
             .unbonds_new(address(this), requestData.validatorNonce);
 
         return (withdrawExchangeRate * unbond.shares) / exchangeRatePrecision;
+    }
+
+    /**
+     * @dev Returns the number of operators from operatorShares that have the delegate flag enabled
+     */
+    function getOperatorsWithDelegationEnabledCount(
+        Operator.OperatorInfo[] memory operatorShares
+    ) private view returns (uint256) {
+        uint256 count;
+        uint256 operatorSharesLength = operatorShares.length;
+
+        for (uint256 i = 0; i < operatorSharesLength; i++) {
+            IValidatorShare validatorShare = IValidatorShare(
+                operatorShares[i].validatorShare
+            );
+            if (validatorShare.delegation()) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * @dev Get OperatorInfos from operators that have delegation flag set to true
+     */
+    function getOperatorsWithDelegationEnabled()
+        private
+        view
+        returns (Operator.OperatorInfo[] memory)
+    {
+        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
+            .getOperatorInfos(true);
+        uint256 operatorSharesLength = operatorShares.length;
+
+        uint256 feasibleOperatorsCount = getOperatorsWithDelegationEnabledCount(
+            operatorShares
+        );
+        Operator.OperatorInfo[]
+            memory feasibleOperators = new Operator.OperatorInfo[](
+                feasibleOperatorsCount
+            );
+        uint256 feasibleOperatorsIndex = 0;
+
+        for (uint256 i = 0; i < operatorSharesLength; i++) {
+            IValidatorShare validatorShare = IValidatorShare(
+                operatorShares[i].validatorShare
+            );
+            if (validatorShare.delegation()) {
+                feasibleOperators[feasibleOperatorsIndex] = operatorShares[i];
+                feasibleOperatorsIndex++;
+            }
+        }
+
+        return feasibleOperators;
     }
 }
