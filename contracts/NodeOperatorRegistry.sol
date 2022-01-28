@@ -228,11 +228,8 @@ contract NodeOperatorRegistry is
     {
         (, NodeOperator storage no) = getOperator(_operatorId);
         NodeOperatorStatus status = getOperatorStatus(no);
-        checkCondition(
-            no.rewardAddress != address(0) &&
-                status <= NodeOperatorStatus.ACTIVE,
-            "Invalid status"
-        );
+        checkCondition(status <= NodeOperatorStatus.ACTIVE, "Invalid status");
+
         if (status == NodeOperatorStatus.INACTIVE) {
             no.status = NodeOperatorStatus.EXIT;
         } else {
@@ -260,9 +257,7 @@ contract NodeOperatorRegistry is
             return;
         }
 
-        checkCondition(
-            status == NodeOperatorStatus.STOPPED,
-        "Invalid status");
+        checkCondition(status == NodeOperatorStatus.STOPPED, "Invalid status");
         no.status = NodeOperatorStatus.WAIT;
         no.statusUpdatedTimestamp = block.timestamp;
 
@@ -445,10 +440,7 @@ contract NodeOperatorRegistry is
     /// This can be done only in the case where this operator was stopped by the DAO.
     function migrate() external override nonReentrant {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
-        checkCondition(
-            no.status == NodeOperatorStatus.WAIT,
-            "Invalid status"
-        );
+        checkCondition(no.status == NodeOperatorStatus.WAIT, "Invalid status");
         IValidator(no.validatorProxy).migrate(
             no.validatorId,
             IStakeManager(stakeManager).NFTContract(),
@@ -628,7 +620,6 @@ contract NodeOperatorRegistry is
         checkIfRewardAddressIsUsed(_rewardAddress)
     {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
-        checkCondition(no.rewardAddress != address(0), "Invalid status");
         no.rewardAddress = _rewardAddress;
 
         operatorOwners[_rewardAddress] = operatorId;
@@ -660,7 +651,6 @@ contract NodeOperatorRegistry is
         checkMaxDelegationLimit(_maxDelegateLimit)
     {
         (, NodeOperator storage no) = getOperator(_operatorId);
-        checkCondition(no.rewardAddress != address(0), "Invalid status");
         no.maxDelegateLimit = _maxDelegateLimit;
     }
 
