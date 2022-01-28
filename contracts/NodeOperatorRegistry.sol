@@ -228,11 +228,8 @@ contract NodeOperatorRegistry is
     {
         (, NodeOperator storage no) = getOperator(_operatorId);
         NodeOperatorStatus status = getOperatorStatus(no);
-        checkCondition(
-            no.rewardAddress != address(0) &&
-                status <= NodeOperatorStatus.ACTIVE,
-            "Invalid status"
-        );
+        checkCondition(status <= NodeOperatorStatus.ACTIVE, "Invalid status");
+
         if (status == NodeOperatorStatus.INACTIVE) {
             no.status = NodeOperatorStatus.EXIT;
         } else {
@@ -260,8 +257,10 @@ contract NodeOperatorRegistry is
             return;
         }
 
-        checkCondition(status == NodeOperatorStatus.WAIT, "Invalid status");
-        no.status = NodeOperatorStatus.EXIT;
+        checkCondition(status == NodeOperatorStatus.STOPPED, "Invalid status");
+        no.status = NodeOperatorStatus.WAIT;
+        no.statusUpdatedTimestamp = block.timestamp;
+
         delete validatorShare2OperatorId[no.validatorShare];
     }
 
@@ -392,7 +391,7 @@ contract NodeOperatorRegistry is
     /// on Polygon. The owner has to approve the amount to the ValidatorProxy then make
     /// a call.
     /// @param _amount amount to stake.
-    function restake(uint256 _amount)
+    function restake(uint256 _amount, bool _restakeRewards)
         external
         override
         whenNotPaused
@@ -411,12 +410,12 @@ contract NodeOperatorRegistry is
             msg.sender,
             no.validatorId,
             _amount,
-            false,
+            _restakeRewards,
             stakeManager,
             polygonERC20
         );
 
-        emit RestakeOperator(operatorId, _amount);
+        emit RestakeOperator(operatorId, _amount, _restakeRewards);
     }
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
@@ -441,17 +440,14 @@ contract NodeOperatorRegistry is
     /// This can be done only in the case where this operator was stopped by the DAO.
     function migrate() external override nonReentrant {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
-        checkCondition(
-            no.status == NodeOperatorStatus.STOPPED,
-            "Invalid status"
-        );
+        checkCondition(no.status == NodeOperatorStatus.WAIT, "Invalid status");
         IValidator(no.validatorProxy).migrate(
             no.validatorId,
             IStakeManager(stakeManager).NFTContract(),
             no.rewardAddress
         );
 
-        no.status = NodeOperatorStatus.WAIT;
+        no.status = NodeOperatorStatus.EXIT;
         no.statusUpdatedTimestamp = block.timestamp;
 
         emit MigrateOperator(operatorId);
@@ -543,6 +539,9 @@ contract NodeOperatorRegistry is
         );
 
         if (validatorShare2OperatorId[no.validatorShare] != 0) {
+            no.status = NodeOperatorStatus.EXIT;
+            delete validatorShare2OperatorId[no.validatorShare];
+        } else {
             no.status = NodeOperatorStatus.WAIT;
         }
         no.statusUpdatedTimestamp = block.timestamp;
@@ -621,7 +620,6 @@ contract NodeOperatorRegistry is
         checkIfRewardAddressIsUsed(_rewardAddress)
     {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
-        checkCondition(no.rewardAddress != address(0), "Invalid status");
         no.rewardAddress = _rewardAddress;
 
         operatorOwners[_rewardAddress] = operatorId;
@@ -653,7 +651,6 @@ contract NodeOperatorRegistry is
         checkMaxDelegationLimit(_maxDelegateLimit)
     {
         (, NodeOperator storage no) = getOperator(_operatorId);
-        checkCondition(no.rewardAddress != address(0), "Invalid status");
         no.maxDelegateLimit = _maxDelegateLimit;
     }
 
@@ -1005,7 +1002,7 @@ contract NodeOperatorRegistry is
             _operatorId = getOperatorId(msg.sender);
         }
         NodeOperator storage no = operators[_operatorId];
-
+        require(no.rewardAddress != address(0), "Operator not found");
         return (_operatorId, no);
     }
 
@@ -1049,9 +1046,11 @@ contract NodeOperatorRegistry is
     /// @notice A node operator restaked.
     /// @param operatorId node operator id.
     /// @param amount amount to restake.
+    /// @param restakeRewards restake rewards.
     event RestakeOperator(
         uint256 operatorId,
-        uint256 amount
+        uint256 amount,
+        bool restakeRewards
     );
 
     /// @notice A node operator was unstaked.
