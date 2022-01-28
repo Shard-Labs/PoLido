@@ -260,8 +260,12 @@ contract NodeOperatorRegistry is
             return;
         }
 
-        checkCondition(status == NodeOperatorStatus.WAIT, "Invalid status");
-        no.status = NodeOperatorStatus.EXIT;
+        checkCondition(
+            status == NodeOperatorStatus.STOPPED,
+        "Invalid status");
+        no.status = NodeOperatorStatus.WAIT;
+        no.statusUpdatedTimestamp = block.timestamp;
+
         delete validatorShare2OperatorId[no.validatorShare];
     }
 
@@ -442,7 +446,7 @@ contract NodeOperatorRegistry is
     function migrate() external override nonReentrant {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(
-            no.status == NodeOperatorStatus.STOPPED,
+            no.status == NodeOperatorStatus.WAIT,
             "Invalid status"
         );
         IValidator(no.validatorProxy).migrate(
@@ -451,7 +455,7 @@ contract NodeOperatorRegistry is
             no.rewardAddress
         );
 
-        no.status = NodeOperatorStatus.WAIT;
+        no.status = NodeOperatorStatus.EXIT;
         no.statusUpdatedTimestamp = block.timestamp;
 
         emit MigrateOperator(operatorId);
@@ -543,6 +547,9 @@ contract NodeOperatorRegistry is
         );
 
         if (validatorShare2OperatorId[no.validatorShare] != 0) {
+            no.status = NodeOperatorStatus.EXIT;
+            delete validatorShare2OperatorId[no.validatorShare];
+        } else {
             no.status = NodeOperatorStatus.WAIT;
         }
         no.statusUpdatedTimestamp = block.timestamp;
