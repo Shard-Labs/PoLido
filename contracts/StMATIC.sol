@@ -928,7 +928,7 @@ contract StMATIC is
         returns (Operator.OperatorInfo[] memory)
     {
         Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
-            .getOperatorInfos(true);
+            .getOperatorInfos(false);
         uint256 operatorSharesLength = operatorShares.length;
 
         uint256 feasibleOperatorsCount = getOperatorsWithDelegationEnabledCount(
