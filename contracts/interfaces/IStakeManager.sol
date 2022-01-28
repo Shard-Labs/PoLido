@@ -54,7 +54,7 @@ interface IStakeManager {
 
     /// @notice Withdraw accumulated rewards
     /// @param validatorId validator id.
-    function withdrawRewards(uint256 validatorId) external returns (uint256);
+    function withdrawRewards(uint256 validatorId) external;
 
     /// @notice Get validator total staked.
     /// @param validatorId validator id.

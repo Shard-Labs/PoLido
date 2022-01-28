@@ -7,7 +7,6 @@ library Operator {
         uint256 operatorId;
         address validatorShare;
         uint256 maxDelegateLimit;
-        uint8 rewardPercentage;
         address rewardAddress;
     }
 }

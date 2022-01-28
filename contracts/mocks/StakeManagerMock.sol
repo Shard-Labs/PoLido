@@ -6,8 +6,10 @@ import "../interfaces/IStakeManager.sol";
 import "../helpers/ERC721Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../mocks/ValidatorShareMock.sol";
+import "hardhat/console.sol";
 
 contract StakeManagerMock is IStakeManager {
+    mapping(uint256 => IStakeManager.Validator) smValidators;
     struct State {
         address token;
         address stakeNFT;
@@ -43,9 +45,26 @@ contract StakeManagerMock is IStakeManager {
             address(this),
             _amount + _heimdallFee
         );
+
+        smValidators[id] = IStakeManager.Validator({
+            amount: _amount,
+            reward: 0,
+            activationEpoch: block.timestamp,
+            deactivationEpoch: 0,
+            jailTime: 0,
+            signer: address(uint160(uint256(keccak256(_signerPubkey)))),
+            contractAddress: address(
+                new ValidatorShareMock(state.token, address(this), id)
+            ),
+            status: IStakeManager.Status.Active,
+            commissionRate: 0,
+            lastCommissionUpdate: 0,
+            delegatorsReward: 0,
+            delegatedAmount: 0,
+            initialRewardPerStake: 0
+        });
         state.id++;
         state.stakedAmount[id] = _amount;
-        state.signer[id] = address(uint160(uint256(keccak256(_signerPubkey))));
         state.validatorShares[id] = address(
             new ValidatorShareMock(state.token, address(this), id)
         );
@@ -59,8 +78,8 @@ contract StakeManagerMock is IStakeManager {
         IERC20(state.token).transferFrom(msg.sender, address(this), _amount);
     }
 
-    function unstake(uint256) external override {
-        delete state.validators[msg.sender];
+    function unstake(uint256 _validatorId) external override {
+        smValidators[_validatorId].deactivationEpoch = block.timestamp;
     }
 
     function topUpForFee(address _user, uint256 _heimdallFee)
@@ -86,17 +105,17 @@ contract StakeManagerMock is IStakeManager {
         return state.validatorShares[_validatorId];
     }
 
-    function withdrawRewards(uint256) external override returns (uint256) {
+    function withdrawRewards(uint256) external override {
         IERC20(state.token).transfer(msg.sender, 1000);
-        return 1000;
     }
 
-    function unstakeClaim(uint256) external override {
+    function unstakeClaim(uint256 _validatorId) external override {
         IERC20(state.token).transfer(
             msg.sender,
             IERC20(state.token).balanceOf(address(this))
         );
         state.delegator2Amount[msg.sender] = 0;
+        smValidators[_validatorId].status = IStakeManager.Status.Unstaked;
     }
 
     function validatorStake(uint256 _validatorId)
@@ -124,7 +143,13 @@ contract StakeManagerMock is IStakeManager {
         uint256 _newCommissionRate
     ) external override {}
 
-    function unjail(uint256 _validatorId) external override {}
+    function unjail(uint256 _validatorId) external override {
+        require(
+            smValidators[_validatorId].status == IStakeManager.Status.Locked,
+            "validator not locked"
+        );
+        smValidators[_validatorId].status = IStakeManager.Status.Active;
+    }
 
     function withdrawalDelay() external pure override returns (uint256) {
         return (2**13);
@@ -145,7 +170,8 @@ contract StakeManagerMock is IStakeManager {
     }
 
     function slash(uint256 _validatorId) external {
-        state.stakedAmount[_validatorId] -= 1 ether;
+        smValidators[_validatorId].status = IStakeManager.Status.Locked;
+        state.stakedAmount[_validatorId] -= 100;
     }
 
     function validators(uint256 _validatorId)
@@ -154,22 +180,7 @@ contract StakeManagerMock is IStakeManager {
         override
         returns (Validator memory)
     {
-        return
-            Validator({
-                amount: state.stakedAmount[_validatorId],
-                reward: 0,
-                activationEpoch: 0,
-                deactivationEpoch: 0,
-                jailTime: 0,
-                signer: state.signer[_validatorId],
-                contractAddress: state.validatorShares[_validatorId],
-                status: Status.Active,
-                commissionRate: 0,
-                lastCommissionUpdate: 0,
-                delegatorsReward: 0,
-                delegatedAmount: 0,
-                initialRewardPerStake: 0
-            });
+        return smValidators[_validatorId];
     }
 
     function NFTContract() external view override returns (address) {

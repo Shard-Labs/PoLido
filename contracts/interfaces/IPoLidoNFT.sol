@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.7;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
 /// @title PoLidoNFT interface.
 /// @author 2021 ShardLabs
-interface IPoLidoNFT is IERC721 {
+interface IPoLidoNFT is IERC721Upgradeable {
     function mint(address _to) external returns (uint256);
 
     function burn(uint256 _tokenId) external;

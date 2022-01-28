@@ -6,7 +6,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721PausableUpgradeable.sol";
 
+import "./interfaces/IPoLidoNFT.sol";
+
 contract PoLidoNFT is
+    IPoLidoNFT,
     OwnableUpgradeable,
     ERC721Upgradeable,
     ERC721PausableUpgradeable
@@ -32,14 +35,14 @@ contract PoLidoNFT is
         _;
     }
 
-    function initialize(string memory _name, string memory _symbol)
-        public
+    function initialize(string memory name_, string memory symbol_)
+        external
         initializer
     {
         __Context_init_unchained();
         __ERC165_init_unchained();
         __Ownable_init_unchained();
-        __ERC721_init_unchained(_name, _symbol);
+        __ERC721_init_unchained(name_, symbol_);
         __Pausable_init_unchained();
         __ERC721Pausable_init_unchained();
     }
@@ -49,7 +52,7 @@ contract PoLidoNFT is
      * @param _to - Address that will be the owner of minted token
      * @return Index of the minted token
      */
-    function mint(address _to) external isLido returns (uint256) {
+    function mint(address _to) external override isLido returns (uint256) {
         uint256 currentIndex = tokenIdIndex;
         currentIndex++;
 
@@ -64,7 +67,7 @@ contract PoLidoNFT is
      * @dev Burn the token with specified _tokenId
      * @param _tokenId - Id of the token that will be burned
      */
-    function burn(uint256 _tokenId) external isLido {
+    function burn(uint256 _tokenId) external override isLido {
         _burn(_tokenId);
     }
 
@@ -73,7 +76,10 @@ contract PoLidoNFT is
      * @param _to - Address that the token will be approved to
      * @param _tokenId - Id of the token that will be approved to _to
      */
-    function approve(address _to, uint256 _tokenId) public override {
+    function approve(address _to, uint256 _tokenId)
+        public
+        override(ERC721Upgradeable, IERC721Upgradeable)
+    {
         // If this token was approved before, remove it from the mapping of approvals
         if (getApproved(_tokenId) != address(0)) {
             _removeApproval(_tokenId);
@@ -98,6 +104,8 @@ contract PoLidoNFT is
         override(ERC721Upgradeable, ERC721PausableUpgradeable)
         whenNotPaused
     {
+        require(from != to, "Invalid operation");
+        
         super._beforeTokenTransfer(from, to, tokenId);
 
         // Minting
@@ -145,6 +153,7 @@ contract PoLidoNFT is
     function isApprovedOrOwner(address _spender, uint256 _tokenId)
         external
         view
+        override
         returns (bool)
     {
         return _isApprovedOrOwner(_spender, _tokenId);
@@ -154,7 +163,7 @@ contract PoLidoNFT is
      * @dev Set stMATIC contract address
      * @param _stMATIC - address of the stMATIC contract
      */
-    function setStMATIC(address _stMATIC) external onlyOwner {
+    function setStMATIC(address _stMATIC) external override onlyOwner {
         stMATIC = _stMATIC;
     }
 
@@ -170,7 +179,7 @@ contract PoLidoNFT is
      * @return - Array of owned tokens
      */
     function getOwnedTokens(address _address)
-        public
+        external
         view
         returns (uint256[] memory)
     {
@@ -183,7 +192,7 @@ contract PoLidoNFT is
      * @return - Array of approved tokens
      */
     function getApprovedTokens(address _address)
-        public
+        external
         view
         returns (uint256[] memory)
     {
@@ -195,12 +204,12 @@ contract PoLidoNFT is
      * @param _tokenId - Id of the token that will be removed
      */
     function _removeApproval(uint256 _tokenId) internal {
-        uint256[] storage lastApprovedTokens = address2Approved[
+        uint256[] storage approvedTokens = address2Approved[
             getApproved(_tokenId)
         ];
         uint256 approvedIndex = tokenId2ApprovedIndex[_tokenId];
 
-        delete lastApprovedTokens[approvedIndex];
+        delete approvedTokens[approvedIndex];
         tokenId2ApprovedIndex[_tokenId] = 0;
     }
 }

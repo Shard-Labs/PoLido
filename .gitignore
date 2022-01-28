@@ -1,5 +1,6 @@
 node_modules
 .env
+.env.test
 
 #Hardhat files
 cache
@@ -8,3 +9,4 @@ typechain
 
 .openzeppelin/dev-*.json
 .openzeppelin/.session
+.openzeppelin/unknown-31337.json

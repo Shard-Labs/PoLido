@@ -10,6 +10,9 @@ import "../interfaces/IStakeManager.sol";
 contract ValidatorShareMock is IValidatorShare {
     address public token;
 
+    bool public override delegation;
+    uint256 mAmount;
+
     uint256 public totalShares;
     uint256 public withdrawPool;
     uint256 public totalStaked;
@@ -30,14 +33,17 @@ contract ValidatorShareMock is IValidatorShare {
         token = _token;
         stakeManager = IStakeManager(_stakeManager);
         validatorId = _id;
+        delegation = true;
     }
 
     function withdrawRewards() external override {
-        IERC20(token).transfer(
-            msg.sender,
-            IERC20(token).balanceOf(address(this)) -
-                (totalStaked + withdrawPool)
-        );
+        uint256 thisBalance = IERC20(token).balanceOf(address(this));
+        require(thisBalance > 0, "Balance is 0");
+
+        uint256 reward = thisBalance - (totalStaked + withdrawPool);
+        require(reward > minAmount(), "Reward < minAmount");
+
+        IERC20(token).transfer(msg.sender, reward);
     }
 
     function unstakeClaimTokens() external pure override {
@@ -142,10 +148,6 @@ contract ValidatorShareMock is IValidatorShare {
         totalStaked -= (_amount * totalStaked) / totalAmount;
     }
 
-    function updateDelegation(bool) external pure override {
-        return;
-    }
-
     function migrateOut(address, uint256) external pure override {
         return;
     }
@@ -156,5 +158,17 @@ contract ValidatorShareMock is IValidatorShare {
 
     function activeAmount() external view override returns (uint256) {
         return totalStaked;
+    }
+
+    function setMinAmount(uint256 _mAmount) public {
+        mAmount = _mAmount;
+    }
+
+    function minAmount() public view override returns (uint256) {
+        return mAmount;
+    }
+
+    function updateDelegation(bool _delegation) external override {
+        delegation = _delegation;
     }
 }

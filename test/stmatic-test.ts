@@ -12,7 +12,9 @@ import {
     Validator,
     ValidatorFactory,
     FxBaseRootMock,
-    FxBaseRootMock__factory
+    FxBaseRootMock__factory,
+    SelfDestructor,
+    ERC721Test
 } from "../typechain";
 
 describe("Starting to test StMATIC contract", () => {
@@ -27,6 +29,7 @@ describe("Starting to test StMATIC contract", () => {
     let mockStakeManager: StakeManagerMock;
     let mockERC20: Polygon;
     let fxBaseRootMock: FxBaseRootMock;
+    let erc721Contract: ERC721Test;
 
     let submit: (
     signer: SignerWithAddress,
@@ -175,11 +178,16 @@ describe("Starting to test StMATIC contract", () => {
         )) as PoLidoNFT;
         await poLidoNFT.deployed();
 
+        erc721Contract = (await (
+            await ethers.getContractFactory("ERC721Test")
+        ).deploy()) as ERC721Test;
+        await erc721Contract.deployed();
+
         mockStakeManager = (await (
             await ethers.getContractFactory("StakeManagerMock")
         ).deploy(
             mockERC20.address,
-            ethers.constants.AddressZero
+            erc721Contract.address
         )) as StakeManagerMock;
         await mockStakeManager.deployed();
 
@@ -337,6 +345,37 @@ describe("Starting to test StMATIC contract", () => {
         expect(balanceAfter.sub(balanceBefore).eq(withdrawAmount)).to.be.true;
     });
 
+    it("StMATIC stake should stay the same if an attacker sends matic to the validator", async () => {
+        const submitAmount = ethers.utils.parseEther("0.01");
+
+        await mint(testers[0], ethers.utils.parseEther("100"));
+        await addOperator(
+            "BananaOperator",
+            testers[0].address,
+            ethers.utils.randomBytes(64)
+        );
+        await stakeOperator(1, testers[0], "100");
+        await mint(testers[0], submitAmount);
+        await submit(testers[0], submitAmount);
+        await stMATIC.delegate();
+
+        const balanceBefore = await stMATIC.getTotalStakeAcrossAllValidators();
+        const operator = await nodeOperatorRegistry["getNodeOperator(uint256)"](1);
+
+        const selfDestructor = await (await ethers.getContractFactory("SelfDestructor")).deploy() as SelfDestructor;
+
+        await testers[0].sendTransaction({
+            to: selfDestructor.address,
+            value: ethers.utils.parseEther("1.0")
+        });
+
+        await selfDestructor.selfdestruct(operator.validatorShare);
+
+        const balanceAfter = await stMATIC.getTotalStakeAcrossAllValidators();
+
+        expect(balanceAfter.eq(balanceBefore)).to.be.true;
+    });
+
     it("Should update minValidatorBalance correctly", async () => {
         const submitAmount = ethers.utils.parseEther("0.01");
 
@@ -490,6 +529,59 @@ describe("Starting to test StMATIC contract", () => {
             expect(balanceAfter.eq(ethers.utils.parseEther(withdrawAmounts[i]))).to.be
                 .true;
         }
+    });
+
+    it("Shouldn't delegate to validator if delegation flag is false", async () => {
+        const submitAmounts: string[] = [];
+
+        const [minAmount, maxAmount] = [0.001, 0.1];
+        const delegatorsAmount = 2;
+        const testersAmount = Math.floor(Math.random() * (10 - 1)) + 1;
+        for (let i = 0; i < delegatorsAmount; i++) {
+            await mint(testers[i], ethers.utils.parseEther("100"));
+
+            await addOperator(
+                `BananaOperator${i}`,
+                testers[i].address,
+                ethers.utils.randomBytes(64)
+            );
+
+            await stakeOperator(i + 1, testers[i], "10");
+        }
+
+        const validatorShareAddress = (
+            await nodeOperatorRegistry["getNodeOperator(uint256)"](1)
+        ).validatorShare;
+
+        const ValidatorShareMock = await ethers.getContractFactory(
+            "ValidatorShareMock"
+        );
+        const validatorShare = ValidatorShareMock.attach(
+            validatorShareAddress
+        ) as ValidatorShareMock;
+
+        await validatorShare.updateDelegation(false);
+
+        for (let i = 0; i < testersAmount; i++) {
+            submitAmounts.push(
+                (
+                    (Math.random() * (maxAmount - minAmount) + minAmount) *
+          delegatorsAmount
+                ).toFixed(3)
+            );
+            const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
+
+            await mint(testers[i], submitAmountWei);
+            await submit(testers[i], submitAmountWei);
+        }
+
+        await stMATIC.delegate();
+
+        const validatorShareBalance = await mockERC20.balanceOf(
+            validatorShareAddress
+        );
+
+        expect(validatorShareBalance.eq(0)).to.be.true;
     });
 
     it("Requesting withdraw AFTER slashing should result in lower balance", async () => {
@@ -798,7 +890,7 @@ describe("Starting to test StMATIC contract", () => {
                 );
 
                 await expect(stMATIC.distributeRewards()).revertedWith(
-                    "Amount to distribute lower than minimum"
+                    "Reward < minAmount"
                 );
             }
         });
@@ -882,7 +974,7 @@ describe("Starting to test StMATIC contract", () => {
                             nftTokenId
                         );
                         expect(withdrawRequest.validatorNonce).not.eq(0);
-                        expect(withdrawRequest.requestTime).not.eq(epoch);
+                        expect(withdrawRequest.requestEpoch).not.eq(epoch);
                         expect(withdrawRequest.validatorAddress).eq(
                             await getValidatorShareAddress(i + 1)
                         );
@@ -929,6 +1021,11 @@ describe("Starting to test StMATIC contract", () => {
                     message: "stop operator",
                     fn: async function () {
                         await stopOperator(1);
+                        const no = await nodeOperatorRegistry[
+                            "getNodeOperator(uint256)"
+                        ].call(this, 1);
+                        await erc721Contract.mint(no.validatorProxy, 1);
+                        await nodeOperatorRegistry.connect(testers[1]).migrate();
                     }
                 },
                 {
