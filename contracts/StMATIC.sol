@@ -56,7 +56,6 @@ contract StMATIC is
     uint256 public override delegationLowerBound;
     uint256 public override rewardDistributionLowerBound;
     uint256 public override reservedFunds;
-    uint256 public override minValidatorBalance;
 
     mapping(uint256 => RequestWithdraw) public override token2WithdrawRequest;
 
@@ -69,6 +68,7 @@ contract StMATIC is
      * @param _insurance - Address of the insurance
      * @param _stakeManager - Address of the stake manager
      * @param _poLidoNFT - Address of the stMATIC NFT
+     * @param _fxStateRootTunnel - Address of the FxStateRootTunnel
      */
     function initialize(
         address _nodeOperatorRegistry,
@@ -76,7 +76,8 @@ contract StMATIC is
         address _dao,
         address _insurance,
         address _stakeManager,
-        address _poLidoNFT
+        address _poLidoNFT,
+        address _fxStateRootTunnel
     ) external override initializer {
         __AccessControl_init();
         __Pausable_init();
@@ -88,11 +89,11 @@ contract StMATIC is
         nodeOperatorRegistry = INodeOperatorRegistry(_nodeOperatorRegistry);
         stakeManager = IStakeManager(_stakeManager);
         poLidoNFT = IPoLidoNFT(_poLidoNFT);
+        fxStateRootTunnel = IFxStateRootTunnel(_fxStateRootTunnel);
         dao = _dao;
         token = _token;
         insurance = _insurance;
 
-        minValidatorBalance = type(uint256).max;
         entityFees = FeeDistribution(25, 50, 25);
     }
 
@@ -155,6 +156,8 @@ contract StMATIC is
         uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
+
+        uint256 minValidatorBalance = getMinValidatorBalance();
 
         uint256 allowedAmount2RequestFromValidators = 0;
 
@@ -280,6 +283,8 @@ contract StMATIC is
             ? maxDelegateLimitsSum
             : availableAmountToDelegate;
 
+        IERC20Upgradeable(token).safeApprove(address(stakeManager), 0);
+
         IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
             totalToDelegatedAmount
@@ -310,23 +315,6 @@ contract StMATIC is
         totalBuffered = remainder + reservedFunds;
 
         emit DelegateEvent(amountDelegated, remainder);
-
-        minValidatorBalance = type(uint256).max;
-
-        for (uint256 i = 0; i < operatorSharesLength; i++) {
-            (uint256 validatorShare, ) = getTotalStake(
-                IValidatorShare(operatorShares[i].validatorShare)
-            );
-            // 10% of current validatorShare
-            uint256 minValidatorBalanceCurrent = validatorShare / 10;
-
-            if (
-                minValidatorBalanceCurrent != 0 &&
-                minValidatorBalanceCurrent < minValidatorBalance
-            ) {
-                minValidatorBalance = minValidatorBalanceCurrent;
-            }
-        }
     }
 
     /**
@@ -450,9 +438,7 @@ contract StMATIC is
             IValidatorShare(_validatorShare)
         );
 
-        if (stakedAmount == 0) {
-            revert("Nothing to withdraw");
-        }
+        require(stakedAmount > 0, "Nothing to withdraw");
 
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
@@ -507,7 +493,6 @@ contract StMATIC is
             address(this)
         ) - balanceBeforeClaim;
 
-        // Update totalBuffered after claiming the amount
         totalBuffered += claimedAmount;
 
         fxStateRootTunnel.sendMessageToChild(
@@ -707,6 +692,35 @@ contract StMATIC is
         uint256 balanceInStMatic = (_balance * totalShares) / totalPooledMatic;
 
         return (balanceInStMatic, totalShares, totalPooledMatic);
+    }
+
+    /**
+     * @dev Function that calculates minimal allowed validator balance (lower bound)
+     * @return Minimal validator balance in MATIC
+     */
+    function getMinValidatorBalance() public view override returns (uint256) {
+        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
+            .getOperatorInfos(false);
+
+        uint256 operatorSharesLength = operatorShares.length;
+        uint256 minValidatorBalance = type(uint256).max;
+
+        for (uint256 i = 0; i < operatorSharesLength; i++) {
+            (uint256 validatorShare, ) = getTotalStake(
+                IValidatorShare(operatorShares[i].validatorShare)
+            );
+            // 10% of current validatorShare
+            uint256 minValidatorBalanceCurrent = validatorShare / 10;
+
+            if (
+                minValidatorBalanceCurrent != 0 &&
+                minValidatorBalanceCurrent < minValidatorBalance
+            ) {
+                minValidatorBalance = minValidatorBalanceCurrent;
+            }
+        }
+
+        return minValidatorBalance;
     }
 
     ////////////////////////////////////////////////////////////

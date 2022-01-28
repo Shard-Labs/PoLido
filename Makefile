@@ -2,7 +2,7 @@ init:
 	npm install
 
 compile:
-	npx hardhat compile
+	NODE_ENV=test npx hardhat compile
 
 clean:
 	npx hardhat clean

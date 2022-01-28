@@ -39,34 +39,35 @@ interface IStMATIC is IERC20Upgradeable {
             uint8
         );
 
-    function stakeManager() external returns (IStakeManager);
+    function stakeManager() external view returns (IStakeManager);
 
-    function poLidoNFT() external returns (IPoLidoNFT);
+    function poLidoNFT() external view returns (IPoLidoNFT);
 
-    function fxStateRootTunnel() external returns (IFxStateRootTunnel);
+    function fxStateRootTunnel() external view returns (IFxStateRootTunnel);
 
-    function version() external returns (string memory);
+    function version() external view returns (string memory);
 
-    function dao() external returns (address);
+    function dao() external view returns (address);
 
-    function insurance() external returns (address);
+    function insurance() external view returns (address);
 
-    function token() external returns (address);
+    function token() external view returns (address);
 
-    function lastWithdrawnValidatorId() external returns (uint256);
+    function lastWithdrawnValidatorId() external view returns (uint256);
 
-    function totalBuffered() external returns (uint256);
+    function totalBuffered() external view returns (uint256);
 
-    function delegationLowerBound() external returns (uint256);
+    function delegationLowerBound() external view returns (uint256);
 
-    function rewardDistributionLowerBound() external returns (uint256);
+    function rewardDistributionLowerBound() external view returns (uint256);
 
-    function reservedFunds() external returns (uint256);
+    function reservedFunds() external view returns (uint256);
 
-    function minValidatorBalance() external returns (uint256);
+    function getMinValidatorBalance() external view returns (uint256);
 
     function token2WithdrawRequest(uint256 _requestId)
         external
+        view
         returns (
             uint256,
             uint256,
@@ -74,15 +75,16 @@ interface IStMATIC is IERC20Upgradeable {
             address
         );
 
-    function DAO() external returns (bytes32);
+    function DAO() external view returns (bytes32);
 
     function initialize(
-        address _nodeOperator,
+        address _nodeOperatorRegistry,
         address _token,
         address _dao,
         address _insurance,
         address _stakeManager,
-        address _poLidoNFT
+        address _poLidoNFT,
+        address _fxStateRootTunnel
     ) external;
 
     function submit(uint256 _amount) external returns (uint256);
