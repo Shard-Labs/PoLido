@@ -495,6 +495,19 @@ describe("NodeOperator", function () {
             await checkStats(2, 0, 1, 0, 1, 0, 0, 0, 0);
         });
 
+        it("Success withdrawTotalDelegated from an operator", async function () {
+            await stakeOperator(1, user1, user1Address, "10", "20");
+            await stakeManagerMock.unstake(1);
+
+            // unstake a node operator
+            expect(await nodeOperatorRegistry.withdrawTotalDelegated(1))
+                .to.emit(nodeOperatorRegistry, "UnstakeOperator")
+                .withArgs(1);
+
+            await checkOperator(1, { status: 3 });
+            await checkStats(1, 0, 0, 0, 1, 0, 0, 0, 0, 0);
+        });
+
         it("Fail to unstake an operator", async function () {
             // revert caller try to unstake a operator that not exist.
             await expect(
@@ -1112,6 +1125,8 @@ describe("NodeOperator", function () {
 
             it("Success updateOperatorCommissionRate", async function () {
                 await newOperator(1, user1Address);
+                await stakeOperator(2, user2, user2Address, "10", "20");
+
                 const commission = BigNumber.from(10);
                 expect(
                     await nodeOperatorRegistry.updateOperatorCommissionRate(
@@ -1121,6 +1136,15 @@ describe("NodeOperator", function () {
                 )
                     .to.emit(nodeOperatorRegistry, "UpdateCommissionRate")
                     .withArgs(1, commission);
+
+                expect(
+                    await nodeOperatorRegistry.updateOperatorCommissionRate(
+                        2,
+                        commission
+                    )
+                )
+                    .to.emit(nodeOperatorRegistry, "UpdateCommissionRate")
+                    .withArgs(2, commission);
 
                 await checkOperator(1, { commissionRate: commission });
             });
