@@ -391,7 +391,7 @@ contract NodeOperatorRegistry is
     /// on Polygon. The owner has to approve the amount to the ValidatorProxy then make
     /// a call.
     /// @param _amount amount to stake.
-    function restake(uint256 _amount)
+    function restake(uint256 _amount, bool _restakeRewards)
         external
         override
         whenNotPaused
@@ -410,12 +410,12 @@ contract NodeOperatorRegistry is
             msg.sender,
             no.validatorId,
             _amount,
-            false,
+            _restakeRewards,
             stakeManager,
             polygonERC20
         );
 
-        emit RestakeOperator(operatorId, _amount);
+        emit RestakeOperator(operatorId, _amount, _restakeRewards);
     }
 
     /// @notice Unstake a validator from the Polygon stakeManager contract.
@@ -1046,9 +1046,11 @@ contract NodeOperatorRegistry is
     /// @notice A node operator restaked.
     /// @param operatorId node operator id.
     /// @param amount amount to restake.
+    /// @param restakeRewards restake rewards.
     event RestakeOperator(
         uint256 operatorId,
-        uint256 amount
+        uint256 amount,
+        bool restakeRewards
     );
 
     /// @notice A node operator was unstaked.
