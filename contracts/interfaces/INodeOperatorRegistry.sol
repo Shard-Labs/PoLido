@@ -38,8 +38,7 @@ interface INodeOperatorRegistry {
 
     /// @notice Restake Matics for a validator on polygon stake manager.
     /// @param _amount amount to stake.
-    /// @param _restakeRewards restake rewards.
-    function restake(uint256 _amount, bool _restakeRewards) external;
+    function restake(uint256 _amount) external;
 
     /// @notice Allows the operator's owner to migrate the NFT. This can be done only
     /// if the DAO stopped the operator.
