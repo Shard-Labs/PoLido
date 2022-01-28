@@ -423,7 +423,7 @@ describe("NodeOperator", function () {
             expect(
                 await nodeOperatorRegistry
                     .connect(user1)
-                    .restake(toEth("50"), true)
+                    .restake(toEth("50"))
             )
                 .to.emit(nodeOperatorRegistry, "RestakeOperator")
                 .withArgs(1, toEth("50"), true);
@@ -432,7 +432,7 @@ describe("NodeOperator", function () {
             expect(
                 await nodeOperatorRegistry
                     .connect(user2)
-                    .restake(toEth("100"), false)
+                    .restake(toEth("100"))
             )
                 .to.emit(nodeOperatorRegistry, "RestakeOperator")
                 .withArgs(2, toEth("100"), false);
@@ -446,7 +446,7 @@ describe("NodeOperator", function () {
 
             // revert restake isn't enabled by the DAO
             await expect(
-                nodeOperatorRegistry.connect(user1).restake(toEth("0"), true)
+                nodeOperatorRegistry.connect(user1).restake(toEth("0"))
             ).to.revertedWith("Restake is disabled");
 
             // set restake to true
@@ -454,17 +454,17 @@ describe("NodeOperator", function () {
 
             // revert amount = 0 and restake rewards is false
             await expect(
-                nodeOperatorRegistry.connect(user1).restake(toEth("0"), false)
+                nodeOperatorRegistry.connect(user1).restake(toEth("0"))
             ).to.revertedWith("Amount is ZERO");
 
             // revert user2 has no operator
             await expect(
-                nodeOperatorRegistry.connect(user2).restake(toEth("10"), false)
+                nodeOperatorRegistry.connect(user2).restake(toEth("10"))
             ).to.revertedWith("Operator not found");
 
             // revert operator not active
             await expect(
-                nodeOperatorRegistry.connect(user1).restake(toEth("10"), false)
+                nodeOperatorRegistry.connect(user1).restake(toEth("10"))
             ).to.revertedWith("Invalid status");
         });
 
@@ -478,7 +478,7 @@ describe("NodeOperator", function () {
                 .withArgs(1);
 
             await checkOperator(1, { status: 3 });
-            await checkStats(2, 0, 1, 0, 1, 0, 0, 0);
+            await checkStats(2, 0, 1, 0, 1, 0, 0, 0, 0);
         });
 
         it("Success unstake when the operator was unstaked by the stakeManager", async function () {
@@ -492,7 +492,7 @@ describe("NodeOperator", function () {
                 .withArgs(1);
 
             await checkOperator(1, { status: 3 });
-            await checkStats(2, 0, 1, 0, 1, 0, 0, 0);
+            await checkStats(2, 0, 1, 0, 1, 0, 0, 0, 0);
         });
 
         it("Fail to unstake an operator", async function () {
