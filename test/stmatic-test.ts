@@ -1108,12 +1108,11 @@ describe("Starting to test StMATIC contract", () => {
                 {
                     message: "stop operator",
                     fn: async function () {
-                        await stopOperator(1);
                         const no = await nodeOperatorRegistry[
                             "getNodeOperator(uint256)"
                         ].call(this, 1);
+                        await stopOperator(1);
                         await erc721Contract.mint(no.validatorProxy, 1);
-                        await nodeOperatorRegistry.connect(testers[1]).migrate();
                     }
                 },
                 {
