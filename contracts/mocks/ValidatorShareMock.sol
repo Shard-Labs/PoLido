@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IValidatorShare.sol";
 import "../interfaces/IStakeManager.sol";
-import "hardhat/console.sol";
 
 contract ValidatorShareMock is IValidatorShare {
     address public token;
@@ -45,7 +44,6 @@ contract ValidatorShareMock is IValidatorShare {
     function withdrawRewards() external override {
         uint256 reward = calculateRewards();
         require(reward > minAmount(), "Reward < minAmount");
-        console.log("reward", reward);
         IERC20(token).transfer(msg.sender, reward);
     }
 

@@ -810,274 +810,274 @@ describe("Starting to test StMATIC contract", () => {
         await expect(stMATIC.delegate()).to.be.revertedWith("Pausable: paused");
     });
 
-    // describe("Distribute rewards", async () => {
-    //     describe("Success cases", async () => {
-    //         const numOperators = 3;
-    //         beforeEach("setup", async () => {
-    //             for (let i = 1; i <= numOperators; i++) {
-    //                 await mint(testers[i], ethers.utils.parseEther("100"));
-    //                 await addOperator(
-    //                     `BananaOperator${i}`,
-    //                     testers[i].address,
-    //                     ethers.utils.randomBytes(64)
-    //                 );
-    //                 await stakeOperator(i, testers[i], "100");
-    //             }
-    //             await stMATIC.setDelegationLowerBound(5);
-    //         });
+    describe("Distribute rewards", async () => {
+        describe("Success cases", async () => {
+            const numOperators = 3;
+            beforeEach("setup", async () => {
+                for (let i = 1; i <= numOperators; i++) {
+                    await mint(testers[i], ethers.utils.parseEther("100"));
+                    await addOperator(
+                        `BananaOperator${i}`,
+                        testers[i].address,
+                        ethers.utils.randomBytes(64)
+                    );
+                    await stakeOperator(i, testers[i], "100");
+                }
+                await stMATIC.setDelegationLowerBound(5);
+            });
 
-    //         class TestCase {
-    //     message: string;
-    //     rewardPerValidator: number;
-    //     insuraceRewards: string;
-    //     daoRewards: string;
-    //     delegate: boolean;
-    //     amountSubmittedPerUser: number;
-    //     expectedTotalBuffred: number;
-    //     constructor (
-    //         message: string,
-    //         rewardPerValidator: number,
-    //         insuraceRewards: string,
-    //         daoRewards: string,
-    //         delegate: boolean,
-    //         amountSubmittedPerUser: number,
-    //         expectedTotalBuffred: number
-    //     ) {
-    //         this.message = message;
-    //         this.rewardPerValidator = rewardPerValidator;
-    //         this.insuraceRewards = insuraceRewards;
-    //         this.daoRewards = daoRewards;
-    //         this.delegate = delegate;
-    //         this.amountSubmittedPerUser = amountSubmittedPerUser;
-    //         this.expectedTotalBuffred = expectedTotalBuffred;
-    //     }
-    //         }
+            class TestCase {
+        message: string;
+        rewardPerValidator: number;
+        insuraceRewards: string;
+        daoRewards: string;
+        delegate: boolean;
+        amountSubmittedPerUser: number;
+        expectedTotalBuffred: number;
+        constructor (
+            message: string,
+            rewardPerValidator: number,
+            insuraceRewards: string,
+            daoRewards: string,
+            delegate: boolean,
+            amountSubmittedPerUser: number,
+            expectedTotalBuffred: number
+        ) {
+            this.message = message;
+            this.rewardPerValidator = rewardPerValidator;
+            this.insuraceRewards = insuraceRewards;
+            this.daoRewards = daoRewards;
+            this.delegate = delegate;
+            this.amountSubmittedPerUser = amountSubmittedPerUser;
+            this.expectedTotalBuffred = expectedTotalBuffred;
+        }
+            }
 
-    //         const testCases: Array<TestCase> = [
-    //             {
-    //                 message: "distribute rewards: totalBuffred == 0",
-    //                 rewardPerValidator: 100,
-    //                 insuraceRewards: "7500000000000000000",
-    //                 daoRewards: "7500000000000000000",
-    //                 delegate: true,
-    //                 amountSubmittedPerUser: 10,
-    //                 expectedTotalBuffred: 270
-    //             },
-    //             {
-    //                 message: "distribute rewards: totalBuffred != 0",
-    //                 rewardPerValidator: 100,
-    //                 insuraceRewards: "7500000000000000000",
-    //                 daoRewards: "7500000000000000000",
-    //                 delegate: false,
-    //                 amountSubmittedPerUser: 10,
-    //                 expectedTotalBuffred: 300 // (270 of 90% of rewards + 30 submitted by users)
-    //             }
-    //         ];
+            const testCases: Array<TestCase> = [
+                {
+                    message: "distribute rewards: totalBuffred == 0",
+                    rewardPerValidator: 100,
+                    insuraceRewards: "7500000000000000000",
+                    daoRewards: "7500000000000000000",
+                    delegate: true,
+                    amountSubmittedPerUser: 10,
+                    expectedTotalBuffred: 270
+                },
+                {
+                    message: "distribute rewards: totalBuffred != 0",
+                    rewardPerValidator: 100,
+                    insuraceRewards: "7500000000000000000",
+                    daoRewards: "7500000000000000000",
+                    delegate: false,
+                    amountSubmittedPerUser: 10,
+                    expectedTotalBuffred: 300 // (270 of 90% of rewards + 30 submitted by users)
+                }
+            ];
 
-    //         for (let index = 0; index < testCases.length; index++) {
-    //             const {
-    //                 message,
-    //                 rewardPerValidator,
-    //                 insuraceRewards,
-    //                 daoRewards,
-    //                 delegate,
-    //                 amountSubmittedPerUser,
-    //                 expectedTotalBuffred
-    //             } = testCases[index];
+            for (let index = 0; index < testCases.length; index++) {
+                const {
+                    message,
+                    rewardPerValidator,
+                    insuraceRewards,
+                    daoRewards,
+                    delegate,
+                    amountSubmittedPerUser,
+                    expectedTotalBuffred
+                } = testCases[index];
 
-    //             it(index + " " + message, async () => {
-    //                 for (let i = 1; i <= numOperators; i++) {
-    //                     await mint(
-    //                         testers[i],
-    //                         ethers.utils.parseEther(amountSubmittedPerUser.toString())
-    //                     );
-    //                     await submit(
-    //                         testers[i],
-    //                         ethers.utils.parseEther(amountSubmittedPerUser.toString())
-    //                     );
+                it(index + " " + message, async () => {
+                    for (let i = 1; i <= numOperators; i++) {
+                        await mint(
+                            testers[i],
+                            ethers.utils.parseEther(amountSubmittedPerUser.toString())
+                        );
+                        await submit(
+                            testers[i],
+                            ethers.utils.parseEther(amountSubmittedPerUser.toString())
+                        );
 
-    //                     // transfer some tokens to the validatorShare contracts to mimic rewards.
-    //                     await mint(
-    //                         deployer,
-    //                         ethers.utils.parseEther(String(rewardPerValidator))
-    //                     );
-    //                     await mockERC20.transfer(
-    //                         await getValidatorShareAddress(i),
-    //                         ethers.utils.parseEther(String(rewardPerValidator))
-    //                     );
-    //                 }
-    //                 if (delegate) {
-    //                     // delegate and check the totalBuffred
-    //                     await stMATIC.delegate();
-    //                     expect(await stMATIC.totalBuffered(), "totalBuffered").eq(0);
-    //                 } else {
-    //                     // check the totalBuffred
-    //                     expect(await stMATIC.totalBuffered(), "totalBuffered").eq(
-    //                         ethers.utils.parseEther(
-    //                             String(amountSubmittedPerUser * numOperators)
-    //                         )
-    //                     );
-    //                 }
+                        // transfer some tokens to the validatorShare contracts to mimic rewards.
+                        await mint(
+                            deployer,
+                            ethers.utils.parseEther(String(rewardPerValidator))
+                        );
+                        await mockERC20.transfer(
+                            await getValidatorShareAddress(i),
+                            ethers.utils.parseEther(String(rewardPerValidator))
+                        );
+                    }
+                    if (delegate) {
+                        // delegate and check the totalBuffred
+                        await stMATIC.delegate();
+                        expect(await stMATIC.totalBuffered(), "totalBuffered").eq(0);
+                    } else {
+                        // check the totalBuffred
+                        expect(await stMATIC.totalBuffered(), "totalBuffered").eq(
+                            ethers.utils.parseEther(
+                                String(amountSubmittedPerUser * numOperators)
+                            )
+                        );
+                    }
 
-    //                 // calculate rewards
-    //                 const totalRewards = rewardPerValidator * numOperators;
-    //                 const rewards = (totalRewards * 10) / 100;
-    //                 const DAOBalanceBeforeDistribute = await mockERC20.balanceOf(
-    //                     deployer.address
-    //                 );
+                    // calculate rewards
+                    const totalRewards = rewardPerValidator * numOperators;
+                    const rewards = (totalRewards * 10) / 100;
+                    const DAOBalanceBeforeDistribute = await mockERC20.balanceOf(
+                        deployer.address
+                    );
 
-    //                 // distribute rewards
-    //                 expect(await stMATIC.distributeRewards())
-    //                     .emit(stMATIC, "DistributeRewardsEvent")
-    //                     .withArgs(ethers.utils.parseEther(String(rewards)));
+                    // distribute rewards
+                    expect(await stMATIC.distributeRewards())
+                        .emit(stMATIC, "DistributeRewardsEvent")
+                        .withArgs(ethers.utils.parseEther(String(rewards)));
 
-    //                 // check totalBuffred with expectedTotalBuffred
-    //                 expect(await stMATIC.totalBuffered(), "after totalBuffered").eq(
-    //                     ethers.utils.parseEther(String(expectedTotalBuffred))
-    //                 );
+                    // check totalBuffred with expectedTotalBuffred
+                    expect(await stMATIC.totalBuffered(), "after totalBuffered").eq(
+                        ethers.utils.parseEther(String(expectedTotalBuffred))
+                    );
 
-    //                 // check if insurance and DAO received the correct amount
-    //                 expect(await mockERC20.balanceOf(insurance.address)).eq(
-    //                     insuraceRewards
-    //                 );
-    //                 expect(
-    //                     (await mockERC20.balanceOf(deployer.address)).sub(
-    //                         DAOBalanceBeforeDistribute
-    //                     )
-    //                 ).eq(daoRewards);
-    //             });
-    //         }
-    //     });
-    // });
-    // describe("Fail cases", async () => {
-    //     it("Amount to distribute lower than minimum", async () => {
-    //         const numOperators = 3;
-    //         for (let i = 1; i <= numOperators; i++) {
-    //             await mint(testers[i], ethers.utils.parseEther("100"));
-    //             await addOperator(
-    //                 `BananaOperator${i}`,
-    //                 testers[i].address,
-    //                 ethers.utils.randomBytes(64)
-    //             );
-    //             await stakeOperator(i, testers[i], "100");
-    //         }
-    //         await stMATIC.setDelegationLowerBound(5);
+                    // check if insurance and DAO received the correct amount
+                    expect(await mockERC20.balanceOf(insurance.address)).eq(
+                        insuraceRewards
+                    );
+                    expect(
+                        (await mockERC20.balanceOf(deployer.address)).sub(
+                            DAOBalanceBeforeDistribute
+                        )
+                    ).eq(daoRewards);
+                });
+            }
+        });
+    });
+    describe("Fail cases", async () => {
+        it("Amount to distribute lower than minimum", async () => {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], ethers.utils.parseEther("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+            await stMATIC.setDelegationLowerBound(5);
 
-    //         await stMATIC.setRewardDistributionLowerBound(
-    //             ethers.utils.parseEther("100")
-    //         );
+            await stMATIC.setRewardDistributionLowerBound(
+                ethers.utils.parseEther("100")
+            );
 
-    //         for (let i = 1; i <= numOperators; i++) {
-    //             await mint(testers[i], ethers.utils.parseEther("10"));
-    //             await submit(testers[i], ethers.utils.parseEther(String(10)));
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], ethers.utils.parseEther("10"));
+                await submit(testers[i], ethers.utils.parseEther(String(10)));
 
-    //             // transfer some tokens to the validatorShare contracts to mimic rewards.
-    //             await mint(deployer, ethers.utils.parseEther("1"));
-    //             await mockERC20.transfer(
-    //                 await getValidatorShareAddress(i),
-    //                 ethers.utils.parseEther(String(1))
-    //             );
+                // transfer some tokens to the validatorShare contracts to mimic rewards.
+                await mint(deployer, ethers.utils.parseEther("1"));
+                await mockERC20.transfer(
+                    await getValidatorShareAddress(i),
+                    ethers.utils.parseEther(String(1))
+                );
 
-    //             await expect(stMATIC.distributeRewards()).revertedWith(
-    //                 "Amount to distribute lower than minimum"
-    //             );
-    //         }
-    //     });
-    // });
-    // describe("withdrawTotalDelegated", async () => {
-    //     describe("Success cases", async () => {
-    //         // stake operators
-    //         const operatorId = 3;
-    //         beforeEach("setup", async () => {
-    //             for (let i = 1; i <= operatorId; i++) {
-    //                 await mint(testers[i], ethers.utils.parseEther("100"));
-    //                 await addOperator(
-    //                     `BananaOperator${i}`,
-    //                     testers[i].address,
-    //                     ethers.utils.randomBytes(64)
-    //                 );
-    //                 await stakeOperator(i, testers[i], "100");
-    //                 await stMATIC.setDelegationLowerBound(1);
-    //             }
-    //         });
+                await expect(stMATIC.distributeRewards()).revertedWith(
+                    "Amount to distribute lower than minimum"
+                );
+            }
+        });
+    });
+    describe("withdrawTotalDelegated", async () => {
+        describe("Success cases", async () => {
+            // stake operators
+            const operatorId = 3;
+            beforeEach("setup", async () => {
+                for (let i = 1; i <= operatorId; i++) {
+                    await mint(testers[i], ethers.utils.parseEther("100"));
+                    await addOperator(
+                        `BananaOperator${i}`,
+                        testers[i].address,
+                        ethers.utils.randomBytes(64)
+                    );
+                    await stakeOperator(i, testers[i], "100");
+                    await stMATIC.setDelegationLowerBound(1);
+                }
+            });
 
-    //         class TestCase {
-    //     message: string;
-    //     delegate: boolean;
-    //     tokenIds: Array<number>;
-    //     constructor (
-    //         message: string,
-    //         delegate: boolean,
-    //         tokenIds: Array<number>
-    //     ) {
-    //         this.message = message;
-    //         this.delegate = delegate;
-    //         this.tokenIds = tokenIds;
-    //     }
-    //         }
+            class TestCase {
+        message: string;
+        delegate: boolean;
+        tokenIds: Array<number>;
+        constructor (
+            message: string,
+            delegate: boolean,
+            tokenIds: Array<number>
+        ) {
+            this.message = message;
+            this.delegate = delegate;
+            this.tokenIds = tokenIds;
+        }
+            }
 
-    //         const testCases: Array<TestCase> = [
-    //             {
-    //                 message: "Withdraw when delegated amount != 0",
-    //                 delegate: true,
-    //                 tokenIds: [1, 2, 3]
-    //             },
-    //             {
-    //                 message: "Withdraw when delegated amount == 0",
-    //                 delegate: false,
-    //                 tokenIds: []
-    //             }
-    //         ];
+            const testCases: Array<TestCase> = [
+                {
+                    message: "Withdraw when delegated amount != 0",
+                    delegate: true,
+                    tokenIds: [1, 2, 3]
+                },
+                {
+                    message: "Withdraw when delegated amount == 0",
+                    delegate: false,
+                    tokenIds: []
+                }
+            ];
 
-    //         for (let index = 0; index < testCases.length; index++) {
-    //             const { message, delegate, tokenIds } = testCases[index];
+            for (let index = 0; index < testCases.length; index++) {
+                const { message, delegate, tokenIds } = testCases[index];
 
-    //             it.only(index + " " + message, async () => {
-    //                 // if delegate is true users submit.
-    //                 if (delegate) {
-    //                     for (let i = 1; i <= 3; i++) {
-    //                         await mint(testers[i], ethers.utils.parseEther("10"));
+                it(index + " " + message, async () => {
+                    // if delegate is true users submit.
+                    if (delegate) {
+                        for (let i = 1; i <= 3; i++) {
+                            await mint(testers[i], ethers.utils.parseEther("10"));
 
-    //                         await submit(testers[i], ethers.utils.parseEther("10"));
-    //                     }
-    //                     await stMATIC.delegate();
-    //                 }
+                            await submit(testers[i], ethers.utils.parseEther("10"));
+                        }
+                        await stMATIC.delegate();
+                    }
 
-    //                 // set stakeManager epoch
-    //                 const epoch = 20;
-    //                 await mockStakeManager.setEpoch(epoch);
+                    // set stakeManager epoch
+                    const epoch = 20;
+                    await mockStakeManager.setEpoch(epoch);
 
-    //                 // set stop operators
-    //                 await stopOperator(1);
-    //                 await stopOperator(2);
-    //                 await stopOperator(3);
+                    // set stop operators
+                    await stopOperator(1);
+                    await stopOperator(2);
+                    await stopOperator(3);
 
-    //                 for (let i = 0; i < tokenIds.length; i++) {
-    //                     // check if the stMATIC has a token
-    //                     const nftTokenId = await poLidoNFT.owner2Tokens(stMATIC.address, i);
-    //                     expect(nftTokenId, i + "-tokenId").eq(tokenIds[i]);
+                    for (let i = 0; i < tokenIds.length; i++) {
+                        // check if the stMATIC has a token
+                        const nftTokenId = await poLidoNFT.owner2Tokens(stMATIC.address, i);
+                        expect(nftTokenId, i + "-tokenId").eq(tokenIds[i]);
 
-    //                     // check if the withdrawRequest has correct data
-    //                     const withdrawRequest = await stMATIC.token2WithdrawRequest(
-    //                         nftTokenId
-    //                     );
-    //                     expect(withdrawRequest.validatorNonce).not.eq(0);
-    //                     expect(withdrawRequest.requestEpoch).not.eq(epoch);
-    //                     expect(withdrawRequest.validatorAddress).eq(
-    //                         await getValidatorShareAddress(i + 1)
-    //                     );
-    //                 }
-    //             });
-    //         }
-    //     });
-    //     describe("Fail cases", async () => {
-    //         it("Fail to withdrawTotalDelegated caller not node operator", async () => {
-    //             await expect(
-    //                 stMATIC.withdrawTotalDelegated(ethers.constants.AddressZero)
-    //             ).revertedWith("Not a node operator");
-    //         });
-    //     });
-    // });
+                        // check if the withdrawRequest has correct data
+                        const withdrawRequest = await stMATIC.token2WithdrawRequest(
+                            nftTokenId
+                        );
+                        expect(withdrawRequest.validatorNonce).not.eq(0);
+                        expect(withdrawRequest.requestEpoch).not.eq(epoch);
+                        expect(withdrawRequest.validatorAddress).eq(
+                            await getValidatorShareAddress(i + 1)
+                        );
+                    }
+                });
+            }
+        });
+        describe("Fail cases", async () => {
+            it("Fail to withdrawTotalDelegated caller not node operator", async () => {
+                await expect(
+                    stMATIC.withdrawTotalDelegated(ethers.constants.AddressZero)
+                ).revertedWith("Not a node operator");
+            });
+        });
+    });
 
     describe("claimTokens2StMatic", async () => {
         describe("Success cases", async () => {
