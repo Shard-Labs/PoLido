@@ -273,8 +273,8 @@ contract StMATIC is
             "Amount to delegate lower than minimum"
         );
         Operator.OperatorInfo[]
-            memory operatorShares = getOperatorsWithDelegationEnabled();
-        uint256 operatorSharesLength = operatorShares.length;
+            memory operatorInfos = getOperatorsWithDelegationEnabled();
+        uint256 operatorInfosLength = operatorInfos.length;
 
         require(
             operatorInfosLength > 0,
@@ -899,17 +899,17 @@ contract StMATIC is
     }
 
     /**
-     * @dev Returns the number of operators from operatorShares that have the delegate flag enabled
+     * @dev Returns the number of operators from operatorInfos that have the delegate flag enabled
      */
     function getOperatorsWithDelegationEnabledCount(
-        Operator.OperatorInfo[] memory operatorShares
+        Operator.OperatorInfo[] memory operatorInfos
     ) private view returns (uint256) {
         uint256 count;
-        uint256 operatorSharesLength = operatorShares.length;
+        uint256 operatorInfosLength = operatorInfos.length;
 
-        for (uint256 i = 0; i < operatorSharesLength; i++) {
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
             IValidatorShare validatorShare = IValidatorShare(
-                operatorShares[i].validatorShare
+                operatorInfos[i].validatorShare
             );
             if (validatorShare.delegation()) {
                 count++;
@@ -927,12 +927,12 @@ contract StMATIC is
         view
         returns (Operator.OperatorInfo[] memory)
     {
-        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
             .getOperatorInfos(false);
-        uint256 operatorSharesLength = operatorShares.length;
+        uint256 operatorInfosLength = operatorInfos.length;
 
         uint256 feasibleOperatorsCount = getOperatorsWithDelegationEnabledCount(
-            operatorShares
+            operatorInfos
         );
         Operator.OperatorInfo[]
             memory feasibleOperators = new Operator.OperatorInfo[](
@@ -940,12 +940,12 @@ contract StMATIC is
             );
         uint256 feasibleOperatorsIndex = 0;
 
-        for (uint256 i = 0; i < operatorSharesLength; i++) {
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
             IValidatorShare validatorShare = IValidatorShare(
-                operatorShares[i].validatorShare
+                operatorInfos[i].validatorShare
             );
             if (validatorShare.delegation()) {
-                feasibleOperators[feasibleOperatorsIndex] = operatorShares[i];
+                feasibleOperators[feasibleOperatorsIndex] = operatorInfos[i];
                 feasibleOperatorsIndex++;
             }
         }

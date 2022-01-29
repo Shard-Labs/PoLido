@@ -626,7 +626,7 @@ describe("Starting to test StMATIC contract", () => {
         expect(validatorShareBalance.eq(0)).to.be.true;
     });
 
-    it.only("Shouldn't delegate to a delegator that has disabled delegation", async () => {
+    it("Shouldn't delegate to a delegator that has disabled delegation", async () => {
         const validatorsAmount = 2;
         const testersAmount = 2;
         const submitAmount = ethers.utils.parseEther("1");
