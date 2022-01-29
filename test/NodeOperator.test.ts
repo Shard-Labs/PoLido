@@ -689,34 +689,6 @@ describe("NodeOperator", function () {
             await checkStats(1, 0, 1, 0, 0, 0, 0, 0, 0);
         });
 
-        // it("Fail to unjail an operator", async function () {
-        //     // add operator
-        //     await newOperator(1, user1Address);
-
-        //     // revert user2 try to unjail
-        //     await expect(
-        //         nodeOperatorRegistry.connect(user2).unjail()
-        //     ).revertedWith("Operator not found");
-
-        //     // user2 stake his operator
-        //     await stakeOperator(2, user2, user2Address, "10", "20");
-
-        //     // revert user2 try to unjail
-        //     await expect(
-        //         nodeOperatorRegistry.connect(user2).unjail()
-        //     ).revertedWith("validator not locked");
-
-        //     await nodeOperatorRegistry.connect(user2).unstake();
-
-        //     // unjail the operator
-        //     await nodeOperatorRegistry.connect(user2).unjail();
-
-        //     // revert try to unjail second time
-        //     await expect(
-        //         nodeOperatorRegistry.connect(user2).unjail()
-        //     ).revertedWith("Invalid status");
-        // });
-
         it("Success to topUpFee", async function () {
             await stakeOperator(1, user1, user1Address, "10", "20");
             await stakeOperator(2, user2, user2Address, "10", "20");
