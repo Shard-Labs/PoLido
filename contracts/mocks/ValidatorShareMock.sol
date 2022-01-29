@@ -43,7 +43,7 @@ contract ValidatorShareMock is IValidatorShare {
 
     function withdrawRewards() external override {
         uint256 reward = calculateRewards();
-        require(reward > minAmount(), "Reward < minAmount");
+        require(reward >= minAmount(), "Reward < minAmount");
         IERC20(token).transfer(msg.sender, reward);
     }
 
