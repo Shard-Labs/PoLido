@@ -945,6 +945,15 @@ describe("Starting to test StMATIC contract", () => {
                             DAOBalanceBeforeDistribute
                         )
                     ).eq(daoRewards);
+
+                    const rewardsPerValidator = ethers.utils.parseEther("5");
+                    // check operators rewards
+                    for (let ii = 0; ii < numOperators; ii++) {
+                        const op = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this, ii + 1);
+                        expect(
+                            await mockERC20.balanceOf(op.rewardAddress)
+                        ).eq(rewardsPerValidator);
+                    }
                 });
             }
         });

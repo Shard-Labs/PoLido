@@ -402,23 +402,15 @@ contract StMATIC is
         uint256 daoRewards = (totalRewards * entityFees.dao) / 100;
         uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
         uint256 operatorsRewards = (totalRewards * entityFees.operators) / 100;
+        uint256 operatorReward = operatorsRewards / operatorInfosLength;
 
         IERC20Upgradeable(token).safeTransfer(dao, daoRewards);
         IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
 
-        uint256[] memory ratios = new uint256[](operatorInfosLength);
-        uint256 totalRatio = 0;
-
-        for (uint256 idx = 0; idx < operatorInfosLength; idx++) {
-            uint256 rewardRatio = operatorInfos[idx].maxDelegateLimit;
-            ratios[idx] = rewardRatio;
-            totalRatio += rewardRatio;
-        }
-
         for (uint256 i = 0; i < operatorInfosLength; i++) {
             IERC20Upgradeable(token).safeTransfer(
                 operatorInfos[i].rewardAddress,
-                (operatorsRewards * ratios[i]) / totalRatio
+                operatorReward
             );
         }
 
