@@ -1118,7 +1118,7 @@ describe("Starting to test StMATIC contract", () => {
                 {
                     message: "unstake operator",
                     fn: async function () {
-                        await nodeOperatorRegistry.connect(testers[1]).unstake();
+                        await nodeOperatorRegistry.connect(testers[1])["unstake()"].call(this);
                     }
                 }
             ];
