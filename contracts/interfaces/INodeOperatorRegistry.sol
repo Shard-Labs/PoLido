@@ -155,7 +155,7 @@ interface INodeOperatorRegistry {
         );
 
     /// @notice Allows to get all the active operators info.
-    function getOperatorInfos(bool _rewardData)
+    function getOperatorInfos(bool _rewardData, bool _allActive)
         external
         view
         returns (Operator.OperatorInfo[] memory);

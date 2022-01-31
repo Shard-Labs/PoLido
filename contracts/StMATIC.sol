@@ -157,7 +157,7 @@ contract StMATIC is
         require(_amount > 0, "Invalid amount");
 
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false);
+            .getOperatorInfos(false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -366,7 +366,7 @@ contract StMATIC is
      */
     function distributeRewards() external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(true);
+            .getOperatorInfos(true, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -613,7 +613,7 @@ contract StMATIC is
     {
         uint256 totalStake;
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false);
+            .getOperatorInfos(false, true);
 
         uint256 operatorInfosLength = operatorInfos.length;
         for (uint256 i = 0; i < operatorInfosLength; i++) {
@@ -694,7 +694,7 @@ contract StMATIC is
      */
     function getMinValidatorBalance() public view override returns (uint256) {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false);
+            .getOperatorInfos(false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
         uint256 minValidatorBalance = type(uint256).max;
@@ -909,7 +909,7 @@ contract StMATIC is
         returns (Operator.OperatorInfo[] memory)
     {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false);
+            .getOperatorInfos(false, false);
         uint256 operatorInfosLength = operatorInfos.length;
 
         uint256 feasibleOperatorsCount = getOperatorsWithDelegationEnabledCount(
