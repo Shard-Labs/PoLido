@@ -810,6 +810,18 @@ describe("Starting to test StMATIC contract", () => {
         await expect(stMATIC.delegate()).to.be.revertedWith("Pausable: paused");
     });
 
+    it("Update dao address", async () => {
+        const newDAOAdress = testers[5].address;
+
+        const daoRole = await stMATIC.DAO();
+        expect(await stMATIC.hasRole(daoRole, deployer.address), "Before").true;
+        expect(await stMATIC.hasRole(daoRole, newDAOAdress), "Before").false;
+
+        await stMATIC.setDaoAddress(newDAOAdress);
+        expect(await stMATIC.hasRole(daoRole, deployer.address), "After").false;
+        expect(await stMATIC.hasRole(daoRole, newDAOAdress), "After").true;
+    });
+
     describe("Distribute rewards", async () => {
         describe("Success cases", async () => {
             const numOperators = 3;

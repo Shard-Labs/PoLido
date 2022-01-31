@@ -201,12 +201,10 @@ contract StMATIC is
                 if (lastWithdrawnValidatorId > operatorInfosLength - 1) {
                     lastWithdrawnValidatorId = 0;
                 }
+                address validatorShare = operatorInfos[lastWithdrawnValidatorId]
+                    .validatorShare;
 
-                address stakedAmount = operatorInfos[
-                    lastWithdrawnValidatorId
-                ].validatorShare;
-
-                (uint256 validatorBalance, ) = IValidatorShare(stakedAmount)
+                (uint256 validatorBalance, ) = IValidatorShare(validatorShare)
                     .getTotalStake(address(this));
 
                 if (validatorBalance <= minValidatorBalance) {
@@ -223,16 +221,16 @@ contract StMATIC is
                         : currentAmount2WithdrawInMatic;
 
                 sellVoucher_new(
-                    stakedAmount,
+                    validatorShare,
                     amount2WithdrawFromValidator,
                     type(uint256).max
                 );
 
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     0,
-                    IValidatorShare(stakedAmount).unbondNonces(address(this)),
+                    IValidatorShare(validatorShare).unbondNonces(address(this)),
                     stakeManager.epoch() + stakeManager.withdrawalDelay(),
-                    stakedAmount
+                    validatorShare
                 );
 
                 allowedAmount2RequestFromValidators -= amount2WithdrawFromValidator;
@@ -276,10 +274,7 @@ contract StMATIC is
             memory operatorInfos = getOperatorsWithDelegationEnabled();
         uint256 operatorInfosLength = operatorInfos.length;
 
-        require(
-            operatorInfosLength > 0,
-            "No operator shares, cannot delegate"
-        );
+        require(operatorInfosLength > 0, "No operator shares, cannot delegate");
 
         uint256 availableAmountToDelegate = totalBuffered - reservedFunds;
         uint256 maxDelegateLimitsSum;
@@ -296,8 +291,6 @@ contract StMATIC is
             ? maxDelegateLimitsSum
             : availableAmountToDelegate;
 
-        IERC20Upgradeable(token).safeApprove(address(stakeManager), 0);
-
         IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
             totalToDelegatedAmount
@@ -306,22 +299,17 @@ contract StMATIC is
         uint256 amountDelegated;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
-            IValidatorShare validator = IValidatorShare(
-                operatorInfos[i].validatorShare
+            uint256 amountToDelegatePerOperator = (operatorInfos[i]
+                .maxDelegateLimit * totalToDelegatedAmount) /
+                maxDelegateLimitsSum;
+
+            buyVoucher(
+                operatorInfos[i].validatorShare,
+                amountToDelegatePerOperator,
+                0
             );
-            if (validator.delegation()) {
-                uint256 amountToDelegatePerOperator = (operatorInfos[i]
-                    .maxDelegateLimit * totalToDelegatedAmount) /
-                    maxDelegateLimitsSum;
 
-                buyVoucher(
-                    operatorInfos[i].validatorShare,
-                    amountToDelegatePerOperator,
-                    0
-                );
-
-                amountDelegated += amountToDelegatePerOperator;
-            }
+            amountDelegated += amountToDelegatePerOperator;
         }
 
         remainder = availableAmountToDelegate - amountDelegated;
@@ -437,8 +425,6 @@ contract StMATIC is
             "Not a node operator"
         );
 
-        uint256 tokenId = poLidoNFT.mint(address(this));
-
         (uint256 stakedAmount, ) = getTotalStake(
             IValidatorShare(_validatorShare)
         );
@@ -447,6 +433,7 @@ contract StMATIC is
             return;
         }
 
+        uint256 tokenId = poLidoNFT.mint(address(this));
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
         token2WithdrawRequest[tokenId] = RequestWithdraw(
@@ -763,7 +750,9 @@ contract StMATIC is
      * @param _address - New dao address
      */
     function setDaoAddress(address _address) external override onlyRole(DAO) {
+        revokeRole(DAO, dao);
         dao = _address;
+        _setupRole(DAO, dao);
     }
 
     /**
