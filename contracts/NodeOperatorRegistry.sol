@@ -41,8 +41,6 @@ contract NodeOperatorRegistry is
     /// @param validatorShare validator share contract used to delegate for on polygon.
     /// @param validatorProxy the validator proxy, the owner of the validator.
     /// @param commissionRate the commission rate applied by the operator on polygon.
-    /// @param slashed the number of times this operator was slashed, will be decreased after the slashedTimestamp + slashingDelay < block.timestamp.
-    /// @param slashedTimestamp the timestamp when the operator was slashed.
     /// @param statusUpdatedTimestamp the timestamp when the operator updated the status (ex: INACTIVE -> ACTIVE)
     /// @param maxDelegateLimit max delegation limit that StMatic contract will delegate to this operator each time delegate function is called.
     struct NodeOperator {
@@ -54,11 +52,8 @@ contract NodeOperatorRegistry is
         address validatorProxy;
         uint256 validatorId;
         uint256 commissionRate;
-        uint256 slashed; // delete
-        uint256 slashedTimestamp; // delete
         uint256 statusUpdatedTimestamp;
         uint256 maxDelegateLimit;
-        uint256 amountStaked; // delete
     }
 
     /// @notice all the roles.
@@ -72,20 +67,6 @@ contract NodeOperatorRegistry is
     string public version;
     /// @notice total node operators.
     uint256 private totalNodeOperators;
-    /// @notice total inactive node operators.
-    uint256 private totalInactiveNodeOperator; // delete
-    /// @notice total active node operators.
-    uint256 private totalActiveNodeOperator; // delete
-    /// @notice total stopped node operators.
-    uint256 private totalStoppedNodeOperator; // delete
-    /// @notice total unstaked node operators.
-    uint256 private totalUnstakedNodeOperator; // delete
-    /// @notice total claimed node operators.
-    uint256 private totalClaimedNodeOperator; // delete
-    /// @notice total wait node operators.
-    uint256 private totalWaitNodeOperator; // delete
-    /// @notice total exited node operators.
-    uint256 private totalExitNodeOperator; // delete
 
     /// @notice validatorFactory address.
     address private validatorFactory;
@@ -107,12 +88,6 @@ contract NodeOperatorRegistry is
 
     /// @notice allows restake.
     bool public allowsRestake;
-
-    /// @notice allows unjail a validator.
-    bool public allowsUnjail; // delete
-
-    /// @notice the default period where an operator will marked as "was slashed".
-    uint256 public slashingDelay; // delete
 
     /// @notice default max delgation limit.
     uint256 public defaultMaxDelegateLimit;
@@ -236,10 +211,7 @@ contract NodeOperatorRegistry is
             validatorProxy: validatorProxy,
             commissionRate: commissionRate,
             statusUpdatedTimestamp: block.timestamp,
-            maxDelegateLimit: defaultMaxDelegateLimit,
-            slashed: 0,
-            slashedTimestamp: 0,
-            amountStaked: 0
+            maxDelegateLimit: defaultMaxDelegateLimit
         });
         operatorIds.push(operatorId);
         totalNodeOperators++;
@@ -472,14 +444,14 @@ contract NodeOperatorRegistry is
     function unstake(uint256 _operatorId) external userHasRole(DAO_ROLE) {
         NodeOperator storage no = operators[_operatorId];
         NodeOperatorStatus status = getOperatorStatus(no);
-        checkCondition(
-            status == NodeOperatorStatus.EJECTED,
-            "Invalid status"
-        );
+        checkCondition(status == NodeOperatorStatus.EJECTED, "Invalid status");
         _unstake(_operatorId, no);
     }
 
-    function _unstake(uint256 _operatorId, NodeOperator storage no) private whenNotPaused {
+    function _unstake(uint256 _operatorId, NodeOperator storage no)
+        private
+        whenNotPaused
+    {
         IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
         no.statusUpdatedTimestamp = block.timestamp;
         no.status = NodeOperatorStatus.UNSTAKED;
@@ -857,14 +829,20 @@ contract NodeOperatorRegistry is
             res = NodeOperatorStatus.CLAIMED;
         } else if (_op.status == NodeOperatorStatus.EXIT) {
             res = NodeOperatorStatus.EXIT;
-        }else if (_op.status == NodeOperatorStatus.UNSTAKED) {
+        } else if (_op.status == NodeOperatorStatus.UNSTAKED) {
             res = NodeOperatorStatus.UNSTAKED;
         } else {
             IStakeManager.Validator memory v = IStakeManager(stakeManager)
                 .validators(_op.validatorId);
-            if (v.status == IStakeManager.Status.Active && v.deactivationEpoch == 0) {
+            if (
+                v.status == IStakeManager.Status.Active &&
+                v.deactivationEpoch == 0
+            ) {
                 res = NodeOperatorStatus.ACTIVE;
-            } else if (v.status == IStakeManager.Status.Active && v.deactivationEpoch != 0) {
+            } else if (
+                v.status == IStakeManager.Status.Active &&
+                v.deactivationEpoch != 0
+            ) {
                 res = NodeOperatorStatus.EJECTED;
             } else if (
                 v.status == IStakeManager.Status.Locked &&
@@ -988,18 +966,19 @@ contract NodeOperatorRegistry is
         return operatorIds;
     }
 
-    /// @notice Allows to get a list of operatorInfo for all active operators.
-    /// @param _withdrawRewards _withdrawRewards check if operator accumulated min rewards.
-    /// @return Returns a list of operatorInfo for all active operators.
-    function getOperatorInfos(bool _withdrawRewards)
-        external
-        view
-        override
-        returns (Operator.OperatorInfo[] memory)
-    {
+    /// @notice Returns an operatorInfo list.
+    /// @param _withdrawRewards if true check if operator accumulated min rewards.
+    /// @param _allActive if true return all operators with ACTIVE, EJECTED, JAILED.
+    /// @param _delegation if true return all operators that delegation is set to true.
+    /// @return Returns a list of operatorInfo.
+    function getOperatorInfos(
+        bool _withdrawRewards,
+        bool _delegation,
+        bool _allActive
+    ) external view override returns (Operator.OperatorInfo[] memory) {
         Operator.OperatorInfo[]
             memory operatorInfos = new Operator.OperatorInfo[](
-            totalNodeOperators
+                totalNodeOperators
             );
 
         uint256 length = operatorIds.length;
@@ -1008,7 +987,23 @@ contract NodeOperatorRegistry is
         for (uint256 idx = 0; idx < length; idx++) {
             uint256 operatorId = operatorIds[idx];
             NodeOperator storage no = operators[operatorId];
-            if (getOperatorStatus(no) != NodeOperatorStatus.ACTIVE) continue;
+            NodeOperatorStatus status = getOperatorStatus(no);
+
+            // if operator status is not ACTIVE we continue. But, if _allActive is true
+            // we include EJECTED and JAILED operators.
+            if (
+                status != NodeOperatorStatus.ACTIVE &&
+                !(_allActive &&
+                    (status == NodeOperatorStatus.EJECTED ||
+                        status == NodeOperatorStatus.JAILED))
+            ) continue;
+
+            // if true we check if the operator delegation is true.
+            if (_delegation) {
+                if (!IValidatorShare(no.validatorShare).delegation()) continue;
+            }
+
+            // if true we check if the operator accumulated enough rewards
             if (_withdrawRewards) {
                 IValidatorShare validatorShare = IValidatorShare(
                     no.validatorShare
@@ -1028,7 +1023,6 @@ contract NodeOperatorRegistry is
                 rewardAddress: no.rewardAddress
             });
             index++;
-
         }
         if (index != totalNodeOperators) {
             Operator.OperatorInfo[]

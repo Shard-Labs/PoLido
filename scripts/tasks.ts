@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 // In the future, select from different deployment details file based on the --network argument
 // For now it is hardcoded to use only Goerli
-import * as GOERLI_DEPLOYMENT_DETAILS from "../deploy-goerli.json";
+import * as GOERLI_DEPLOYMENT_DETAILS from "../deploy-testnet.json";
 import { GoerliOverrides, TokenAddresses } from "./constants";
 import { attachContract } from "./utils";
 

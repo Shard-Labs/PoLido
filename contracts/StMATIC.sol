@@ -157,7 +157,7 @@ contract StMATIC is
         require(_amount > 0, "Invalid amount");
 
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false);
+            .getOperatorInfos(false, false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -201,12 +201,10 @@ contract StMATIC is
                 if (lastWithdrawnValidatorId > operatorInfosLength - 1) {
                     lastWithdrawnValidatorId = 0;
                 }
+                address validatorShare = operatorInfos[lastWithdrawnValidatorId]
+                    .validatorShare;
 
-                address stakedAmount = operatorInfos[
-                    lastWithdrawnValidatorId
-                ].validatorShare;
-
-                (uint256 validatorBalance, ) = IValidatorShare(stakedAmount)
+                (uint256 validatorBalance, ) = IValidatorShare(validatorShare)
                     .getTotalStake(address(this));
 
                 if (validatorBalance <= minValidatorBalance) {
@@ -223,16 +221,16 @@ contract StMATIC is
                         : currentAmount2WithdrawInMatic;
 
                 sellVoucher_new(
-                    stakedAmount,
+                    validatorShare,
                     amount2WithdrawFromValidator,
                     type(uint256).max
                 );
 
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
                     0,
-                    IValidatorShare(stakedAmount).unbondNonces(address(this)),
+                    IValidatorShare(validatorShare).unbondNonces(address(this)),
                     stakeManager.epoch() + stakeManager.withdrawalDelay(),
-                    stakedAmount
+                    validatorShare
                 );
 
                 allowedAmount2RequestFromValidators -= amount2WithdrawFromValidator;
@@ -272,14 +270,11 @@ contract StMATIC is
             totalBuffered > delegationLowerBound + reservedFunds,
             "Amount to delegate lower than minimum"
         );
-        Operator.OperatorInfo[]
-            memory operatorInfos = getOperatorsWithDelegationEnabled();
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+            .getOperatorInfos(false, true, false);
         uint256 operatorInfosLength = operatorInfos.length;
 
-        require(
-            operatorInfosLength > 0,
-            "No operator shares, cannot delegate"
-        );
+        require(operatorInfosLength > 0, "No operator shares, cannot delegate");
 
         uint256 availableAmountToDelegate = totalBuffered - reservedFunds;
         uint256 maxDelegateLimitsSum;
@@ -296,8 +291,6 @@ contract StMATIC is
             ? maxDelegateLimitsSum
             : availableAmountToDelegate;
 
-        IERC20Upgradeable(token).safeApprove(address(stakeManager), 0);
-
         IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
             totalToDelegatedAmount
@@ -306,22 +299,17 @@ contract StMATIC is
         uint256 amountDelegated;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
-            IValidatorShare validator = IValidatorShare(
-                operatorInfos[i].validatorShare
+            uint256 amountToDelegatePerOperator = (operatorInfos[i]
+                .maxDelegateLimit * totalToDelegatedAmount) /
+                maxDelegateLimitsSum;
+
+            buyVoucher(
+                operatorInfos[i].validatorShare,
+                amountToDelegatePerOperator,
+                0
             );
-            if (validator.delegation()) {
-                uint256 amountToDelegatePerOperator = (operatorInfos[i]
-                    .maxDelegateLimit * totalToDelegatedAmount) /
-                    maxDelegateLimitsSum;
 
-                buyVoucher(
-                    operatorInfos[i].validatorShare,
-                    amountToDelegatePerOperator,
-                    0
-                );
-
-                amountDelegated += amountToDelegatePerOperator;
-            }
+            amountDelegated += amountToDelegatePerOperator;
         }
 
         remainder = availableAmountToDelegate - amountDelegated;
@@ -378,7 +366,7 @@ contract StMATIC is
      */
     function distributeRewards() external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(true);
+            .getOperatorInfos(true, false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -437,8 +425,6 @@ contract StMATIC is
             "Not a node operator"
         );
 
-        uint256 tokenId = poLidoNFT.mint(address(this));
-
         (uint256 stakedAmount, ) = getTotalStake(
             IValidatorShare(_validatorShare)
         );
@@ -447,6 +433,7 @@ contract StMATIC is
             return;
         }
 
+        uint256 tokenId = poLidoNFT.mint(address(this));
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
         token2WithdrawRequest[tokenId] = RequestWithdraw(
@@ -626,7 +613,7 @@ contract StMATIC is
     {
         uint256 totalStake;
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false);
+            .getOperatorInfos(false, false, true);
 
         uint256 operatorInfosLength = operatorInfos.length;
         for (uint256 i = 0; i < operatorInfosLength; i++) {
@@ -707,7 +694,7 @@ contract StMATIC is
      */
     function getMinValidatorBalance() public view override returns (uint256) {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false);
+            .getOperatorInfos(false, false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
         uint256 minValidatorBalance = type(uint256).max;
@@ -763,7 +750,9 @@ contract StMATIC is
      * @param _address - New dao address
      */
     function setDaoAddress(address _address) external override onlyRole(DAO) {
+        revokeRole(DAO, dao);
         dao = _address;
+        _setupRole(DAO, dao);
     }
 
     /**
@@ -888,60 +877,5 @@ contract StMATIC is
             .unbonds_new(address(this), requestData.validatorNonce);
 
         return (withdrawExchangeRate * unbond.shares) / exchangeRatePrecision;
-    }
-
-    /**
-     * @dev Returns the number of operators from operatorInfos that have the delegate flag enabled
-     */
-    function getOperatorsWithDelegationEnabledCount(
-        Operator.OperatorInfo[] memory operatorInfos
-    ) private view returns (uint256) {
-        uint256 count;
-        uint256 operatorInfosLength = operatorInfos.length;
-
-        for (uint256 i = 0; i < operatorInfosLength; i++) {
-            IValidatorShare validatorShare = IValidatorShare(
-                operatorInfos[i].validatorShare
-            );
-            if (validatorShare.delegation()) {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    /**
-     * @dev Get OperatorInfos from operators that have delegation flag set to true
-     */
-    function getOperatorsWithDelegationEnabled()
-        private
-        view
-        returns (Operator.OperatorInfo[] memory)
-    {
-        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false);
-        uint256 operatorInfosLength = operatorInfos.length;
-
-        uint256 feasibleOperatorsCount = getOperatorsWithDelegationEnabledCount(
-            operatorInfos
-        );
-        Operator.OperatorInfo[]
-            memory feasibleOperators = new Operator.OperatorInfo[](
-                feasibleOperatorsCount
-            );
-        uint256 feasibleOperatorsIndex = 0;
-
-        for (uint256 i = 0; i < operatorInfosLength; i++) {
-            IValidatorShare validatorShare = IValidatorShare(
-                operatorInfos[i].validatorShare
-            );
-            if (validatorShare.delegation()) {
-                feasibleOperators[feasibleOperatorsIndex] = operatorInfos[i];
-                feasibleOperatorsIndex++;
-            }
-        }
-
-        return feasibleOperators;
     }
 }

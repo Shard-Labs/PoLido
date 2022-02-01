@@ -1259,6 +1259,97 @@ describe("NodeOperator", function () {
         });
 
         describe("operator infos", async function () {
+            it("success getOperatorInfos all cases", async function () {
+                await stakeOperator(1, user1, user1Address, "100", "20");
+                await stakeOperator(2, user2, user2Address, "100", "20");
+                await stakeOperator(3, user3, user3Address, "100", "20");
+
+                // slash op 1
+                await stakeManagerMock.slash(1);
+                // op 1 is not included
+                let operators = await nodeOperatorRegistry.getOperatorInfos(true, false, false);
+                expect(operators.length).eq(2);
+                // op 1 is included
+                operators = await nodeOperatorRegistry.getOperatorInfos(true, false, true);
+                expect(operators.length).eq(3);
+
+                // unstake op 2
+                await stakeManagerMock.unstake(2);
+                // op 2 is not included
+                operators = await nodeOperatorRegistry.getOperatorInfos(true, false, false);
+                expect(operators.length).eq(1);
+                // include op2 + op1 (EJECTED, JAILED)
+                operators = await nodeOperatorRegistry.getOperatorInfos(true, false, true);
+                expect(operators.length).eq(3);
+
+                // set operator 3 delegation to false
+                const validatorShareOperator3: ValidatorShareMock =
+                    (await ethers.getContractAt(
+                        "ValidatorShareMock",
+                        operators[2].validatorShare
+                    )) as ValidatorShareMock;
+                await validatorShareOperator3.updateDelegation(false);
+                // include op3 is included because it's active
+                operators = await nodeOperatorRegistry.getOperatorInfos(true, false, false);
+                expect(operators.length).eq(1);
+
+                // include op3 is not included delegation is false
+                operators = await nodeOperatorRegistry.getOperatorInfos(true, true, false);
+                expect(operators.length).eq(0);
+            });
+
+            it("success getOperatorInfos validator with active delegation", async function () {
+                await stakeOperator(1, user1, user1Address, "100", "20");
+                await stakeOperator(2, user2, user2Address, "100", "20");
+                await stakeOperator(3, user3, user3Address, "100", "20");
+
+                let operators = await nodeOperatorRegistry.getOperatorInfos(true, true, false);
+                expect(operators.length).eq(3);
+
+                // set operator 3 delegation to false
+                const validatorShareOperator3: ValidatorShareMock =
+                    (await ethers.getContractAt(
+                        "ValidatorShareMock",
+                        operators[2].validatorShare
+                    )) as ValidatorShareMock;
+                await validatorShareOperator3.updateDelegation(false);
+
+                operators = await nodeOperatorRegistry.getOperatorInfos(true, true, false);
+                expect(operators.length).eq(2);
+
+                // set operator 3 delegation to true
+                await validatorShareOperator3.updateDelegation(true);
+                operators = await nodeOperatorRegistry.getOperatorInfos(true, true, false);
+                expect(operators.length).eq(3);
+            });
+
+            it("success getOperatorInfos validator ACTIVE + EJECTED + JAILED", async function () {
+                await stakeOperator(1, user1, user1Address, "100", "20");
+                await stakeOperator(2, user2, user2Address, "100", "20");
+                await stakeOperator(3, user3, user3Address, "100", "20");
+
+                await stakeManagerMock.unstake(3);
+                await checkOperator(1, { status: 1 }); // ACTIVE
+                await checkOperator(2, { status: 1 }); // ACTIVE
+                await checkOperator(3, { status: 8 }); // EJECTED
+                let operators = await nodeOperatorRegistry.getOperatorInfos(true, false, false);
+
+                expect(operators.length).eq(2);
+                operators.forEach((op, index: number) => {
+                    expect(op.operatorId).eq(index + 1);
+                });
+
+                operators = await nodeOperatorRegistry.getOperatorInfos(false, false, true);
+                expect(operators.length).eq(3);
+
+                await stakeManagerMock.slash(2);
+                operators = await nodeOperatorRegistry.getOperatorInfos(false, false, true);
+                expect(operators.length).eq(3);
+
+                operators = await nodeOperatorRegistry.getOperatorInfos(false, false, false);
+                expect(operators.length).eq(1);
+            });
+
             it("success getOperatorInfos validator rewards", async function () {
                 // If the rewards accumulated by a validator are not enough, the operator is ignored.
                 await stakeOperator(1, user1, user1Address, "100", "20");
@@ -1270,15 +1361,15 @@ describe("NodeOperator", function () {
                     3
                 );
                 const validatorShareOperator3: ValidatorShareMock =
-          (await ethers.getContractAt(
-              "ValidatorShareMock",
-              op3.validatorShare
-          )) as ValidatorShareMock;
+                    (await ethers.getContractAt(
+                        "ValidatorShareMock",
+                        op3.validatorShare
+                    )) as ValidatorShareMock;
                 await validatorShareOperator3.setMinAmount(
                     ethers.utils.parseEther("10000")
                 );
 
-                const operators = await nodeOperatorRegistry.getOperatorInfos(true);
+                const operators = await nodeOperatorRegistry.getOperatorInfos(true, false, false);
 
                 expect(operators.length).eq(2);
                 operators.forEach((op, index: number) => {
@@ -1294,7 +1385,7 @@ describe("NodeOperator", function () {
                 await stakeOperator(3, user3, user3Address, "100", "20");
 
                 await stakeManagerMock.unstake(3);
-                const operators = await nodeOperatorRegistry.getOperatorInfos(false);
+                const operators = await nodeOperatorRegistry.getOperatorInfos(false, false, false);
 
                 expect(operators.length).eq(2);
                 operators.forEach((op, index) => {
@@ -1307,7 +1398,7 @@ describe("NodeOperator", function () {
                 await stakeOperator(2, user2, user2Address, "100", "20");
                 await stakeOperator(3, user3, user3Address, "100", "20");
 
-                let operators = await nodeOperatorRegistry.getOperatorInfos(false);
+                let operators = await nodeOperatorRegistry.getOperatorInfos(false, false, false);
                 for (let i = 0; i < operators.length; i++) {
                     const op = operators[i];
                     await checkOperator(i + 1, {
@@ -1319,7 +1410,7 @@ describe("NodeOperator", function () {
                 await stakeManagerMock.slash(1);
                 await stakeManagerMock.slash(3);
 
-                operators = await nodeOperatorRegistry.getOperatorInfos(true);
+                operators = await nodeOperatorRegistry.getOperatorInfos(true, false, false);
 
                 expect(operators.length, "operators.length").eq(1);
                 await checkOperator(2, {
@@ -1335,7 +1426,7 @@ describe("NodeOperator", function () {
                 await newOperator(3, user3Address);
 
                 // get all active operators
-                let res = await nodeOperatorRegistry.getOperatorInfos(false);
+                let res = await nodeOperatorRegistry.getOperatorInfos(false, false, false);
                 expect(res.length, "get all active operators").eq(2);
                 for (let i = 0; i < res.length; i++) {
                     expect(res[i].operatorId, "operatorId").eq(i + 1);
@@ -1344,7 +1435,7 @@ describe("NodeOperator", function () {
                 // unstake the 2rd operator
                 await nodeOperatorRegistry.connect(user2)["unstake()"].call(this);
 
-                res = await nodeOperatorRegistry.getOperatorInfos(false);
+                res = await nodeOperatorRegistry.getOperatorInfos(false, false, false);
                 expect(res.length, "unstake the 2rd operator").eq(1);
                 for (let i = 0; i < res.length; i++) {
                     expect(res[i].operatorId, "operatorId").eq(i + 1);
@@ -1353,7 +1444,7 @@ describe("NodeOperator", function () {
                 // stop the 1st operator
                 await nodeOperatorRegistry.stopOperator(1);
 
-                res = await nodeOperatorRegistry.getOperatorInfos(false);
+                res = await nodeOperatorRegistry.getOperatorInfos(false, false, false);
                 expect(res.length, "stop the 1st operator").eq(0);
             });
         });
