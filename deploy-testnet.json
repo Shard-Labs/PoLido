@@ -8,7 +8,7 @@
   "lido_nft_proxy": "0xb7f0F701473458549768753F3176411105ec9693",
   "lido_nft_implementation": "0xAE2E7D2034880f350a45B38F6Cb8A11d97bEa8Fd",
   "stMATIC_proxy": "0x9A7c69A167160C507602ecB3Df4911e8E98e1279",
-  "stMATIC_implementation": "0xaB87AFBda3f53C312fDBd4dc69EfcCD9Aecb5243",
+  "stMATIC_implementation": "0xb7f886A797E958fd60B8F6D754f3c11586Bb8Ab9",
   "validator_factory_proxy": "0x392C87754B73CC3A68059803D37D0387f16c8D81",
   "validator_factory_implementation": "0x0117a088127a9Cd1f2629FD09cbB2842abA180F6",
   "node_operator_registry_proxy": "0xb1f3f45360Cf0A30793e38C18dfefCD0d5136f9a",

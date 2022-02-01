@@ -291,6 +291,8 @@ contract StMATIC is
             ? maxDelegateLimitsSum
             : availableAmountToDelegate;
 
+        IERC20Upgradeable(token).safeApprove(address(stakeManager), 0);
+
         IERC20Upgradeable(token).safeApprove(
             address(stakeManager),
             totalToDelegatedAmount
@@ -420,10 +422,7 @@ contract StMATIC is
      * @param _validatorShare - Address of the validator share that will be withdrawn
      */
     function withdrawTotalDelegated(address _validatorShare) external override {
-        require(
-            msg.sender == address(nodeOperator),
-            "Not a node operator"
-        );
+        require(msg.sender == address(nodeOperator), "Not a node operator");
 
         (uint256 stakedAmount, ) = getTotalStake(
             IValidatorShare(_validatorShare)

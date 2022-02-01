@@ -10938,6 +10938,313 @@
           }
         }
       }
+    },
+    "1fef0b1248bc7205c8e28aa8689137447629545fb915b1f9f127d1927f1f71b4": {
+      "address": "0x9b77e7008347A18254873ca7e6C438728FB93f5D",
+      "txHash": "0x2ca7a2fa0dea87aa8810dd862e69423669a35ac33a25d31d155d20d56253c386",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:21"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:26"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:30"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:36"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:38"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:40"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:42"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:361"
+          },
+          {
+            "contract": "ERC165Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol:35"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "_roles",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)43_storage)",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:63"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:219"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:28"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:96"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "nodeOperator",
+            "type": "t_contract(INodeOperatorRegistry)11208",
+            "src": "contracts/StMATIC.sol:44"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "entityFees",
+            "type": "t_struct(FeeDistribution)11269_storage",
+            "src": "contracts/StMATIC.sol:45"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "stakeManager",
+            "type": "t_contract(IStakeManager)11632",
+            "src": "contracts/StMATIC.sol:46"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "poLidoNFT",
+            "type": "t_contract(IPoLidoNFT)11241",
+            "src": "contracts/StMATIC.sol:47"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "version",
+            "type": "t_string_storage",
+            "src": "contracts/StMATIC.sol:49"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "dao",
+            "type": "t_address",
+            "src": "contracts/StMATIC.sol:50"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "insurance",
+            "type": "t_address",
+            "src": "contracts/StMATIC.sol:51"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "token",
+            "type": "t_address",
+            "src": "contracts/StMATIC.sol:52"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "lastWithdrawnValidatorId",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:53"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "totalBuffered",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:54"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "delegationLowerBound",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:55"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "rewardDistributionLowerBound",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:56"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "reservedFunds",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:57"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "minValidatorBalance",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:58"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "token2WithdrawRequest",
+            "type": "t_mapping(t_uint256,t_struct(RequestWithdraw)11262_storage)",
+            "src": "contracts/StMATIC.sol:59"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "fxStateRootTunnel",
+            "type": "t_contract(IFxStateRootTunnel)10974",
+            "src": "contracts/StMATIC.sol:63"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "submitHandler",
+            "type": "t_bool",
+            "src": "contracts/StMATIC.sol:64"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "submitThreshold",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:65"
+          }
+        ],
+        "types": {
+          "t_contract(INodeOperatorRegistry)11208": {
+            "label": "contract INodeOperatorRegistry"
+          },
+          "t_struct(FeeDistribution)11269_storage": {
+            "label": "struct IStMATIC.FeeDistribution",
+            "members": [
+              {
+                "label": "dao",
+                "type": "t_uint8"
+              },
+              {
+                "label": "operators",
+                "type": "t_uint8"
+              },
+              {
+                "label": "insurance",
+                "type": "t_uint8"
+              }
+            ]
+          },
+          "t_uint8": {
+            "label": "uint8"
+          },
+          "t_contract(IStakeManager)11632": {
+            "label": "contract IStakeManager"
+          },
+          "t_contract(IPoLidoNFT)11241": {
+            "label": "contract IPoLidoNFT"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_uint256,t_struct(RequestWithdraw)11262_storage)": {
+            "label": "mapping(uint256 => struct IStMATIC.RequestWithdraw)"
+          },
+          "t_struct(RequestWithdraw)11262_storage": {
+            "label": "struct IStMATIC.RequestWithdraw",
+            "members": [
+              {
+                "label": "amount2WithdrawFromStMATIC",
+                "type": "t_uint256"
+              },
+              {
+                "label": "validatorNonce",
+                "type": "t_uint256"
+              },
+              {
+                "label": "requestTime",
+                "type": "t_uint256"
+              },
+              {
+                "label": "validatorAddress",
+                "type": "t_address"
+              }
+            ]
+          },
+          "t_contract(IFxStateRootTunnel)10974": {
+            "label": "contract IFxStateRootTunnel"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)43_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_struct(RoleData)43_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          }
+        }
+      }
     }
   }
 }
