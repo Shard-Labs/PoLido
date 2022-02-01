@@ -1259,7 +1259,7 @@ describe("NodeOperator", function () {
         });
 
         describe("operator infos", async function () {
-            it("success getOperatorInfos full cases", async function () {
+            it("success getOperatorInfos all cases", async function () {
                 await stakeOperator(1, user1, user1Address, "100", "20");
                 await stakeOperator(2, user2, user2Address, "100", "20");
                 await stakeOperator(3, user3, user3Address, "100", "20");
