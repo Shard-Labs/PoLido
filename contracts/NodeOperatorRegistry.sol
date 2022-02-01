@@ -994,16 +994,16 @@ contract NodeOperatorRegistry is
         return operatorIds;
     }
 
-    /// @notice Allows to get a list of operatorInfo for all active operators.
-    /// @param _withdrawRewards _withdrawRewards check if operator accumulated min rewards.
-    /// @param _allActive return all operators with ACTIVE, EJECTED, SLASHED.
+    /// @notice Allows to get a list of operatorInfo.
+    /// @param _withdrawRewards if true check if operator accumulated min rewards.
+    /// @param _allActive if true return all operators with ACTIVE, EJECTED, JAILED.
+    /// @param _delegation if true return all operators that delegation is set to true.
     /// @return Returns a list of operatorInfo for all active operators.
-    function getOperatorInfos(bool _withdrawRewards, bool _allActive)
-        external
-        view
-        override
-        returns (Operator.OperatorInfo[] memory)
-    {
+    function getOperatorInfos(
+        bool _withdrawRewards,
+        bool _delegation,
+        bool _allActive
+    ) external view override returns (Operator.OperatorInfo[] memory) {
         Operator.OperatorInfo[]
             memory operatorInfos = new Operator.OperatorInfo[](
                 totalNodeOperators
@@ -1016,12 +1016,22 @@ contract NodeOperatorRegistry is
             uint256 operatorId = operatorIds[idx];
             NodeOperator storage no = operators[operatorId];
             NodeOperatorStatus status = getOperatorStatus(no);
+
+            // if operator status is not ACTIVE we continue. But, if _allActive is true
+            // we include EJECTED and JAILED operators.
             if (
                 status != NodeOperatorStatus.ACTIVE &&
                 !(_allActive &&
                     (status == NodeOperatorStatus.EJECTED ||
                         status == NodeOperatorStatus.JAILED))
             ) continue;
+
+            // if true we check if the operator delegation is true.
+            if (_delegation) {
+                if (!IValidatorShare(no.validatorShare).delegation()) continue;
+            }
+
+            // if true we check if the operator accumulated enough rewards
             if (_withdrawRewards) {
                 IValidatorShare validatorShare = IValidatorShare(
                     no.validatorShare

@@ -1190,6 +1190,7 @@ describe("Starting to test StMATIC contract", () => {
                 });
             }
         });
+
         describe("Fail cases", async () => {
             it("Fail withdraw delay not reached", async () => {
                 // stake operator
