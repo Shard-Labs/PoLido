@@ -17,7 +17,7 @@ interface IStMATIC is IERC20Upgradeable {
     struct RequestWithdraw {
         uint256 amount2WithdrawFromStMATIC;
         uint256 validatorNonce;
-        uint256 requestEpoch;
+        uint256 requestTime;
         address validatorAddress;
     }
 
@@ -29,62 +29,62 @@ interface IStMATIC is IERC20Upgradeable {
 
     function withdrawTotalDelegated(address _validatorShare) external;
 
-    function nodeOperatorRegistry() external returns (INodeOperatorRegistry);
+    // function nodeOperator() external returns (INodeOperatorRegistry);
 
-    function entityFees()
-        external
-        returns (
-            uint8,
-            uint8,
-            uint8
-        );
+    // function entityFees()
+    //     external
+    //     returns (
+    //         uint8,
+    //         uint8,
+    //         uint8
+    //     );
 
     function getMaticFromTokenId(uint256 _tokenId)
         external
         view
         returns (uint256);
 
-    function stakeManager() external view returns (IStakeManager);
+    // function stakeManager() external view returns (IStakeManager);
 
-    function poLidoNFT() external view returns (IPoLidoNFT);
+    // function poLidoNFT() external view returns (IPoLidoNFT);
 
-    function fxStateRootTunnel() external view returns (IFxStateRootTunnel);
+    // function fxStateRootTunnel() external view returns (IFxStateRootTunnel);
 
-    function version() external view returns (string memory);
+    // function version() external view returns (string memory);
 
-    function dao() external view returns (address);
+    // function dao() external view returns (address);
 
-    function insurance() external view returns (address);
+    // function insurance() external view returns (address);
 
-    function token() external view returns (address);
+    // function token() external view returns (address);
 
-    function lastWithdrawnValidatorId() external view returns (uint256);
+    // function lastWithdrawnValidatorId() external view returns (uint256);
 
-    function totalBuffered() external view returns (uint256);
+    // function totalBuffered() external view returns (uint256);
 
-    function delegationLowerBound() external view returns (uint256);
+    // function delegationLowerBound() external view returns (uint256);
 
-    function rewardDistributionLowerBound() external view returns (uint256);
+    // function rewardDistributionLowerBound() external view returns (uint256);
 
-    function reservedFunds() external view returns (uint256);
+    // function reservedFunds() external view returns (uint256);
 
-    function submitThreshold() external view returns (uint256);
+    // function submitThreshold() external view returns (uint256);
 
-    function submitHandler() external view returns (bool);
+    // function submitHandler() external view returns (bool);
 
     function getMinValidatorBalance() external view returns (uint256);
 
-    function token2WithdrawRequest(uint256 _requestId)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            address
-        );
+    // function token2WithdrawRequest(uint256 _requestId)
+    //     external
+    //     view
+    //     returns (
+    //         uint256,
+    //         uint256,
+    //         uint256,
+    //         address
+    //     );
 
-    function DAO() external view returns (bytes32);
+    // function DAO() external view returns (bytes32);
 
     function initialize(
         address _nodeOperatorRegistry,

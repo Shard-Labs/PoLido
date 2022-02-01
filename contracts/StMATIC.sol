@@ -41,28 +41,28 @@ contract StMATIC is
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    INodeOperatorRegistry public override nodeOperatorRegistry;
-    FeeDistribution public override entityFees;
-    IStakeManager public override stakeManager;
-    IPoLidoNFT public override poLidoNFT;
-    IFxStateRootTunnel public override fxStateRootTunnel;
+    INodeOperatorRegistry public nodeOperator;
+    FeeDistribution public entityFees;
+    IStakeManager public stakeManager;
+    IPoLidoNFT public poLidoNFT;
 
-    string public override version;
-    address public override dao;
-    address public override insurance;
-    address public override token;
-    uint256 public override lastWithdrawnValidatorId;
-    uint256 public override totalBuffered;
-    uint256 public override delegationLowerBound;
-    uint256 public override rewardDistributionLowerBound;
-    uint256 public override reservedFunds;
-    uint256 public override submitThreshold;
+    string public version;
+    address public dao;
+    address public insurance;
+    address public token;
+    uint256 public lastWithdrawnValidatorId;
+    uint256 public totalBuffered;
+    uint256 public delegationLowerBound;
+    uint256 public rewardDistributionLowerBound;
+    uint256 public reservedFunds;
+    uint256 public minValidatorBalance;
+    mapping(uint256 => RequestWithdraw) public token2WithdrawRequest;
 
-    bool public override submitHandler;
+    bytes32 public constant DAO = keccak256("DAO");
 
-    mapping(uint256 => RequestWithdraw) public override token2WithdrawRequest;
-
-    bytes32 public constant override DAO = keccak256("DAO");
+    IFxStateRootTunnel public fxStateRootTunnel;
+    bool public submitHandler;
+    uint256 public submitThreshold;
 
     /**
      * @param _nodeOperatorRegistry - Address of the node operator registry
@@ -90,7 +90,7 @@ contract StMATIC is
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(DAO, _dao);
 
-        nodeOperatorRegistry = INodeOperatorRegistry(_nodeOperatorRegistry);
+        nodeOperator = INodeOperatorRegistry(_nodeOperatorRegistry);
         stakeManager = IStakeManager(_stakeManager);
         poLidoNFT = IPoLidoNFT(_poLidoNFT);
         fxStateRootTunnel = IFxStateRootTunnel(_fxStateRootTunnel);
@@ -156,7 +156,7 @@ contract StMATIC is
     function requestWithdraw(uint256 _amount) external override whenNotPaused {
         require(_amount > 0, "Invalid amount");
 
-        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperator
             .getOperatorInfos(false, false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
@@ -270,7 +270,7 @@ contract StMATIC is
             totalBuffered > delegationLowerBound + reservedFunds,
             "Amount to delegate lower than minimum"
         );
-        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperator
             .getOperatorInfos(false, true, false);
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -328,7 +328,7 @@ contract StMATIC is
         RequestWithdraw storage usersRequest = token2WithdrawRequest[_tokenId];
 
         require(
-            stakeManager.epoch() >= usersRequest.requestEpoch,
+            stakeManager.epoch() >= usersRequest.requestTime,
             "Not able to claim yet"
         );
 
@@ -365,7 +365,7 @@ contract StMATIC is
      * @dev Distributes rewards claimed from validator shares based on fees defined in entityFee
      */
     function distributeRewards() external override whenNotPaused {
-        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperator
             .getOperatorInfos(true, false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
@@ -421,7 +421,7 @@ contract StMATIC is
      */
     function withdrawTotalDelegated(address _validatorShare) external override {
         require(
-            msg.sender == address(nodeOperatorRegistry),
+            msg.sender == address(nodeOperator),
             "Not a node operator"
         );
 
@@ -470,7 +470,7 @@ contract StMATIC is
         poLidoNFT.burn(_tokenId);
 
         require(
-            stakeManager.epoch() >= lidoRequests.requestEpoch,
+            stakeManager.epoch() >= lidoRequests.requestTime,
             "Not able to claim yet"
         );
 
@@ -493,7 +493,7 @@ contract StMATIC is
             abi.encode(totalSupply(), getTotalPooledMatic())
         );
 
-        nodeOperatorRegistry.exitOperator(lidoRequests.validatorAddress);
+        nodeOperator.exitOperator(lidoRequests.validatorAddress);
         emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
     }
 
@@ -612,7 +612,7 @@ contract StMATIC is
         returns (uint256)
     {
         uint256 totalStake;
-        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperator
             .getOperatorInfos(false, false, true);
 
         uint256 operatorInfosLength = operatorInfos.length;
@@ -693,11 +693,11 @@ contract StMATIC is
      * @return Minimal validator balance in MATIC
      */
     function getMinValidatorBalance() public view override returns (uint256) {
-        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperator
             .getOperatorInfos(false, false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
-        uint256 minValidatorBalance = type(uint256).max;
+        uint256 minValidatorBalances = type(uint256).max;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
             (uint256 validatorShare, ) = getTotalStake(
@@ -708,13 +708,13 @@ contract StMATIC is
 
             if (
                 minValidatorBalanceCurrent != 0 &&
-                minValidatorBalanceCurrent < minValidatorBalance
+                minValidatorBalanceCurrent < minValidatorBalances
             ) {
-                minValidatorBalance = minValidatorBalanceCurrent;
+                minValidatorBalances = minValidatorBalanceCurrent;
             }
         }
 
-        return minValidatorBalance;
+        return minValidatorBalances;
     }
 
     ////////////////////////////////////////////////////////////
@@ -778,7 +778,7 @@ contract StMATIC is
         override
         onlyRole(DAO)
     {
-        nodeOperatorRegistry = INodeOperatorRegistry(_address);
+        nodeOperator = INodeOperatorRegistry(_address);
     }
 
     /**

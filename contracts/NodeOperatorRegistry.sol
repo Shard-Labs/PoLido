@@ -18,8 +18,7 @@ import "./interfaces/IStMATIC.sol";
 contract NodeOperatorRegistry is
     INodeOperatorRegistry,
     PausableUpgradeable,
-    AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable
+    AccessControlUpgradeable
 {
     enum NodeOperatorStatus {
         INACTIVE,
@@ -71,7 +70,7 @@ contract NodeOperatorRegistry is
     /// @notice contract version.
     string public version;
     /// @notice total node operators.
-    uint256 private totalNodeOperators;
+    uint256 private totalNodeOperator;
     /// @notice total inactive node operators.
     uint256 private totalInactiveNodeOperator; // delete
     /// @notice total active node operators.
@@ -184,7 +183,6 @@ contract NodeOperatorRegistry is
     ) external initializer {
         __Pausable_init();
         __AccessControl_init();
-        __ReentrancyGuard_init();
 
         validatorFactory = _validatorFactory;
         stakeManager = _stakeManager;
@@ -223,7 +221,7 @@ contract NodeOperatorRegistry is
         userHasRole(DAO_ROLE)
         checkIfRewardAddressIsUsed(_rewardAddress)
     {
-        uint256 operatorId = totalNodeOperators + 1;
+        uint256 operatorId = totalNodeOperator + 1;
         address validatorProxy = IValidatorFactory(validatorFactory).create();
 
         operators[operatorId] = NodeOperator({
@@ -242,7 +240,7 @@ contract NodeOperatorRegistry is
             amountStaked: 0
         });
         operatorIds.push(operatorId);
-        totalNodeOperators++;
+        totalNodeOperator++;
         operatorOwners[_rewardAddress] = operatorId;
 
         emit AddOperator(operatorId);
@@ -315,7 +313,7 @@ contract NodeOperatorRegistry is
         }
         operatorIds.pop();
 
-        totalNodeOperators--;
+        totalNodeOperator--;
         IValidatorFactory(validatorFactory).remove(no.validatorProxy);
         delete operatorOwners[no.rewardAddress];
         delete operators[_operatorId];
@@ -489,7 +487,7 @@ contract NodeOperatorRegistry is
 
     /// @notice Allows the operator's owner to migrate the validator ownership to rewardAddress.
     /// This can be done only in the case where this operator was stopped by the DAO.
-    function migrate() external override nonReentrant {
+    function migrate() external override {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
         checkCondition(no.status == NodeOperatorStatus.WAIT, "Invalid status");
         IValidator(no.validatorProxy).migrate(
@@ -1006,7 +1004,7 @@ contract NodeOperatorRegistry is
     ) external view override returns (Operator.OperatorInfo[] memory) {
         Operator.OperatorInfo[]
             memory operatorInfos = new Operator.OperatorInfo[](
-                totalNodeOperators
+                totalNodeOperator
             );
 
         uint256 length = operatorIds.length;
@@ -1052,7 +1050,7 @@ contract NodeOperatorRegistry is
             });
             index++;
         }
-        if (index != totalNodeOperators) {
+        if (index != totalNodeOperator) {
             Operator.OperatorInfo[]
                 memory operatorInfosOut = new Operator.OperatorInfo[](index);
 
