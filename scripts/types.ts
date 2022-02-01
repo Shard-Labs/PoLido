@@ -20,6 +20,7 @@ export interface DeployDetails {
   validator_factory_implementation: string;
   node_operator_registry_proxy: string;
   node_operator_registry_implementation: string;
+  validator_implementation: string;
   fx_state_root_tunnel: string;
   fx_state_child_tunnel: string;
   default?: string;
