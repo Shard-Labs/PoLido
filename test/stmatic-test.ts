@@ -253,7 +253,9 @@ describe("Starting to test StMATIC contract", () => {
         await mint(testers[0], sumbitThreshold.add(1));
         await submit(testers[0], sumbitThreshold);
 
-        await expect(submit(testers[0], 1)).to.be.revertedWith("Submit threshold reached");
+        await expect(submit(testers[0], 1)).to.be.revertedWith(
+            "Submit threshold reached"
+        );
     });
 
     it("Should successfuly disable the submit threshold handler", async () => {
@@ -381,6 +383,34 @@ describe("Starting to test StMATIC contract", () => {
         const balanceAfter = await mockERC20.balanceOf(testers[0].address);
 
         expect(balanceAfter.sub(balanceBefore).eq(withdrawAmount)).to.be.true;
+    });
+
+    it("Should delegate to validator if stake manager has approval > 0", async () => {
+        let initialSubmitAmount = ethers.utils.parseEther("99");
+        for (let i = 0; i < 2; i++) {
+            await mint(testers[i], ethers.utils.parseEther("100"));
+
+            await addOperator(
+                `BananaOperator${i}`,
+                testers[i].address,
+                ethers.utils.randomBytes(64)
+            );
+
+            await stakeOperator(i + 1, testers[i], "100");
+        }
+        const balanceBefore = await stMATIC.balanceOf(testers[0].address);
+
+        await mint(testers[0], initialSubmitAmount);
+        await submit(testers[0], initialSubmitAmount);
+        await stMATIC.delegate();
+
+        const finalSubmitAmount = ethers.utils.parseEther("100");
+        await mint(testers[0], finalSubmitAmount);
+        await submit(testers[0], finalSubmitAmount);
+        await stMATIC.delegate();
+
+        const balanceAfter = await stMATIC.balanceOf(testers[0].address);
+        expect(balanceAfter.sub(balanceBefore).eq(initialSubmitAmount.add(finalSubmitAmount))).to.be.true;
     });
 
     it("StMATIC stake should stay the same if an attacker sends matic to the validator", async () => {
@@ -624,6 +654,53 @@ describe("Starting to test StMATIC contract", () => {
         expect(validatorShareBalance.eq(0)).to.be.true;
     });
 
+    it("Shouldn't delegate to a delegator that has disabled delegation", async () => {
+        const validatorsAmount = 2;
+        const testersAmount = 2;
+        const submitAmount = ethers.utils.parseEther("1");
+
+        for (let i = 0; i < validatorsAmount; i++) {
+            await mint(testers[i], ethers.utils.parseEther("100"));
+
+            await addOperator(
+                `BananaOperator${i}`,
+                testers[i].address,
+                ethers.utils.randomBytes(64)
+            );
+
+            await stakeOperator(i + 1, testers[i], "10");
+        }
+
+        const validatorShareAddress = (
+            await nodeOperatorRegistry["getNodeOperator(uint256)"](1)
+        ).validatorShare;
+
+        const ValidatorShareMock = await ethers.getContractFactory(
+            "ValidatorShareMock"
+        );
+        const validatorShare = ValidatorShareMock.attach(
+            validatorShareAddress
+        ) as ValidatorShareMock;
+
+        await validatorShare.updateDelegation(false);
+
+        for (let i = 0; i < testersAmount; i++) {
+            await mint(testers[i], submitAmount);
+            await submit(testers[i], submitAmount);
+        }
+
+        await stMATIC.delegate();
+
+        const validatorShareBalance = await mockERC20.balanceOf(
+            validatorShareAddress
+        );
+
+        expect(validatorShareBalance.eq(0)).to.be.true;
+
+        const delegatedAmount = await stMATIC.getTotalStakeAcrossAllValidators();
+        expect(delegatedAmount.eq(submitAmount.mul(testersAmount))).to.be.true;
+    });
+
     it("Requesting withdraw AFTER slashing should result in lower balance", async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
@@ -761,274 +838,295 @@ describe("Starting to test StMATIC contract", () => {
         await expect(stMATIC.delegate()).to.be.revertedWith("Pausable: paused");
     });
 
-    // describe("Distribute rewards", async () => {
-    //     describe("Success cases", async () => {
-    //         const numOperators = 3;
-    //         beforeEach("setup", async () => {
-    //             for (let i = 1; i <= numOperators; i++) {
-    //                 await mint(testers[i], ethers.utils.parseEther("100"));
-    //                 await addOperator(
-    //                     `BananaOperator${i}`,
-    //                     testers[i].address,
-    //                     ethers.utils.randomBytes(64)
-    //                 );
-    //                 await stakeOperator(i, testers[i], "100");
-    //             }
-    //             await stMATIC.setDelegationLowerBound(5);
-    //         });
+    it("Update dao address", async () => {
+        const newDAOAdress = testers[5].address;
 
-    //         class TestCase {
-    //     message: string;
-    //     rewardPerValidator: number;
-    //     insuraceRewards: string;
-    //     daoRewards: string;
-    //     delegate: boolean;
-    //     amountSubmittedPerUser: number;
-    //     expectedTotalBuffred: number;
-    //     constructor (
-    //         message: string,
-    //         rewardPerValidator: number,
-    //         insuraceRewards: string,
-    //         daoRewards: string,
-    //         delegate: boolean,
-    //         amountSubmittedPerUser: number,
-    //         expectedTotalBuffred: number
-    //     ) {
-    //         this.message = message;
-    //         this.rewardPerValidator = rewardPerValidator;
-    //         this.insuraceRewards = insuraceRewards;
-    //         this.daoRewards = daoRewards;
-    //         this.delegate = delegate;
-    //         this.amountSubmittedPerUser = amountSubmittedPerUser;
-    //         this.expectedTotalBuffred = expectedTotalBuffred;
-    //     }
-    //         }
+        const daoRole = await stMATIC.DAO();
+        expect(await stMATIC.hasRole(daoRole, deployer.address), "Before").true;
+        expect(await stMATIC.hasRole(daoRole, newDAOAdress), "Before").false;
 
-    //         const testCases: Array<TestCase> = [
-    //             {
-    //                 message: "distribute rewards: totalBuffred == 0",
-    //                 rewardPerValidator: 100,
-    //                 insuraceRewards: "7500000000000000000",
-    //                 daoRewards: "7500000000000000000",
-    //                 delegate: true,
-    //                 amountSubmittedPerUser: 10,
-    //                 expectedTotalBuffred: 270
-    //             },
-    //             {
-    //                 message: "distribute rewards: totalBuffred != 0",
-    //                 rewardPerValidator: 100,
-    //                 insuraceRewards: "7500000000000000000",
-    //                 daoRewards: "7500000000000000000",
-    //                 delegate: false,
-    //                 amountSubmittedPerUser: 10,
-    //                 expectedTotalBuffred: 300 // (270 of 90% of rewards + 30 submitted by users)
-    //             }
-    //         ];
+        await stMATIC.setDaoAddress(newDAOAdress);
+        expect(await stMATIC.hasRole(daoRole, deployer.address), "After").false;
+        expect(await stMATIC.hasRole(daoRole, newDAOAdress), "After").true;
+    });
 
-    //         for (let index = 0; index < testCases.length; index++) {
-    //             const {
-    //                 message,
-    //                 rewardPerValidator,
-    //                 insuraceRewards,
-    //                 daoRewards,
-    //                 delegate,
-    //                 amountSubmittedPerUser,
-    //                 expectedTotalBuffred
-    //             } = testCases[index];
+    describe("Distribute rewards", async () => {
+        describe("Success cases", async () => {
+            const numOperators = 3;
+            beforeEach("setup", async () => {
+                for (let i = 1; i <= numOperators; i++) {
+                    await mint(testers[i], ethers.utils.parseEther("100"));
+                    await addOperator(
+                        `BananaOperator${i}`,
+                        testers[i].address,
+                        ethers.utils.randomBytes(64)
+                    );
+                    await stakeOperator(i, testers[i], "100");
+                }
+                await stMATIC.setDelegationLowerBound(5);
+            });
 
-    //             it(index + " " + message, async () => {
-    //                 for (let i = 1; i <= numOperators; i++) {
-    //                     await mint(
-    //                         testers[i],
-    //                         ethers.utils.parseEther(amountSubmittedPerUser.toString())
-    //                     );
-    //                     await submit(
-    //                         testers[i],
-    //                         ethers.utils.parseEther(amountSubmittedPerUser.toString())
-    //                     );
+            class TestCase {
+        message: string;
+        rewardPerValidator: number;
+        insuraceRewards: string;
+        daoRewards: string;
+        delegate: boolean;
+        amountSubmittedPerUser: number;
+        expectedTotalBuffred: number;
+        constructor (
+            message: string,
+            rewardPerValidator: number,
+            insuraceRewards: string,
+            daoRewards: string,
+            delegate: boolean,
+            amountSubmittedPerUser: number,
+            expectedTotalBuffred: number
+        ) {
+            this.message = message;
+            this.rewardPerValidator = rewardPerValidator;
+            this.insuraceRewards = insuraceRewards;
+            this.daoRewards = daoRewards;
+            this.delegate = delegate;
+            this.amountSubmittedPerUser = amountSubmittedPerUser;
+            this.expectedTotalBuffred = expectedTotalBuffred;
+        }
+            }
 
-    //                     // transfer some tokens to the validatorShare contracts to mimic rewards.
-    //                     await mint(
-    //                         deployer,
-    //                         ethers.utils.parseEther(String(rewardPerValidator))
-    //                     );
-    //                     await mockERC20.transfer(
-    //                         await getValidatorShareAddress(i),
-    //                         ethers.utils.parseEther(String(rewardPerValidator))
-    //                     );
-    //                 }
-    //                 if (delegate) {
-    //                     // delegate and check the totalBuffred
-    //                     await stMATIC.delegate();
-    //                     expect(await stMATIC.totalBuffered(), "totalBuffered").eq(0);
-    //                 } else {
-    //                     // check the totalBuffred
-    //                     expect(await stMATIC.totalBuffered(), "totalBuffered").eq(
-    //                         ethers.utils.parseEther(
-    //                             String(amountSubmittedPerUser * numOperators)
-    //                         )
-    //                     );
-    //                 }
+            const testCases: Array<TestCase> = [
+                {
+                    message: "distribute rewards: totalBuffred == 0",
+                    rewardPerValidator: 100,
+                    insuraceRewards: "7500000000000000000",
+                    daoRewards: "7500000000000000000",
+                    delegate: true,
+                    amountSubmittedPerUser: 10,
+                    expectedTotalBuffred: 270
+                },
+                {
+                    message: "distribute rewards: totalBuffred != 0",
+                    rewardPerValidator: 100,
+                    insuraceRewards: "7500000000000000000",
+                    daoRewards: "7500000000000000000",
+                    delegate: false,
+                    amountSubmittedPerUser: 10,
+                    expectedTotalBuffred: 300 // (270 of 90% of rewards + 30 submitted by users)
+                }
+            ];
 
-    //                 // calculate rewards
-    //                 const totalRewards = rewardPerValidator * numOperators;
-    //                 const rewards = (totalRewards * 10) / 100;
-    //                 const DAOBalanceBeforeDistribute = await mockERC20.balanceOf(
-    //                     deployer.address
-    //                 );
+            for (let index = 0; index < testCases.length; index++) {
+                const {
+                    message,
+                    rewardPerValidator,
+                    insuraceRewards,
+                    daoRewards,
+                    delegate,
+                    amountSubmittedPerUser,
+                    expectedTotalBuffred
+                } = testCases[index];
 
-    //                 // distribute rewards
-    //                 expect(await stMATIC.distributeRewards())
-    //                     .emit(stMATIC, "DistributeRewardsEvent")
-    //                     .withArgs(ethers.utils.parseEther(String(rewards)));
+                it(index + " " + message, async () => {
+                    for (let i = 1; i <= numOperators; i++) {
+                        await mint(
+                            testers[i],
+                            ethers.utils.parseEther(amountSubmittedPerUser.toString())
+                        );
+                        await submit(
+                            testers[i],
+                            ethers.utils.parseEther(amountSubmittedPerUser.toString())
+                        );
 
-    //                 // check totalBuffred with expectedTotalBuffred
-    //                 expect(await stMATIC.totalBuffered(), "after totalBuffered").eq(
-    //                     ethers.utils.parseEther(String(expectedTotalBuffred))
-    //                 );
+                        // transfer some tokens to the validatorShare contracts to mimic rewards.
+                        await mint(
+                            deployer,
+                            ethers.utils.parseEther(String(rewardPerValidator))
+                        );
+                        await mockERC20.transfer(
+                            await getValidatorShareAddress(i),
+                            ethers.utils.parseEther(String(rewardPerValidator))
+                        );
+                    }
+                    if (delegate) {
+                        // delegate and check the totalBuffred
+                        await stMATIC.delegate();
+                        expect(await stMATIC.totalBuffered(), "totalBuffered").eq(0);
+                    } else {
+                        // check the totalBuffred
+                        expect(await stMATIC.totalBuffered(), "totalBuffered").eq(
+                            ethers.utils.parseEther(
+                                String(amountSubmittedPerUser * numOperators)
+                            )
+                        );
+                    }
 
-    //                 // check if insurance and DAO received the correct amount
-    //                 expect(await mockERC20.balanceOf(insurance.address)).eq(
-    //                     insuraceRewards
-    //                 );
-    //                 expect(
-    //                     (await mockERC20.balanceOf(deployer.address)).sub(
-    //                         DAOBalanceBeforeDistribute
-    //                     )
-    //                 ).eq(daoRewards);
-    //             });
-    //         }
-    //     });
-    // });
-    // describe("Fail cases", async () => {
-    //     it("Amount to distribute lower than minimum", async () => {
-    //         const numOperators = 3;
-    //         for (let i = 1; i <= numOperators; i++) {
-    //             await mint(testers[i], ethers.utils.parseEther("100"));
-    //             await addOperator(
-    //                 `BananaOperator${i}`,
-    //                 testers[i].address,
-    //                 ethers.utils.randomBytes(64)
-    //             );
-    //             await stakeOperator(i, testers[i], "100");
-    //         }
-    //         await stMATIC.setDelegationLowerBound(5);
+                    // calculate rewards
+                    const totalRewards = rewardPerValidator * numOperators;
+                    const rewards = (totalRewards * 10) / 100;
+                    const DAOBalanceBeforeDistribute = await mockERC20.balanceOf(
+                        deployer.address
+                    );
 
-    //         await stMATIC.setRewardDistributionLowerBound(
-    //             ethers.utils.parseEther("100")
-    //         );
+                    // distribute rewards
+                    expect(await stMATIC.distributeRewards())
+                        .emit(stMATIC, "DistributeRewardsEvent")
+                        .withArgs(ethers.utils.parseEther(String(rewards)));
 
-    //         for (let i = 1; i <= numOperators; i++) {
-    //             await mint(testers[i], ethers.utils.parseEther("10"));
-    //             await submit(testers[i], ethers.utils.parseEther(String(10)));
+                    // check totalBuffred with expectedTotalBuffred
+                    expect(await stMATIC.totalBuffered(), "after totalBuffered").eq(
+                        ethers.utils.parseEther(String(expectedTotalBuffred))
+                    );
 
-    //             // transfer some tokens to the validatorShare contracts to mimic rewards.
-    //             await mint(deployer, ethers.utils.parseEther("1"));
-    //             await mockERC20.transfer(
-    //                 await getValidatorShareAddress(i),
-    //                 ethers.utils.parseEther(String(1))
-    //             );
+                    // check if insurance and DAO received the correct amount
+                    expect(await mockERC20.balanceOf(insurance.address)).eq(
+                        insuraceRewards
+                    );
+                    expect(
+                        (await mockERC20.balanceOf(deployer.address)).sub(
+                            DAOBalanceBeforeDistribute
+                        )
+                    ).eq(daoRewards);
 
-    //             await expect(stMATIC.distributeRewards()).revertedWith(
-    //                 "Amount to distribute lower than minimum"
-    //             );
-    //         }
-    //     });
-    // });
-    // describe("withdrawTotalDelegated", async () => {
-    //     describe("Success cases", async () => {
-    //         // stake operators
-    //         const operatorId = 3;
-    //         beforeEach("setup", async () => {
-    //             for (let i = 1; i <= operatorId; i++) {
-    //                 await mint(testers[i], ethers.utils.parseEther("100"));
-    //                 await addOperator(
-    //                     `BananaOperator${i}`,
-    //                     testers[i].address,
-    //                     ethers.utils.randomBytes(64)
-    //                 );
-    //                 await stakeOperator(i, testers[i], "100");
-    //                 await stMATIC.setDelegationLowerBound(1);
-    //             }
-    //         });
+                    const rewardsPerValidator = ethers.utils.parseEther("5");
+                    // check operators rewards
+                    for (let ii = 0; ii < numOperators; ii++) {
+                        const op = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this, ii + 1);
+                        expect(
+                            await mockERC20.balanceOf(op.rewardAddress)
+                        ).eq(rewardsPerValidator);
+                    }
+                });
+            }
+        });
+    });
+    describe("Fail cases", async () => {
+        it("Amount to distribute lower than minimum", async () => {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], ethers.utils.parseEther("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+            await stMATIC.setDelegationLowerBound(5);
 
-    //         class TestCase {
-    //     message: string;
-    //     delegate: boolean;
-    //     tokenIds: Array<number>;
-    //     constructor (
-    //         message: string,
-    //         delegate: boolean,
-    //         tokenIds: Array<number>
-    //     ) {
-    //         this.message = message;
-    //         this.delegate = delegate;
-    //         this.tokenIds = tokenIds;
-    //     }
-    //         }
+            await stMATIC.setRewardDistributionLowerBound(
+                ethers.utils.parseEther("100")
+            );
 
-    //         const testCases: Array<TestCase> = [
-    //             {
-    //                 message: "Withdraw when delegated amount != 0",
-    //                 delegate: true,
-    //                 tokenIds: [1, 2, 3]
-    //             },
-    //             {
-    //                 message: "Withdraw when delegated amount == 0",
-    //                 delegate: false,
-    //                 tokenIds: []
-    //             }
-    //         ];
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], ethers.utils.parseEther("10"));
+                await submit(testers[i], ethers.utils.parseEther(String(10)));
 
-    //         for (let index = 0; index < testCases.length; index++) {
-    //             const { message, delegate, tokenIds } = testCases[index];
+                // transfer some tokens to the validatorShare contracts to mimic rewards.
+                await mint(deployer, ethers.utils.parseEther("1"));
+                await mockERC20.transfer(
+                    await getValidatorShareAddress(i),
+                    ethers.utils.parseEther(String(1))
+                );
 
-    //             it.only(index + " " + message, async () => {
-    //                 // if delegate is true users submit.
-    //                 if (delegate) {
-    //                     for (let i = 1; i <= 3; i++) {
-    //                         await mint(testers[i], ethers.utils.parseEther("10"));
+                await expect(stMATIC.distributeRewards()).revertedWith(
+                    "Amount to distribute lower than minimum"
+                );
+            }
+        });
+    });
+    describe("withdrawTotalDelegated", async () => {
+        describe("Success cases", async () => {
+            // stake operators
+            const operatorId = 3;
+            beforeEach("setup", async () => {
+                for (let i = 1; i <= operatorId; i++) {
+                    await mint(testers[i], ethers.utils.parseEther("100"));
+                    await addOperator(
+                        `BananaOperator${i}`,
+                        testers[i].address,
+                        ethers.utils.randomBytes(64)
+                    );
+                    await stakeOperator(i, testers[i], "100");
+                    await stMATIC.setDelegationLowerBound(1);
+                }
+            });
 
-    //                         await submit(testers[i], ethers.utils.parseEther("10"));
-    //                     }
-    //                     await stMATIC.delegate();
-    //                 }
+            class TestCase {
+        message: string;
+        delegate: boolean;
+        tokenIds: Array<number>;
+        constructor (
+            message: string,
+            delegate: boolean,
+            tokenIds: Array<number>
+        ) {
+            this.message = message;
+            this.delegate = delegate;
+            this.tokenIds = tokenIds;
+        }
+            }
 
-    //                 // set stakeManager epoch
-    //                 const epoch = 20;
-    //                 await mockStakeManager.setEpoch(epoch);
+            const testCases: Array<TestCase> = [
+                {
+                    message: "Withdraw when delegated amount != 0",
+                    delegate: true,
+                    tokenIds: [1, 2, 3]
+                },
+                {
+                    message: "Withdraw when delegated amount == 0",
+                    delegate: false,
+                    tokenIds: []
+                }
+            ];
 
-    //                 // set stop operators
-    //                 await stopOperator(1);
-    //                 await stopOperator(2);
-    //                 await stopOperator(3);
+            for (let index = 0; index < testCases.length; index++) {
+                const { message, delegate, tokenIds } = testCases[index];
 
-    //                 for (let i = 0; i < tokenIds.length; i++) {
-    //                     // check if the stMATIC has a token
-    //                     const nftTokenId = await poLidoNFT.owner2Tokens(stMATIC.address, i);
-    //                     expect(nftTokenId, i + "-tokenId").eq(tokenIds[i]);
+                it(index + " " + message, async () => {
+                    // if delegate is true users submit.
+                    if (delegate) {
+                        for (let i = 1; i <= 3; i++) {
+                            await mint(testers[i], ethers.utils.parseEther("10"));
 
-    //                     // check if the withdrawRequest has correct data
-    //                     const withdrawRequest = await stMATIC.token2WithdrawRequest(
-    //                         nftTokenId
-    //                     );
-    //                     expect(withdrawRequest.validatorNonce).not.eq(0);
-    //                     expect(withdrawRequest.requestEpoch).not.eq(epoch);
-    //                     expect(withdrawRequest.validatorAddress).eq(
-    //                         await getValidatorShareAddress(i + 1)
-    //                     );
-    //                 }
-    //             });
-    //         }
-    //     });
-    //     describe("Fail cases", async () => {
-    //         it("Fail to withdrawTotalDelegated caller not node operator", async () => {
-    //             await expect(
-    //                 stMATIC.withdrawTotalDelegated(ethers.constants.AddressZero)
-    //             ).revertedWith("Not a node operator");
-    //         });
-    //     });
-    // });
+                            await submit(testers[i], ethers.utils.parseEther("10"));
+                        }
+                        await stMATIC.delegate();
+                    }
+
+                    // set stakeManager epoch
+                    const epoch = 20;
+                    await mockStakeManager.setEpoch(epoch);
+
+                    // set stop operators
+                    await stopOperator(1);
+                    await stopOperator(2);
+                    await stopOperator(3);
+
+                    for (let i = 0; i < tokenIds.length; i++) {
+                        // check if the stMATIC has a token
+                        const nftTokenId = await poLidoNFT.owner2Tokens(stMATIC.address, i);
+                        expect(nftTokenId, i + "-tokenId").eq(tokenIds[i]);
+
+                        // check if the withdrawRequest has correct data
+                        const withdrawRequest = await stMATIC.token2WithdrawRequest(
+                            nftTokenId
+                        );
+                        expect(withdrawRequest.validatorNonce).not.eq(0);
+                        expect(withdrawRequest.requestEpoch).not.eq(epoch);
+                        expect(withdrawRequest.validatorAddress).eq(
+                            await getValidatorShareAddress(i + 1)
+                        );
+                    }
+                });
+            }
+        });
+        describe("Fail cases", async () => {
+            it("Fail to withdrawTotalDelegated caller not node operator", async () => {
+                await expect(
+                    stMATIC.withdrawTotalDelegated(ethers.constants.AddressZero)
+                ).revertedWith("Not a node operator");
+            });
+        });
+    });
 
     describe("claimTokens2StMatic", async () => {
         describe("Success cases", async () => {
@@ -1059,18 +1157,17 @@ describe("Starting to test StMATIC contract", () => {
                 {
                     message: "stop operator",
                     fn: async function () {
-                        await stopOperator(1);
                         const no = await nodeOperatorRegistry[
                             "getNodeOperator(uint256)"
                         ].call(this, 1);
+                        await stopOperator(1);
                         await erc721Contract.mint(no.validatorProxy, 1);
-                        await nodeOperatorRegistry.connect(testers[1]).migrate();
                     }
                 },
                 {
                     message: "unstake operator",
                     fn: async function () {
-                        await nodeOperatorRegistry.connect(testers[1]).unstake();
+                        await nodeOperatorRegistry.connect(testers[1])["unstake()"].call(this);
                     }
                 }
             ];
@@ -1121,6 +1218,7 @@ describe("Starting to test StMATIC contract", () => {
                 });
             }
         });
+
         describe("Fail cases", async () => {
             it("Fail withdraw delay not reached", async () => {
                 // stake operator

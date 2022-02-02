@@ -31,12 +31,12 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     /// @notice Initialize the NodeOperator contract.
     function initialize(
         address _validatorImplementation,
-        address _nodeOperatorRegisty
+        address _nodeOperatorRegistry
     ) external initializer {
         __Ownable_init();
 
         validatorImplementation = _validatorImplementation;
-        setOperator(_nodeOperatorRegisty);
+        setOperator(_nodeOperatorRegistry);
     }
 
     /// @notice Deploy a new validator contract

@@ -156,10 +156,10 @@ contract StMATIC is
     function requestWithdraw(uint256 _amount) external override whenNotPaused {
         require(_amount > 0, "Invalid amount");
 
-        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
-            .getOperatorInfos(false);
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+            .getOperatorInfos(false, false, false);
 
-        uint256 operatorSharesLength = operatorShares.length;
+        uint256 operatorInfosLength = operatorInfos.length;
 
         uint256 tokenId;
         (
@@ -180,13 +180,13 @@ contract StMATIC is
                 (totalDelegated + totalBuffered) >=
                     currentAmount2WithdrawInMatic +
                         minValidatorBalance *
-                        operatorSharesLength,
+                        operatorInfosLength,
                 "Too much to withdraw"
             );
             allowedAmount2RequestFromValidators =
                 totalDelegated -
                 minValidatorBalance *
-                operatorSharesLength;
+                operatorInfosLength;
         } else {
             require(
                 totalBuffered >= currentAmount2WithdrawInMatic,
@@ -198,13 +198,11 @@ contract StMATIC is
             tokenId = poLidoNFT.mint(msg.sender);
 
             if (allowedAmount2RequestFromValidators != 0) {
-                if (lastWithdrawnValidatorId > operatorSharesLength - 1) {
+                if (lastWithdrawnValidatorId > operatorInfosLength - 1) {
                     lastWithdrawnValidatorId = 0;
                 }
-
-                address validatorShare = operatorShares[
-                    lastWithdrawnValidatorId
-                ].validatorShare;
+                address validatorShare = operatorInfos[lastWithdrawnValidatorId]
+                    .validatorShare;
 
                 (uint256 validatorBalance, ) = IValidatorShare(validatorShare)
                     .getTotalStake(address(this));
@@ -272,22 +270,18 @@ contract StMATIC is
             totalBuffered > delegationLowerBound + reservedFunds,
             "Amount to delegate lower than minimum"
         );
-        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
-            .getOperatorInfos(true);
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+            .getOperatorInfos(false, true, false);
+        uint256 operatorInfosLength = operatorInfos.length;
 
-        uint256 operatorSharesLength = operatorShares.length;
-
-        require(
-            operatorSharesLength > 0,
-            "No operator shares, cannot delegate"
-        );
+        require(operatorInfosLength > 0, "No operator shares, cannot delegate");
 
         uint256 availableAmountToDelegate = totalBuffered - reservedFunds;
         uint256 maxDelegateLimitsSum;
         uint256 remainder;
 
-        for (uint256 i = 0; i < operatorSharesLength; i++) {
-            maxDelegateLimitsSum += operatorShares[i].maxDelegateLimit;
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
+            maxDelegateLimitsSum += operatorInfos[i].maxDelegateLimit;
         }
 
         require(maxDelegateLimitsSum > 0, "maxDelegateLimitsSum=0");
@@ -306,23 +300,18 @@ contract StMATIC is
 
         uint256 amountDelegated;
 
-        for (uint256 i = 0; i < operatorSharesLength; i++) {
-            IValidatorShare validator = IValidatorShare(
-                operatorShares[i].validatorShare
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
+            uint256 amountToDelegatePerOperator = (operatorInfos[i]
+                .maxDelegateLimit * totalToDelegatedAmount) /
+                maxDelegateLimitsSum;
+
+            buyVoucher(
+                operatorInfos[i].validatorShare,
+                amountToDelegatePerOperator,
+                0
             );
-            if (validator.delegation()) {
-                uint256 amountToDelegatePerOperator = (operatorShares[i]
-                    .maxDelegateLimit * totalToDelegatedAmount) /
-                    maxDelegateLimitsSum;
 
-                buyVoucher(
-                    operatorShares[i].validatorShare,
-                    amountToDelegatePerOperator,
-                    0
-                );
-
-                amountDelegated += amountToDelegatePerOperator;
-            }
+            amountDelegated += amountToDelegatePerOperator;
         }
 
         remainder = availableAmountToDelegate - amountDelegated;
@@ -379,7 +368,7 @@ contract StMATIC is
      */
     function distributeRewards() external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(true);
+            .getOperatorInfos(true, false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -403,23 +392,15 @@ contract StMATIC is
         uint256 daoRewards = (totalRewards * entityFees.dao) / 100;
         uint256 insuranceRewards = (totalRewards * entityFees.insurance) / 100;
         uint256 operatorsRewards = (totalRewards * entityFees.operators) / 100;
+        uint256 operatorReward = operatorsRewards / operatorInfosLength;
 
         IERC20Upgradeable(token).safeTransfer(dao, daoRewards);
         IERC20Upgradeable(token).safeTransfer(insurance, insuranceRewards);
 
-        uint256[] memory ratios = new uint256[](operatorInfosLength);
-        uint256 totalRatio = 0;
-
-        for (uint256 idx = 0; idx < operatorInfosLength; idx++) {
-            uint256 rewardRatio = operatorInfos[idx].maxDelegateLimit;
-            ratios[idx] = rewardRatio;
-            totalRatio += rewardRatio;
-        }
-
         for (uint256 i = 0; i < operatorInfosLength; i++) {
             IERC20Upgradeable(token).safeTransfer(
                 operatorInfos[i].rewardAddress,
-                (operatorsRewards * ratios[i]) / totalRatio
+                operatorReward
             );
         }
 
@@ -446,8 +427,6 @@ contract StMATIC is
             "Not a node operator"
         );
 
-        uint256 tokenId = poLidoNFT.mint(address(this));
-
         (uint256 stakedAmount, ) = getTotalStake(
             IValidatorShare(_validatorShare)
         );
@@ -456,6 +435,7 @@ contract StMATIC is
             return;
         }
 
+        uint256 tokenId = poLidoNFT.mint(address(this));
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
         token2WithdrawRequest[tokenId] = RequestWithdraw(
@@ -634,13 +614,13 @@ contract StMATIC is
         returns (uint256)
     {
         uint256 totalStake;
-        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
-            .getOperatorInfos(false);
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+            .getOperatorInfos(false, false, true);
 
-        uint256 operatorSharesLength = operatorShares.length;
-        for (uint256 i = 0; i < operatorSharesLength; i++) {
+        uint256 operatorInfosLength = operatorInfos.length;
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
             (uint256 currValidatorShare, ) = getTotalStake(
-                IValidatorShare(operatorShares[i].validatorShare)
+                IValidatorShare(operatorInfos[i].validatorShare)
             );
 
             totalStake += currValidatorShare;
@@ -715,15 +695,15 @@ contract StMATIC is
      * @return Minimal validator balance in MATIC
      */
     function getMinValidatorBalance() public view override returns (uint256) {
-        Operator.OperatorInfo[] memory operatorShares = nodeOperatorRegistry
-            .getOperatorInfos(false);
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+            .getOperatorInfos(false, false, false);
 
-        uint256 operatorSharesLength = operatorShares.length;
+        uint256 operatorInfosLength = operatorInfos.length;
         uint256 minValidatorBalance = type(uint256).max;
 
-        for (uint256 i = 0; i < operatorSharesLength; i++) {
+        for (uint256 i = 0; i < operatorInfosLength; i++) {
             (uint256 validatorShare, ) = getTotalStake(
-                IValidatorShare(operatorShares[i].validatorShare)
+                IValidatorShare(operatorInfos[i].validatorShare)
             );
             // 10% of current validatorShare
             uint256 minValidatorBalanceCurrent = validatorShare / 10;
@@ -772,7 +752,9 @@ contract StMATIC is
      * @param _address - New dao address
      */
     function setDaoAddress(address _address) external override onlyRole(DAO) {
+        revokeRole(DAO, dao);
         dao = _address;
+        _setupRole(DAO, dao);
     }
 
     /**

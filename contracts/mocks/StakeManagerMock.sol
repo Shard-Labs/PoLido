@@ -6,7 +6,6 @@ import "../interfaces/IStakeManager.sol";
 import "../helpers/ERC721Test.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../mocks/ValidatorShareMock.sol";
-import "hardhat/console.sol";
 
 contract StakeManagerMock is IStakeManager {
     mapping(uint256 => IStakeManager.Validator) smValidators;
