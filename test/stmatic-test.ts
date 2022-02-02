@@ -385,6 +385,34 @@ describe("Starting to test StMATIC contract", () => {
         expect(balanceAfter.sub(balanceBefore).eq(withdrawAmount)).to.be.true;
     });
 
+    it("Should delegate to validator if stake manager has approval > 0", async () => {
+        let initialSubmitAmount = ethers.utils.parseEther("99");
+        for (let i = 0; i < 2; i++) {
+            await mint(testers[i], ethers.utils.parseEther("100"));
+
+            await addOperator(
+                `BananaOperator${i}`,
+                testers[i].address,
+                ethers.utils.randomBytes(64)
+            );
+
+            await stakeOperator(i + 1, testers[i], "100");
+        }
+        const balanceBefore = await stMATIC.balanceOf(testers[0].address);
+
+        await mint(testers[0], initialSubmitAmount);
+        await submit(testers[0], initialSubmitAmount);
+        await stMATIC.delegate();
+
+        const finalSubmitAmount = ethers.utils.parseEther("100");
+        await mint(testers[0], finalSubmitAmount);
+        await submit(testers[0], finalSubmitAmount);
+        await stMATIC.delegate();
+
+        const balanceAfter = await stMATIC.balanceOf(testers[0].address);
+        expect(balanceAfter.sub(balanceBefore).eq(initialSubmitAmount.add(finalSubmitAmount))).to.be.true;
+    });
+
     it("StMATIC stake should stay the same if an attacker sends matic to the validator", async () => {
         const submitAmount = ethers.utils.parseEther("0.01");
 
