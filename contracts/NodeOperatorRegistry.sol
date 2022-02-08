@@ -99,8 +99,6 @@ contract NodeOperatorRegistry is
     /// extend the struct.
     mapping(address => uint256) private operatorOwners;
 
-    /// @notice Mapping of all validatorShare with operatorId
-    mapping(address => uint256) private validatorShare2OperatorId;
 
     /// @notice Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) private operators;
@@ -229,7 +227,10 @@ contract NodeOperatorRegistry is
     {
         (, NodeOperator storage no) = getOperator(_operatorId);
         NodeOperatorStatus status = getOperatorStatus(no);
-        checkCondition(status <= NodeOperatorStatus.ACTIVE, "Invalid status");
+        checkCondition(
+            status <= NodeOperatorStatus.ACTIVE ||
+            status == NodeOperatorStatus.JAILED
+        , "Invalid status");
 
         if (status == NodeOperatorStatus.INACTIVE) {
             no.status = NodeOperatorStatus.EXIT;
@@ -239,30 +240,6 @@ contract NodeOperatorRegistry is
         }
         no.statusUpdatedTimestamp = block.timestamp;
         emit StopOperator(_operatorId);
-    }
-
-    /// @notice Allows to switch an operator status from WAIT to EXIT.
-    /// this function should only be called by the StMatic contract inside claimTokens2StMatic.
-    function exitOperator(address _validatorShare) external override {
-        checkCondition(msg.sender == stMATIC, "Caller is not stMATIC contract");
-
-        (, NodeOperator storage no) = getOperator(
-            validatorShare2OperatorId[_validatorShare]
-        );
-        NodeOperatorStatus status = getOperatorStatus(no);
-
-        if (
-            status == NodeOperatorStatus.UNSTAKED ||
-            status == NodeOperatorStatus.CLAIMED
-        ) {
-            return;
-        }
-
-        checkCondition(status == NodeOperatorStatus.STOPPED, "Invalid status");
-        no.status = NodeOperatorStatus.WAIT;
-        no.statusUpdatedTimestamp = block.timestamp;
-
-        delete validatorShare2OperatorId[no.validatorShare];
     }
 
     /// @notice Allows to remove an operator from the system.when the operator status is
@@ -322,6 +299,11 @@ contract NodeOperatorRegistry is
         );
 
         checkCondition(
+            poValidator.deactivationEpoch != 0,
+            "Validator is UNSTAKED"
+        );
+
+        checkCondition(
             poValidator.signer ==
                 address(uint160(uint256(keccak256(no.signerPubkey)))),
             "Invalid Signer"
@@ -340,7 +322,6 @@ contract NodeOperatorRegistry is
 
         address validatorShare = sm.getValidatorContract(validatorId);
         no.validatorShare = validatorShare;
-        validatorShare2OperatorId[validatorShare] = operatorId;
 
         emit JoinOperator(operatorId);
     }
@@ -382,7 +363,6 @@ contract NodeOperatorRegistry is
         no.validatorId = validatorId;
         no.validatorShare = validatorShare;
         no.statusUpdatedTimestamp = block.timestamp;
-        validatorShare2OperatorId[validatorShare] = operatorId;
 
         emit StakeOperator(operatorId, _amount, _heimdallFee);
     }
@@ -463,7 +443,7 @@ contract NodeOperatorRegistry is
     /// This can be done only in the case where this operator was stopped by the DAO.
     function migrate() external override nonReentrant {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
-        checkCondition(no.status == NodeOperatorStatus.WAIT, "Invalid status");
+        checkCondition(no.status == NodeOperatorStatus.STOPPED, "Invalid status");
         IValidator(no.validatorProxy).migrate(
             no.validatorId,
             IStakeManager(stakeManager).NFTContract(),
@@ -567,12 +547,7 @@ contract NodeOperatorRegistry is
             polygonERC20
         );
 
-        if (validatorShare2OperatorId[no.validatorShare] != 0) {
-            no.status = NodeOperatorStatus.EXIT;
-            delete validatorShare2OperatorId[no.validatorShare];
-        } else {
-            no.status = NodeOperatorStatus.WAIT;
-        }
+        no.status = NodeOperatorStatus.EXIT;
         no.statusUpdatedTimestamp = block.timestamp;
 
         emit ClaimFee(operatorId);
@@ -823,8 +798,6 @@ contract NodeOperatorRegistry is
     {
         if (_op.status == NodeOperatorStatus.STOPPED) {
             res = NodeOperatorStatus.STOPPED;
-        } else if (_op.status == NodeOperatorStatus.WAIT) {
-            res = NodeOperatorStatus.WAIT;
         } else if (_op.status == NodeOperatorStatus.CLAIMED) {
             res = NodeOperatorStatus.CLAIMED;
         } else if (_op.status == NodeOperatorStatus.EXIT) {
