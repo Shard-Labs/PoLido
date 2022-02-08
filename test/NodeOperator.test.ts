@@ -321,6 +321,15 @@ describe("NodeOperator", function () {
             await checkStats(2, 0, 0, 1, 0, 0, 0, 1, 0, 0);
         });
 
+        it("should stop a JAILED operator", async function () {
+            await stakeOperator(1, user1, user1Address, "10", "20");
+            await stakeManagerMock.slash(1);
+            expect(await nodeOperatorRegistry.stopOperator(1))
+                .to.emit(nodeOperatorRegistry, "StopOperator")
+                .withArgs(1);
+            await checkOperator(1, { status: 2 });
+        });
+
         it("Fail stop an operator", async function () {
             // revert invalid operator id
             await expect(nodeOperatorRegistry.stopOperator(10)).revertedWith(
@@ -390,6 +399,22 @@ describe("NodeOperator", function () {
             await expect(
                 nodeOperatorRegistry.connect(user2).joinOperator()
             ).revertedWith("ValidatorId=0");
+        });
+
+        it("Should fail to join an operator if unstaked", async function () {
+            await stakeOperator(1, user1, user1Address, "10", "20");
+            await stakeOperator(2, user2, user2Address, "10", "20");
+
+            // unstake a node operator
+            expect(await nodeOperatorRegistry.connect(user1)["unstake()"].call(this))
+                .to.emit(nodeOperatorRegistry, "UnstakeOperator")
+                .withArgs(1);
+
+            await checkOperator(1, { status: 3 });
+
+            await expect(
+                nodeOperatorRegistry.connect(user1).joinOperator()
+            ).revertedWith("Invalid status");
         });
 
         it("Success restake an operator", async function () {
