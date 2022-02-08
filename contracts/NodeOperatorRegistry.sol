@@ -294,13 +294,9 @@ contract NodeOperatorRegistry is
         );
 
         checkCondition(
-            poValidator.status == IStakeManager.Status.Active,
+            (poValidator.status == IStakeManager.Status.Active
+                ) && poValidator.deactivationEpoch == 0 ,
             "Validator isn't ACTIVE"
-        );
-
-        checkCondition(
-            poValidator.deactivationEpoch != 0,
-            "Validator is UNSTAKED"
         );
 
         checkCondition(

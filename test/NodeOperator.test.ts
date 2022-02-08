@@ -658,58 +658,6 @@ describe("NodeOperator", function () {
                     );
                 })
             );
-
-            await expect(
-                nodeOperatorRegistry.exitOperator(ethers.constants.AddressZero)
-            ).revertedWith("Caller is not stMATIC contract");
-        });
-
-        it("Shouldn't allow exiting an operator with invalid address", async () => {
-            const operatorIds = [1, 2, 3];
-            const stakeAmount = "10";
-            const heimdallFees = "20";
-            await Promise.all(
-                operatorIds.map((id, index) => {
-                    const user = accounts[index];
-                    return stakeOperator(
-                        id,
-                        user,
-                        user.address,
-                        stakeAmount,
-                        heimdallFees
-                    );
-                })
-            );
-
-            const no = await nodeOperatorRegistry["getNodeOperator(address)"].call(
-                this,
-                user1Address
-            );
-            await expect(
-                stMATICMock.claimTokens2StMatic(no.validatorShare)
-            ).revertedWith("Invalid status");
-        });
-
-        it("Shouldn't allow exiting an operator if not StMatic", async () => {
-            const operatorIds = [1, 2, 3];
-            const stakeAmount = "10";
-            const heimdallFees = "20";
-            await Promise.all(
-                operatorIds.map((id, index) => {
-                    const user = accounts[index];
-                    return stakeOperator(
-                        id,
-                        user,
-                        user.address,
-                        stakeAmount,
-                        heimdallFees
-                    );
-                })
-            );
-
-            await expect(
-                stMATICMock.claimTokens2StMatic(ethers.constants.AddressZero)
-            ).revertedWith("Operator not found");
         });
 
         it("Success to unjail an operator", async function () {
