@@ -403,14 +403,9 @@ describe("NodeOperator", function () {
 
         it("Should fail to join an operator if unstaked", async function () {
             await stakeOperator(1, user1, user1Address, "10", "20");
-            await stakeOperator(2, user2, user2Address, "10", "20");
 
-            // unstake a node operator
-            expect(await nodeOperatorRegistry.connect(user1)["unstake()"].call(this))
-                .to.emit(nodeOperatorRegistry, "UnstakeOperator")
-                .withArgs(1);
-
-            await checkOperator(1, { status: 3 });
+            await stakeManagerMock.unstake(1);
+            await checkOperator(1, { status: 8 });
 
             await expect(
                 nodeOperatorRegistry.connect(user1).joinOperator()
