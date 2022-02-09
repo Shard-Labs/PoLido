@@ -368,7 +368,7 @@ contract StMATIC is
      */
     function distributeRewards() external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(true, false, false);
+            .getOperatorInfos(true, true, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 

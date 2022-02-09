@@ -153,7 +153,6 @@ describe("NodeOperator", function () {
                 commissionRate: BigNumber.from(0),
                 slashed: BigNumber.from(0),
                 slashedTimestamp: BigNumber.from(0),
-                statusUpdatedTimestamp: BigNumber.from(0),
                 maxDelegateLimit: BigNumber.from(toEth("10"))
             });
 
@@ -169,7 +168,6 @@ describe("NodeOperator", function () {
                 commissionRate: BigNumber.from(0),
                 slashed: BigNumber.from(0),
                 slashedTimestamp: BigNumber.from(0),
-                statusUpdatedTimestamp: BigNumber.from(0),
                 maxDelegateLimit: BigNumber.from(toEth("10"))
             });
         });
@@ -1698,11 +1696,6 @@ async function checkOperator (
     }
     if (no.commissionRate) {
         expect(res.commissionRate, "commissionRate").equal(no.commissionRate);
-    }
-    if (no.statusUpdatedTimestamp) {
-        expect(res.statusUpdatedTimestamp, "statusUpdatedTimestamp").not.equal(
-            no.statusUpdatedTimestamp
-        );
     }
     if (no.maxDelegateLimit) {
         expect(res.maxDelegateLimit, "maxDelegateLimit").equal(no.maxDelegateLimit);
