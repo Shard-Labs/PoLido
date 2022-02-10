@@ -41,7 +41,6 @@ contract NodeOperatorRegistry is
     /// @param validatorShare validator share contract used to delegate for on polygon.
     /// @param validatorProxy the validator proxy, the owner of the validator.
     /// @param commissionRate the commission rate applied by the operator on polygon.
-    /// @param statusUpdatedTimestamp the timestamp when the operator updated the status (ex: INACTIVE -> ACTIVE)
     /// @param maxDelegateLimit max delegation limit that StMatic contract will delegate to this operator each time delegate function is called.
     struct NodeOperator {
         NodeOperatorStatus status;
@@ -52,7 +51,6 @@ contract NodeOperatorRegistry is
         address validatorProxy;
         uint256 validatorId;
         uint256 commissionRate;
-        uint256 statusUpdatedTimestamp;
         uint256 maxDelegateLimit;
     }
 
@@ -99,8 +97,6 @@ contract NodeOperatorRegistry is
     /// extend the struct.
     mapping(address => uint256) private operatorOwners;
 
-    /// @notice Mapping of all validatorShare with operatorId
-    mapping(address => uint256) private validatorShare2OperatorId;
 
     /// @notice Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) private operators;
@@ -210,7 +206,6 @@ contract NodeOperatorRegistry is
             validatorShare: address(0),
             validatorProxy: validatorProxy,
             commissionRate: commissionRate,
-            statusUpdatedTimestamp: block.timestamp,
             maxDelegateLimit: defaultMaxDelegateLimit
         });
         operatorIds.push(operatorId);
@@ -229,7 +224,10 @@ contract NodeOperatorRegistry is
     {
         (, NodeOperator storage no) = getOperator(_operatorId);
         NodeOperatorStatus status = getOperatorStatus(no);
-        checkCondition(status <= NodeOperatorStatus.ACTIVE, "Invalid status");
+        checkCondition(
+            status <= NodeOperatorStatus.ACTIVE ||
+            status == NodeOperatorStatus.JAILED
+        , "Invalid status");
 
         if (status == NodeOperatorStatus.INACTIVE) {
             no.status = NodeOperatorStatus.EXIT;
@@ -237,32 +235,7 @@ contract NodeOperatorRegistry is
             IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
             no.status = NodeOperatorStatus.STOPPED;
         }
-        no.statusUpdatedTimestamp = block.timestamp;
         emit StopOperator(_operatorId);
-    }
-
-    /// @notice Allows to switch an operator status from WAIT to EXIT.
-    /// this function should only be called by the StMatic contract inside claimTokens2StMatic.
-    function exitOperator(address _validatorShare) external override {
-        checkCondition(msg.sender == stMATIC, "Caller is not stMATIC contract");
-
-        (, NodeOperator storage no) = getOperator(
-            validatorShare2OperatorId[_validatorShare]
-        );
-        NodeOperatorStatus status = getOperatorStatus(no);
-
-        if (
-            status == NodeOperatorStatus.UNSTAKED ||
-            status == NodeOperatorStatus.CLAIMED
-        ) {
-            return;
-        }
-
-        checkCondition(status == NodeOperatorStatus.STOPPED, "Invalid status");
-        no.status = NodeOperatorStatus.WAIT;
-        no.statusUpdatedTimestamp = block.timestamp;
-
-        delete validatorShare2OperatorId[no.validatorShare];
     }
 
     /// @notice Allows to remove an operator from the system.when the operator status is
@@ -317,7 +290,8 @@ contract NodeOperatorRegistry is
         );
 
         checkCondition(
-            poValidator.status == IStakeManager.Status.Active,
+            (poValidator.status == IStakeManager.Status.Active
+                ) && poValidator.deactivationEpoch == 0 ,
             "Validator isn't ACTIVE"
         );
 
@@ -336,11 +310,9 @@ contract NodeOperatorRegistry is
         );
 
         no.validatorId = validatorId;
-        no.statusUpdatedTimestamp = block.timestamp;
 
         address validatorShare = sm.getValidatorContract(validatorId);
         no.validatorShare = validatorShare;
-        validatorShare2OperatorId[validatorShare] = operatorId;
 
         emit JoinOperator(operatorId);
     }
@@ -381,8 +353,6 @@ contract NodeOperatorRegistry is
 
         no.validatorId = validatorId;
         no.validatorShare = validatorShare;
-        no.statusUpdatedTimestamp = block.timestamp;
-        validatorShare2OperatorId[validatorShare] = operatorId;
 
         emit StakeOperator(operatorId, _amount, _heimdallFee);
     }
@@ -453,7 +423,6 @@ contract NodeOperatorRegistry is
         whenNotPaused
     {
         IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
-        no.statusUpdatedTimestamp = block.timestamp;
         no.status = NodeOperatorStatus.UNSTAKED;
 
         emit UnstakeOperator(_operatorId);
@@ -463,7 +432,7 @@ contract NodeOperatorRegistry is
     /// This can be done only in the case where this operator was stopped by the DAO.
     function migrate() external override nonReentrant {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
-        checkCondition(no.status == NodeOperatorStatus.WAIT, "Invalid status");
+        checkCondition(no.status == NodeOperatorStatus.STOPPED, "Invalid status");
         IValidator(no.validatorProxy).migrate(
             no.validatorId,
             IStakeManager(stakeManager).NFTContract(),
@@ -471,8 +440,6 @@ contract NodeOperatorRegistry is
         );
 
         no.status = NodeOperatorStatus.EXIT;
-        no.statusUpdatedTimestamp = block.timestamp;
-
         emit MigrateOperator(operatorId);
     }
 
@@ -537,8 +504,6 @@ contract NodeOperatorRegistry is
         );
 
         no.status = NodeOperatorStatus.CLAIMED;
-        no.statusUpdatedTimestamp = block.timestamp;
-
         emit UnstakeClaim(operatorId, amount);
     }
 
@@ -567,14 +532,7 @@ contract NodeOperatorRegistry is
             polygonERC20
         );
 
-        if (validatorShare2OperatorId[no.validatorShare] != 0) {
-            no.status = NodeOperatorStatus.EXIT;
-            delete validatorShare2OperatorId[no.validatorShare];
-        } else {
-            no.status = NodeOperatorStatus.WAIT;
-        }
-        no.statusUpdatedTimestamp = block.timestamp;
-
+        no.status = NodeOperatorStatus.EXIT;
         emit ClaimFee(operatorId);
     }
 
@@ -823,8 +781,6 @@ contract NodeOperatorRegistry is
     {
         if (_op.status == NodeOperatorStatus.STOPPED) {
             res = NodeOperatorStatus.STOPPED;
-        } else if (_op.status == NodeOperatorStatus.WAIT) {
-            res = NodeOperatorStatus.WAIT;
         } else if (_op.status == NodeOperatorStatus.CLAIMED) {
             res = NodeOperatorStatus.CLAIMED;
         } else if (_op.status == NodeOperatorStatus.EXIT) {
@@ -968,13 +924,13 @@ contract NodeOperatorRegistry is
 
     /// @notice Returns an operatorInfo list.
     /// @param _withdrawRewards if true check if operator accumulated min rewards.
-    /// @param _allActive if true return all operators with ACTIVE, EJECTED, JAILED.
+    /// @param _allWithStake if true return all operators with ACTIVE, EJECTED, JAILED.
     /// @param _delegation if true return all operators that delegation is set to true.
     /// @return Returns a list of operatorInfo.
     function getOperatorInfos(
         bool _withdrawRewards,
         bool _delegation,
-        bool _allActive
+        bool _allWithStake
     ) external view override returns (Operator.OperatorInfo[] memory) {
         Operator.OperatorInfo[]
             memory operatorInfos = new Operator.OperatorInfo[](
@@ -989,11 +945,11 @@ contract NodeOperatorRegistry is
             NodeOperator storage no = operators[operatorId];
             NodeOperatorStatus status = getOperatorStatus(no);
 
-            // if operator status is not ACTIVE we continue. But, if _allActive is true
+            // if operator status is not ACTIVE we continue. But, if _allWithStake is true
             // we include EJECTED and JAILED operators.
             if (
                 status != NodeOperatorStatus.ACTIVE &&
-                !(_allActive &&
+                !(_allWithStake &&
                     (status == NodeOperatorStatus.EJECTED ||
                         status == NodeOperatorStatus.JAILED))
             ) continue;

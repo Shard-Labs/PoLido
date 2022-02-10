@@ -18,13 +18,13 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     /// @notice the contract version.
     string public version;
     /// @notice the node operator address.
-    address public operator;
+    address public operatorRegistry;
     /// @notice the validator implementation address.
     address public validatorImplementation;
 
     /// @notice Check if the operator contract is the msg.sender.
-    modifier isOperator() {
-        require(operator == msg.sender, "Caller is not the operator contract");
+    modifier isOperatorRegistry() {
+        require(operatorRegistry == msg.sender, "Caller is not the operator contract");
         _;
     }
 
@@ -41,12 +41,12 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
 
     /// @notice Deploy a new validator contract
     /// @return return the address of the new validator contract deployed
-    function create() external override isOperator returns (address) {
-        require(operator != address(0), "Operator contract not set");
+    function create() external override isOperatorRegistry returns (address) {
+        require(operatorRegistry != address(0), "Operator contract not set");
 
         // create a new validator proxy
         address proxy = address(
-            new ValidatorProxy(validatorImplementation, operator, address(this))
+            new ValidatorProxy(validatorImplementation, operatorRegistry, address(this))
         );
 
         validators.push(proxy);
@@ -56,7 +56,7 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
 
     /// @notice Remove a validator proxy from the list.
     /// @param _validatorProxy validator proxy address.
-    function remove(address _validatorProxy) external override isOperator {
+    function remove(address _validatorProxy) external override isOperatorRegistry {
         require(
             _validatorProxy != address(0),
             "Could not remove a zero address"
@@ -76,7 +76,7 @@ contract ValidatorFactory is IValidatorFactory, OwnableUpgradeable {
     /// with the new address.
     /// @param _newOperator new operator address.
     function setOperator(address _newOperator) public override onlyOwner {
-        operator = _newOperator;
+        operatorRegistry = _newOperator;
 
         uint256 length = validators.length;
         for (uint256 idx = 0; idx < length; idx++) {

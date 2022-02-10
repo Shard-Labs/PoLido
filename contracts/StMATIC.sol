@@ -157,7 +157,7 @@ contract StMATIC is
         require(_amount > 0, "Invalid amount");
 
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false, false, false);
+            .getOperatorInfos(false, false, true);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -368,7 +368,7 @@ contract StMATIC is
      */
     function distributeRewards() external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(true, false, false);
+            .getOperatorInfos(true, true, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -495,7 +495,6 @@ contract StMATIC is
             abi.encode(totalSupply(), getTotalPooledMatic())
         );
 
-        nodeOperatorRegistry.exitOperator(lidoRequests.validatorAddress);
         emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
     }
 

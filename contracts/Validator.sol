@@ -16,20 +16,20 @@ import "./interfaces/INodeOperatorRegistry.sol";
 /// @notice The validator contract is a simple implementation of the stakeManager API, the
 /// ValidatorProxies use this contract to interact with the stakeManager.
 /// When a ValidatorProxy calls this implementation the state is copied
-/// (owner, implementation, operator), then they are used to check if the msg-sender is the
+/// (owner, implementation, operatorRegistry), then they are used to check if the msg-sender is the
 /// node operator contract, and if the validatorProxy implementation match with the current
 /// validator contract.
 contract Validator is IERC721Receiver, IValidator {
     using SafeERC20 for IERC20;
 
     address private implementation;
-    address private operator;
+    address private operatorRegistry;
     address private validatorFactory;
 
     /// @notice Check if the operator contract is the msg.sender.
-    modifier isOperator() {
+    modifier isOperatorRegistry() {
         require(
-            msg.sender == operator,
+            msg.sender == operatorRegistry,
             "Caller should be the operator contract"
         );
         _;
@@ -54,7 +54,7 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _commissionRate,
         address _stakeManager,
         address _polygonERC20
-    ) external override isOperator returns (uint256, address) {
+    ) external override isOperatorRegistry returns (uint256, address) {
         IStakeManager stakeManager = IStakeManager(_stakeManager);
         IERC20 polygonERC20 = IERC20(_polygonERC20);
 
@@ -92,7 +92,7 @@ contract Validator is IERC721Receiver, IValidator {
         bool _stakeRewards,
         address _stakeManager,
         address _polygonERC20
-    ) external override isOperator {
+    ) external override isOperatorRegistry {
         if (_amount > 0) {
             IERC20 polygonERC20 = IERC20(_polygonERC20);
             polygonERC20.safeTransferFrom(_sender, address(this), _amount);
@@ -107,7 +107,7 @@ contract Validator is IERC721Receiver, IValidator {
     function unstake(uint256 _validatorId, address _stakeManager)
         external
         override
-        isOperator
+        isOperatorRegistry
     {
         // stakeManager
         IStakeManager(_stakeManager).unstake(_validatorId);
@@ -123,7 +123,7 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _heimdallFee,
         address _stakeManager,
         address _polygonERC20
-    ) external override isOperator {
+    ) external override isOperatorRegistry {
         IStakeManager stakeManager = IStakeManager(_stakeManager);
         IERC20 polygonERC20 = IERC20(_polygonERC20);
 
@@ -143,7 +143,7 @@ contract Validator is IERC721Receiver, IValidator {
         address _rewardAddress,
         address _stakeManager,
         address _polygonERC20
-    ) external override isOperator returns (uint256) {
+    ) external override isOperatorRegistry returns (uint256) {
         IStakeManager(_stakeManager).withdrawRewards(_validatorId);
 
         IERC20 polygonERC20 = IERC20(_polygonERC20);
@@ -164,7 +164,7 @@ contract Validator is IERC721Receiver, IValidator {
         address _rewardAddress,
         address _stakeManager,
         address _polygonERC20
-    ) external override isOperator returns (uint256) {
+    ) external override isOperatorRegistry returns (uint256) {
         IStakeManager stakeManager = IStakeManager(_stakeManager);
         stakeManager.unstakeClaim(_validatorId);
         // polygonERC20
@@ -184,7 +184,7 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _validatorId,
         bytes memory _signerPubkey,
         address _stakeManager
-    ) external override isOperator {
+    ) external override isOperatorRegistry {
         IStakeManager(_stakeManager).updateSigner(_validatorId, _signerPubkey);
     }
 
@@ -199,7 +199,7 @@ contract Validator is IERC721Receiver, IValidator {
         address _rewardAddress,
         address _stakeManager,
         address _polygonERC20
-    ) external override isOperator {
+    ) external override isOperatorRegistry {
         IStakeManager stakeManager = IStakeManager(_stakeManager);
         stakeManager.claimFee(_accumFeeAmount, _index, _proof);
 
@@ -216,7 +216,7 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _validatorId,
         uint256 _newCommissionRate,
         address _stakeManager
-    ) public override isOperator {
+    ) public override isOperatorRegistry {
         IStakeManager(_stakeManager).updateCommissionRate(
             _validatorId,
             _newCommissionRate
@@ -228,7 +228,7 @@ contract Validator is IERC721Receiver, IValidator {
     function unjail(uint256 _validatorId, address _stakeManager)
         external
         override
-        isOperator
+        isOperatorRegistry
     {
         IStakeManager(_stakeManager).unjail(_validatorId);
     }
@@ -241,7 +241,7 @@ contract Validator is IERC721Receiver, IValidator {
         uint256 _validatorId,
         address _stakeManagerNFT,
         address _rewardAddress
-    ) external override isOperator {
+    ) external override isOperatorRegistry {
         IERC721 erc721 = IERC721(_stakeManagerNFT);
         erc721.approve(_rewardAddress, _validatorId);
         erc721.safeTransferFrom(address(this), _rewardAddress, _validatorId);
@@ -260,7 +260,7 @@ contract Validator is IERC721Receiver, IValidator {
         address _rewardAddress,
         uint256 _newCommissionRate,
         address _stakeManager
-    ) external override isOperator {
+    ) external override isOperatorRegistry {
         IERC721 erc721 = IERC721(_stakeManagerNFT);
         erc721.safeTransferFrom(_rewardAddress, address(this), _validatorId);
         updateCommissionRate(_validatorId, _newCommissionRate, _stakeManager);

@@ -153,7 +153,6 @@ describe("NodeOperator", function () {
                 commissionRate: BigNumber.from(0),
                 slashed: BigNumber.from(0),
                 slashedTimestamp: BigNumber.from(0),
-                statusUpdatedTimestamp: BigNumber.from(0),
                 maxDelegateLimit: BigNumber.from(toEth("10"))
             });
 
@@ -169,7 +168,6 @@ describe("NodeOperator", function () {
                 commissionRate: BigNumber.from(0),
                 slashed: BigNumber.from(0),
                 slashedTimestamp: BigNumber.from(0),
-                statusUpdatedTimestamp: BigNumber.from(0),
                 maxDelegateLimit: BigNumber.from(toEth("10"))
             });
         });
@@ -321,6 +319,15 @@ describe("NodeOperator", function () {
             await checkStats(2, 0, 0, 1, 0, 0, 0, 1, 0, 0);
         });
 
+        it("should stop a JAILED operator", async function () {
+            await stakeOperator(1, user1, user1Address, "10", "20");
+            await stakeManagerMock.slash(1);
+            expect(await nodeOperatorRegistry.stopOperator(1))
+                .to.emit(nodeOperatorRegistry, "StopOperator")
+                .withArgs(1);
+            await checkOperator(1, { status: 2 });
+        });
+
         it("Fail stop an operator", async function () {
             // revert invalid operator id
             await expect(nodeOperatorRegistry.stopOperator(10)).revertedWith(
@@ -390,6 +397,17 @@ describe("NodeOperator", function () {
             await expect(
                 nodeOperatorRegistry.connect(user2).joinOperator()
             ).revertedWith("ValidatorId=0");
+        });
+
+        it("Should fail to join an operator if unstaked", async function () {
+            await stakeOperator(1, user1, user1Address, "10", "20");
+
+            await stakeManagerMock.unstake(1);
+            await checkOperator(1, { status: 8 });
+
+            await expect(
+                nodeOperatorRegistry.connect(user1).joinOperator()
+            ).revertedWith("Invalid status");
         });
 
         it("Success restake an operator", async function () {
@@ -658,58 +676,6 @@ describe("NodeOperator", function () {
                     );
                 })
             );
-
-            await expect(
-                nodeOperatorRegistry.exitOperator(ethers.constants.AddressZero)
-            ).revertedWith("Caller is not stMATIC contract");
-        });
-
-        it("Shouldn't allow exiting an operator with invalid address", async () => {
-            const operatorIds = [1, 2, 3];
-            const stakeAmount = "10";
-            const heimdallFees = "20";
-            await Promise.all(
-                operatorIds.map((id, index) => {
-                    const user = accounts[index];
-                    return stakeOperator(
-                        id,
-                        user,
-                        user.address,
-                        stakeAmount,
-                        heimdallFees
-                    );
-                })
-            );
-
-            const no = await nodeOperatorRegistry["getNodeOperator(address)"].call(
-                this,
-                user1Address
-            );
-            await expect(
-                stMATICMock.claimTokens2StMatic(no.validatorShare)
-            ).revertedWith("Invalid status");
-        });
-
-        it("Shouldn't allow exiting an operator if not StMatic", async () => {
-            const operatorIds = [1, 2, 3];
-            const stakeAmount = "10";
-            const heimdallFees = "20";
-            await Promise.all(
-                operatorIds.map((id, index) => {
-                    const user = accounts[index];
-                    return stakeOperator(
-                        id,
-                        user,
-                        user.address,
-                        stakeAmount,
-                        heimdallFees
-                    );
-                })
-            );
-
-            await expect(
-                stMATICMock.claimTokens2StMatic(ethers.constants.AddressZero)
-            ).revertedWith("Operator not found");
         });
 
         it("Success to unjail an operator", async function () {
@@ -1730,11 +1696,6 @@ async function checkOperator (
     }
     if (no.commissionRate) {
         expect(res.commissionRate, "commissionRate").equal(no.commissionRate);
-    }
-    if (no.statusUpdatedTimestamp) {
-        expect(res.statusUpdatedTimestamp, "statusUpdatedTimestamp").not.equal(
-            no.statusUpdatedTimestamp
-        );
     }
     if (no.maxDelegateLimit) {
         expect(res.maxDelegateLimit, "maxDelegateLimit").equal(no.maxDelegateLimit);

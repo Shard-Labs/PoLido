@@ -310,6 +310,57 @@ describe("Starting to test StMATIC contract", () => {
         expect(balance.eq(1)).to.be.true;
     });
 
+    it("Should withdraw from EJECTED operators", async function () {
+        const amount = ethers.utils.parseEther("100");
+        const amount2Submit = ethers.utils.parseEther("0.05");
+        await mint(testers[0], amount);
+        await addOperator(
+            "BananaOperator",
+            testers[0].address,
+            ethers.utils.randomBytes(64)
+        );
+
+        await stakeOperator(1, testers[0], "10");
+        await mint(testers[0], amount2Submit);
+        await submit(testers[0], amount2Submit);
+
+        await mockStakeManager.unstake(1);
+        await requestWithdraw(testers[0], ethers.utils.parseEther("0.005"));
+
+        const balance = await poLidoNFT.balanceOf(testers[0].address);
+        expect(balance.eq(1)).to.be.true;
+    })
+
+    it("Should withdraw from JAILED operators", async function () {
+        const amount = ethers.utils.parseEther("200");
+        const amount2Submit = ethers.utils.parseEther("150");
+        await mint(testers[0], amount);
+        await addOperator(
+            "BananaOperator",
+            testers[0].address,
+            ethers.utils.randomBytes(64)
+        );
+
+        await stakeOperator(1, testers[0], "200");
+        await mint(testers[0], amount2Submit);
+        await submit(testers[0], amount2Submit);
+
+        await mockStakeManager.slash(1);
+        await requestWithdraw(testers[0], ethers.utils.parseEther("0.005"));
+        const balance = await poLidoNFT.balanceOf(testers[0].address);
+        expect(balance.eq(1)).to.be.true;
+
+        const validatorShareAddress = (
+            await nodeOperatorRegistry["getNodeOperator(uint256)"](1)
+        ).validatorShare;
+
+        const validatorShareBalance = await mockERC20.balanceOf(
+            validatorShareAddress
+        );
+
+        expect(validatorShareBalance.eq(0)).to.be.true;
+    })
+
     it("Should claim tokens after submitting to contract successfully", async () => {
         const ownedTokens: BigNumber[][] = [];
         const submitAmounts: string[] = [];
