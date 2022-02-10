@@ -160,9 +160,6 @@ interface INodeOperatorRegistry {
         view
         returns (Operator.OperatorInfo[] memory);
 
-    /// @notice Allows update an operator status from WAIT to EXIT
-    function exitOperator(address _validatorShare) external;
-
     /// @notice Allows to get all the operator ids.
     function getOperatorIds() external view returns (uint256[] memory);
 }
