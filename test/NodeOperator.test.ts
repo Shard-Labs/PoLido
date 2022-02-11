@@ -1316,7 +1316,7 @@ describe("NodeOperator", function () {
                 expect(operators.length).eq(1);
             });
 
-            it("success getOperatorInfos validator rewards", async function () {
+            it("success getOperatorInfos with active delegation", async function () {
                 // If the rewards accumulated by a validator are not enough, the operator is ignored.
                 await stakeOperator(1, user1, user1Address, "100", "20");
                 await stakeOperator(2, user2, user2Address, "100", "20");
@@ -1335,9 +1335,9 @@ describe("NodeOperator", function () {
                     ethers.utils.parseEther("10000")
                 );
 
-                const operators = await nodeOperatorRegistry.getOperatorInfos(true, false, false);
+                const operators = await nodeOperatorRegistry.getOperatorInfos(true, true, false);
 
-                expect(operators.length).eq(2);
+                expect(operators.length).eq(3);
                 operators.forEach((op, index: number) => {
                     expect(op.operatorId).eq(index + 1);
                 });

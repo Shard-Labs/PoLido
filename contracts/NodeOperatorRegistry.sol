@@ -959,19 +959,6 @@ contract NodeOperatorRegistry is
                 if (!IValidatorShare(no.validatorShare).delegation()) continue;
             }
 
-            // if true we check if the operator accumulated enough rewards
-            if (_withdrawRewards) {
-                IValidatorShare validatorShare = IValidatorShare(
-                    no.validatorShare
-                );
-                uint256 stMaticReward = validatorShare.getLiquidRewards(
-                    stMATIC
-                );
-                uint256 rewardThreshold = validatorShare.minAmount();
-                if (stMaticReward < rewardThreshold) {
-                    continue;
-                }
-            }
             operatorInfos[index] = Operator.OperatorInfo({
                 operatorId: operatorId,
                 validatorShare: no.validatorShare,
