@@ -923,12 +923,10 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Returns an operatorInfo list.
-    /// @param _withdrawRewards if true check if operator accumulated min rewards.
     /// @param _allWithStake if true return all operators with ACTIVE, EJECTED, JAILED.
     /// @param _delegation if true return all operators that delegation is set to true.
     /// @return Returns a list of operatorInfo.
     function getOperatorInfos(
-        bool _withdrawRewards,
         bool _delegation,
         bool _allWithStake
     ) external view override returns (Operator.OperatorInfo[] memory) {
@@ -959,19 +957,6 @@ contract NodeOperatorRegistry is
                 if (!IValidatorShare(no.validatorShare).delegation()) continue;
             }
 
-            // if true we check if the operator accumulated enough rewards
-            if (_withdrawRewards) {
-                IValidatorShare validatorShare = IValidatorShare(
-                    no.validatorShare
-                );
-                uint256 stMaticReward = validatorShare.getLiquidRewards(
-                    stMATIC
-                );
-                uint256 rewardThreshold = validatorShare.minAmount();
-                if (stMaticReward < rewardThreshold) {
-                    continue;
-                }
-            }
             operatorInfos[index] = Operator.OperatorInfo({
                 operatorId: operatorId,
                 validatorShare: no.validatorShare,

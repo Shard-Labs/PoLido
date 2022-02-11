@@ -16,6 +16,7 @@ import {
     SelfDestructor,
     ERC721Test
 } from "../typechain";
+import {describe} from "mocha";
 
 describe("Starting to test StMATIC contract", () => {
     let deployer: SignerWithAddress;
@@ -918,52 +919,49 @@ describe("Starting to test StMATIC contract", () => {
             });
 
             class TestCase {
-        message: string;
-        rewardPerValidator: number;
-        insuraceRewards: string;
-        daoRewards: string;
-        delegate: boolean;
-        amountSubmittedPerUser: number;
-        expectedTotalBuffred: number;
-        constructor (
-            message: string,
-            rewardPerValidator: number,
-            insuraceRewards: string,
-            daoRewards: string,
-            delegate: boolean,
-            amountSubmittedPerUser: number,
-            expectedTotalBuffred: number
-        ) {
-            this.message = message;
-            this.rewardPerValidator = rewardPerValidator;
-            this.insuraceRewards = insuraceRewards;
-            this.daoRewards = daoRewards;
-            this.delegate = delegate;
-            this.amountSubmittedPerUser = amountSubmittedPerUser;
-            this.expectedTotalBuffred = expectedTotalBuffred;
-        }
+                message: string;
+                rewardPerValidator: number;
+                insuraceRewards: string;
+                daoRewards: string;
+                delegate: boolean;
+                amountSubmittedPerUser: number;
+                expectedTotalBuffred: number;
+                constructor (
+                    message: string,
+                    rewardPerValidator: number,
+                    insuraceRewards: string,
+                    daoRewards: string,
+                    delegate: boolean,
+                    amountSubmittedPerUser: number,
+                    expectedTotalBuffred: number
+                ) {
+                    this.message = message;
+                    this.rewardPerValidator = rewardPerValidator;
+                    this.insuraceRewards = insuraceRewards;
+                    this.daoRewards = daoRewards;
+                    this.delegate = delegate;
+                    this.amountSubmittedPerUser = amountSubmittedPerUser;
+                    this.expectedTotalBuffred = expectedTotalBuffred;
+                }
             }
 
-            const testCases: Array<TestCase> = [
-                {
-                    message: "distribute rewards: totalBuffred == 0",
-                    rewardPerValidator: 100,
-                    insuraceRewards: "7500000000000000000",
-                    daoRewards: "7500000000000000000",
-                    delegate: true,
-                    amountSubmittedPerUser: 10,
-                    expectedTotalBuffred: 270
-                },
-                {
-                    message: "distribute rewards: totalBuffred != 0",
-                    rewardPerValidator: 100,
-                    insuraceRewards: "7500000000000000000",
-                    daoRewards: "7500000000000000000",
-                    delegate: false,
-                    amountSubmittedPerUser: 10,
-                    expectedTotalBuffred: 300 // (270 of 90% of rewards + 30 submitted by users)
-                }
-            ];
+            const testCases: Array<TestCase> = [{
+                message: "distribute rewards: totalBuffred == 0",
+                rewardPerValidator: 100,
+                insuraceRewards: "7500000000000000000",
+                daoRewards: "7500000000000000000",
+                delegate: true,
+                amountSubmittedPerUser: 10,
+                expectedTotalBuffred: 270
+            }, {
+                message: "distribute rewards: totalBuffred != 0",
+                rewardPerValidator: 100,
+                insuraceRewards: "7500000000000000000",
+                daoRewards: "7500000000000000000",
+                delegate: false,
+                amountSubmittedPerUser: 10,
+                expectedTotalBuffred: 300 // (270 of 90% of rewards + 30 submitted by users)
+            }];
 
             for (let index = 0; index < testCases.length; index++) {
                 const {
@@ -1048,6 +1046,56 @@ describe("Starting to test StMATIC contract", () => {
                 });
             }
         });
+
+        it("should not revert if a validator does not accumulate enough rewards", async () =>{
+            const numOperators = 2;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], ethers.utils.parseEther("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+            await stMATIC.setDelegationLowerBound(5);
+
+            await stMATIC.setRewardDistributionLowerBound(
+                ethers.utils.parseEther("100")
+            );
+
+            const validatorShareRewards = [1000, 10];
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], ethers.utils.parseEther("10"));
+                await submit(testers[i], ethers.utils.parseEther(String(10)));
+
+                // transfer some tokens to the validatorShare contracts to mimic rewards.
+                const rewardAmount = validatorShareRewards[i-1];
+                await mint(deployer, ethers.utils.parseEther(rewardAmount.toString()));
+                await mockERC20.transfer(
+                    await getValidatorShareAddress(i),
+                    ethers.utils.parseEther(rewardAmount.toString())
+                );
+            }
+
+            const totalRewards = 1010;
+            const rewards = (totalRewards * 10) / 100;
+
+            expect(await stMATIC.distributeRewards())
+                .emit(stMATIC, "DistributeRewardsEvent")
+                .withArgs(ethers.utils.parseEther(String(rewards)));
+
+            const rewardPerValidator = ethers.utils.parseEther("25.25");
+            const operator1 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this,   1);
+            expect(
+                await mockERC20.balanceOf(operator1.rewardAddress)
+            ).eq(rewardPerValidator);
+
+            const operator2 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this,   2);
+            expect(
+                await mockERC20.balanceOf(operator2.rewardAddress)
+            ).eq(rewardPerValidator);
+        })
     });
     describe("Fail cases", async () => {
         it("Amount to distribute lower than minimum", async () => {

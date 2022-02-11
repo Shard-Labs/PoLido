@@ -157,7 +157,7 @@ contract StMATIC is
         require(_amount > 0, "Invalid amount");
 
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false, false, true);
+            .getOperatorInfos(false, true);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -271,7 +271,7 @@ contract StMATIC is
             "Amount to delegate lower than minimum"
         );
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false, true, false);
+            .getOperatorInfos(true, false);
         uint256 operatorInfosLength = operatorInfos.length;
 
         require(operatorInfosLength > 0, "No operator shares, cannot delegate");
@@ -368,12 +368,21 @@ contract StMATIC is
      */
     function distributeRewards() external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(true, true, false);
+            .getOperatorInfos(true, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
-            IValidatorShare(operatorInfos[i].validatorShare).withdrawRewards();
+            IValidatorShare validatorShare = IValidatorShare(
+                operatorInfos[i].validatorShare
+            );
+            uint256 stMaticReward = validatorShare.getLiquidRewards(
+                address(this)
+            );
+            uint256 rewardThreshold = validatorShare.minAmount();
+            if (stMaticReward > rewardThreshold) {
+                validatorShare.withdrawRewards();
+            }
         }
 
         uint256 totalRewards = (
@@ -614,7 +623,7 @@ contract StMATIC is
     {
         uint256 totalStake;
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false, false, true);
+            .getOperatorInfos(false, true);
 
         uint256 operatorInfosLength = operatorInfos.length;
         for (uint256 i = 0; i < operatorInfosLength; i++) {
@@ -695,7 +704,7 @@ contract StMATIC is
      */
     function getMinValidatorBalance() public view override returns (uint256) {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false, false, false);
+            .getOperatorInfos(false, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
         uint256 minValidatorBalance = type(uint256).max;
