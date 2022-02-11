@@ -155,7 +155,7 @@ interface INodeOperatorRegistry {
         );
 
     /// @notice Allows to get a list of operatorInfo.
-    function getOperatorInfos(bool _withdrawRewards, bool _delegation, bool _allActive)
+    function getOperatorInfos(bool _delegation, bool _allActive)
         external
         view
         returns (Operator.OperatorInfo[] memory);

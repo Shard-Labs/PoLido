@@ -923,12 +923,10 @@ contract NodeOperatorRegistry is
     }
 
     /// @notice Returns an operatorInfo list.
-    /// @param _withdrawRewards if true check if operator accumulated min rewards.
     /// @param _allWithStake if true return all operators with ACTIVE, EJECTED, JAILED.
     /// @param _delegation if true return all operators that delegation is set to true.
     /// @return Returns a list of operatorInfo.
     function getOperatorInfos(
-        bool _withdrawRewards,
         bool _delegation,
         bool _allWithStake
     ) external view override returns (Operator.OperatorInfo[] memory) {
