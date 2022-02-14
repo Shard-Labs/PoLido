@@ -542,6 +542,17 @@ describe("NodeOperator", function () {
             await checkStats(2, 0, 1, 0, 1, 0, 0, 0, 0, 0);
         });
 
+        it("Successfully unstake when the operator was jailed by the stakeManager", async function () {
+            await stakeOperator(1, user1, user1Address, "10", "20");
+
+            await stakeManagerMock.slash(1);
+            expect(await nodeOperatorRegistry.connect(user1)["unstake()"].call(this))
+                .to.emit(nodeOperatorRegistry, "UnstakeOperator")
+                .withArgs(1);
+
+            await checkOperator(1, { status: 3 });
+        });
+
         it("Fail to unstake an operator", async function () {
             // revert caller try to unstake a operator that not exist.
             await expect(
@@ -1413,6 +1424,13 @@ describe("NodeOperator", function () {
                 res = await nodeOperatorRegistry.getOperatorInfos( false, false);
                 expect(res.length, "stop the 1st operator").eq(0);
             });
+
+            it("should check validator status is EJECTED when slashed or unstaked", async function (){
+                await stakeOperator(1, user1, user1Address, "100", "20");
+                await stakeManagerMock.slash(1);
+                await stakeManagerMock.unstake(1)
+                await checkOperator(1, { status: 8 });
+            })
         });
     });
 
