@@ -222,8 +222,7 @@ contract NodeOperatorRegistry is
         override
     {
 
-        (, NodeOperator storage no) = getOperator(_operatorId); //this already fails if an oprator does not exist so what? just stick to the node operator check
-        //check that the validatorId is equal to operatorId or that no operator exist
+        (, NodeOperator storage no) = getOperator(_operatorId);
         require(
             no.rewardAddress == msg.sender || hasRole(DAO_ROLE, msg.sender), "unauthorized"
         );
