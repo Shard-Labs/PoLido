@@ -400,7 +400,8 @@ contract NodeOperatorRegistry is
         NodeOperatorStatus status = getOperatorStatus(no);
         checkCondition(
             status == NodeOperatorStatus.ACTIVE ||
-                status == NodeOperatorStatus.EJECTED,
+            status == NodeOperatorStatus.JAILED ||
+            status == NodeOperatorStatus.EJECTED,
             "Invalid status"
         );
         if (status == NodeOperatorStatus.ACTIVE) {
@@ -799,7 +800,10 @@ contract NodeOperatorRegistry is
             ) {
                 res = NodeOperatorStatus.ACTIVE;
             } else if (
-                v.status == IStakeManager.Status.Active &&
+                (
+                    v.status == IStakeManager.Status.Active ||
+                    v.status == IStakeManager.Status.Locked
+                ) &&
                 v.deactivationEpoch != 0
             ) {
                 res = NodeOperatorStatus.EJECTED;
