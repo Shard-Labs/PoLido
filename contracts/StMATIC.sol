@@ -157,7 +157,7 @@ contract StMATIC is
         require(_amount > 0, "Invalid amount");
 
         Operator.OperatorInfo[] memory operatorInfos = nodeOperator
-            .getOperatorInfos(false, false, true);
+            .getOperatorInfos(false, true);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
@@ -171,7 +171,7 @@ contract StMATIC is
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
 
-        uint256 minValidatorBalance = getMinValidatorBalance();
+        uint256 minValidatorBalance = _getMinValidatorBalance(operatorInfos);
 
         uint256 allowedAmount2RequestFromValidators = 0;
 
@@ -271,7 +271,7 @@ contract StMATIC is
             "Amount to delegate lower than minimum"
         );
         Operator.OperatorInfo[] memory operatorInfos = nodeOperator
-            .getOperatorInfos(false, true, false);
+            .getOperatorInfos(true, false);
         uint256 operatorInfosLength = operatorInfos.length;
 
         require(operatorInfosLength > 0, "No operator shares, cannot delegate");
@@ -368,12 +368,21 @@ contract StMATIC is
      */
     function distributeRewards() external override whenNotPaused {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperator
-            .getOperatorInfos(true, true, false);
+            .getOperatorInfos(true, false);
 
         uint256 operatorInfosLength = operatorInfos.length;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
-            IValidatorShare(operatorInfos[i].validatorShare).withdrawRewards();
+            IValidatorShare validatorShare = IValidatorShare(
+                operatorInfos[i].validatorShare
+            );
+            uint256 stMaticReward = validatorShare.getLiquidRewards(
+                address(this)
+            );
+            uint256 rewardThreshold = validatorShare.minAmount();
+            if (stMaticReward >= rewardThreshold) {
+                validatorShare.withdrawRewards();
+            }
         }
 
         uint256 totalRewards = (
@@ -422,7 +431,10 @@ contract StMATIC is
      * @param _validatorShare - Address of the validator share that will be withdrawn
      */
     function withdrawTotalDelegated(address _validatorShare) external override {
-        require(msg.sender == address(nodeOperator), "Not a node operator");
+        require(
+            msg.sender == address(nodeOperator),
+            "Not a node operator"
+        );
 
         (uint256 stakedAmount, ) = getTotalStake(
             IValidatorShare(_validatorShare)
@@ -611,7 +623,7 @@ contract StMATIC is
     {
         uint256 totalStake;
         Operator.OperatorInfo[] memory operatorInfos = nodeOperator
-            .getOperatorInfos(false, false, true);
+            .getOperatorInfos(false, true);
 
         uint256 operatorInfosLength = operatorInfos.length;
         for (uint256 i = 0; i < operatorInfosLength; i++) {
@@ -690,12 +702,17 @@ contract StMATIC is
      * @dev Function that calculates minimal allowed validator balance (lower bound)
      * @return Minimal validator balance in MATIC
      */
-    function getMinValidatorBalance() public view override returns (uint256) {
+    function getMinValidatorBalance() external view override returns (uint256) {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperator
-            .getOperatorInfos(false, false, false);
+        .getOperatorInfos(false, true);
 
+        return _getMinValidatorBalance(operatorInfos);
+    }
+
+
+    function _getMinValidatorBalance(Operator.OperatorInfo[] memory operatorInfos) private view returns (uint256) {
         uint256 operatorInfosLength = operatorInfos.length;
-        uint256 minValidatorBalances = type(uint256).max;
+        uint256 minValidatorBalance = type(uint256).max;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
             (uint256 validatorShare, ) = getTotalStake(
@@ -706,13 +723,13 @@ contract StMATIC is
 
             if (
                 minValidatorBalanceCurrent != 0 &&
-                minValidatorBalanceCurrent < minValidatorBalances
+                minValidatorBalanceCurrent < minValidatorBalance
             ) {
-                minValidatorBalances = minValidatorBalanceCurrent;
+                minValidatorBalance = minValidatorBalanceCurrent;
             }
         }
 
-        return minValidatorBalances;
+        return minValidatorBalance;
     }
 
     ////////////////////////////////////////////////////////////

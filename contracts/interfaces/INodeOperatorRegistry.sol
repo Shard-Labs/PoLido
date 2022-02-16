@@ -148,14 +148,13 @@ interface INodeOperatorRegistry {
             uint256 _totalStoppedNodeOperator,
             uint256 _totalUnstakedNodeOperator,
             uint256 _totalClaimedNodeOperator,
-            uint256 _totalWaitNodeOperator,
             uint256 _totalExitNodeOperator,
             uint256 _totalSlashedNodeOperator,
             uint256 _totalEjectedNodeOperator
         );
 
     /// @notice Allows to get a list of operatorInfo.
-    function getOperatorInfos(bool _withdrawRewards, bool _delegation, bool _allActive)
+    function getOperatorInfos(bool _delegation, bool _allActive)
         external
         view
         returns (Operator.OperatorInfo[] memory);
