@@ -698,11 +698,19 @@ contract StMATIC is
         return (balanceInStMatic, totalShares, totalPooledMatic);
     }
 
+
+    function getMinValidatorBalance() external view override returns (uint256) {
+        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
+        .getOperatorInfos(false, true);
+
+        return getMinValidatorBalance(operatorInfos);
+    }
+
     /**
      * @dev Function that calculates minimal allowed validator balance (lower bound)
      * @return Minimal validator balance in MATIC
      */
-    function getMinValidatorBalance(Operator.OperatorInfo[] memory operatorInfos) public view override returns (uint256) {
+    function getMinValidatorBalance(Operator.OperatorInfo[] memory operatorInfos) private view returns (uint256) {
         uint256 operatorInfosLength = operatorInfos.length;
         uint256 minValidatorBalance = type(uint256).max;
 
