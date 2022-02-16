@@ -328,6 +328,13 @@ describe("NodeOperator", function () {
             await checkOperator(1, { status: 2 });
         });
 
+        it("should stop an operator authorized by the operator owner", async function (){
+            await newOperator(1, user1Address);
+            expect(await nodeOperatorRegistry.connect(user1).stopOperator(1))
+                .to.emit(nodeOperatorRegistry, "StopOperator")
+                .withArgs(1);
+        });
+
         it("Fail stop an operator", async function () {
             // revert invalid operator id
             await expect(nodeOperatorRegistry.stopOperator(10)).revertedWith(
@@ -342,6 +349,10 @@ describe("NodeOperator", function () {
             // revert stop second time
             await expect(nodeOperatorRegistry.stopOperator(1)).to.revertedWith(
                 "Invalid status"
+            );
+
+            await expect(nodeOperatorRegistry.connect(user2).stopOperator(1)).to.revertedWith(
+                "unauthorized"
             );
         });
 

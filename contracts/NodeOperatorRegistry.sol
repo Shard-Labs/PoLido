@@ -220,9 +220,12 @@ contract NodeOperatorRegistry is
     function stopOperator(uint256 _operatorId)
         external
         override
-        userHasRole(DAO_ROLE)
     {
+
         (, NodeOperator storage no) = getOperator(_operatorId);
+        require(
+            no.rewardAddress == msg.sender || hasRole(DAO_ROLE, msg.sender), "unauthorized"
+        );
         NodeOperatorStatus status = getOperatorStatus(no);
         checkCondition(
             status <= NodeOperatorStatus.ACTIVE ||
