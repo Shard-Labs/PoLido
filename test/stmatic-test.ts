@@ -513,13 +513,14 @@ describe("Starting to test StMATIC contract", () => {
         await submit(testers[0], submitAmount);
         await stMATIC.delegate();
 
-        const minValidatorBalanceBefore = await stMATIC.getMinValidatorBalance();
+        const nodeOperators = await nodeOperatorRegistry.getOperatorInfos(false, false);
+        const minValidatorBalanceBefore = await stMATIC.getMinValidatorBalance(nodeOperators);
 
         await mint(testers[0], submitAmount.mul(2));
         await submit(testers[0], submitAmount);
         await stMATIC.delegate();
 
-        const minValidatorBalanceAfter = await stMATIC.getMinValidatorBalance();
+        const minValidatorBalanceAfter = await stMATIC.getMinValidatorBalance(nodeOperators);
 
         expect(!minValidatorBalanceBefore.eq(minValidatorBalanceAfter)).to.be.true;
     });
@@ -557,8 +558,9 @@ describe("Starting to test StMATIC contract", () => {
 
         await stMATIC.delegate();
 
+        const nodeOperators = await nodeOperatorRegistry.getOperatorInfos(false, false);
         const maxWithdrawPerDelegator = (await stMATIC.getTotalPooledMatic())
-            .sub(await stMATIC.getMinValidatorBalance())
+            .sub(await stMATIC.getMinValidatorBalance(nodeOperators))
             .div(delegatorsAmount);
 
         for (let i = 0; i < delegatorsAmount; i++) {

@@ -171,7 +171,7 @@ contract StMATIC is
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
 
-        uint256 minValidatorBalance = getMinValidatorBalance();
+        uint256 minValidatorBalance = getMinValidatorBalance(operatorInfos);
 
         uint256 allowedAmount2RequestFromValidators = 0;
 
@@ -380,7 +380,7 @@ contract StMATIC is
                 address(this)
             );
             uint256 rewardThreshold = validatorShare.minAmount();
-            if (stMaticReward > rewardThreshold) {
+            if (stMaticReward >= rewardThreshold) {
                 validatorShare.withdrawRewards();
             }
         }
@@ -702,10 +702,7 @@ contract StMATIC is
      * @dev Function that calculates minimal allowed validator balance (lower bound)
      * @return Minimal validator balance in MATIC
      */
-    function getMinValidatorBalance() public view override returns (uint256) {
-        Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-            .getOperatorInfos(false, false);
-
+    function getMinValidatorBalance(Operator.OperatorInfo[] memory operatorInfos) public view override returns (uint256) {
         uint256 operatorInfosLength = operatorInfos.length;
         uint256 minValidatorBalance = type(uint256).max;
 
