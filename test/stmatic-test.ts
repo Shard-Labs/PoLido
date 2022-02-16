@@ -324,13 +324,15 @@ describe("Starting to test StMATIC contract", () => {
         await stakeOperator(1, testers[0], "10");
         await mint(testers[0], amount2Submit);
         await submit(testers[0], amount2Submit);
+        await stMATIC.delegate();
 
         await mockStakeManager.unstake(1);
         await requestWithdraw(testers[0], ethers.utils.parseEther("0.005"));
 
-        const balance = await poLidoNFT.balanceOf(testers[0].address);
-        expect(balance.eq(1)).to.be.true;
-    })
+        const tokens = await poLidoNFT.getOwnedTokens(testers[0].address);
+        const RequestWithdraw = await stMATIC.token2WithdrawRequest(tokens[0]);
+        expect(RequestWithdraw.validatorAddress).to.not.equal(ethers.constants.AddressZero);
+    });
 
     it("Should withdraw from JAILED operators", async function () {
         const amount = ethers.utils.parseEther("200");
@@ -345,22 +347,15 @@ describe("Starting to test StMATIC contract", () => {
         await stakeOperator(1, testers[0], "200");
         await mint(testers[0], amount2Submit);
         await submit(testers[0], amount2Submit);
+        await stMATIC.delegate();
 
         await mockStakeManager.slash(1);
         await requestWithdraw(testers[0], ethers.utils.parseEther("0.005"));
-        const balance = await poLidoNFT.balanceOf(testers[0].address);
-        expect(balance.eq(1)).to.be.true;
 
-        const validatorShareAddress = (
-            await nodeOperatorRegistry["getNodeOperator(uint256)"](1)
-        ).validatorShare;
-
-        const validatorShareBalance = await mockERC20.balanceOf(
-            validatorShareAddress
-        );
-
-        expect(validatorShareBalance.eq(0)).to.be.true;
-    })
+        const tokens = await poLidoNFT.getOwnedTokens(testers[0].address);
+        const RequestWithdraw = await stMATIC.token2WithdrawRequest(tokens[0]);
+        expect(RequestWithdraw.validatorAddress).to.not.equal(ethers.constants.AddressZero);
+    });
 
     it("Should claim tokens after submitting to contract successfully", async () => {
         const ownedTokens: BigNumber[][] = [];

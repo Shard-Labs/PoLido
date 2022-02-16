@@ -27,13 +27,12 @@ contract NodeOperatorRegistry is
         STOPPED,
         UNSTAKED,
         CLAIMED,
-        WAIT,
         EXIT,
         JAILED,
         EJECTED
     }
     /// @notice The node operator struct
-    /// @param status node operator status(INACTIVE, ACTIVE, STOPPED, CLAIMED, UNSTAKED, WAIT, EXIT, JAILED, EJECTED).
+    /// @param status node operator status(INACTIVE, ACTIVE, STOPPED, CLAIMED, UNSTAKED, EXIT, JAILED, EJECTED).
     /// @param name node operator name.
     /// @param rewardAddress Validator public key used for access control and receive rewards.
     /// @param validatorId validator id of this node operator on the polygon stake manager.
@@ -228,7 +227,7 @@ contract NodeOperatorRegistry is
         );
         NodeOperatorStatus status = getOperatorStatus(no);
         checkCondition(
-            status <= NodeOperatorStatus.ACTIVE ||
+            status == NodeOperatorStatus.ACTIVE || status == NodeOperatorStatus.INACTIVE ||
             status == NodeOperatorStatus.JAILED
         , "Invalid status");
 
@@ -566,8 +565,9 @@ contract NodeOperatorRegistry is
         whenNotPaused
     {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
+        NodeOperatorStatus status = getOperatorStatus(no);
         checkCondition(
-            getOperatorStatus(no) <= NodeOperatorStatus.ACTIVE,
+            status == NodeOperatorStatus.ACTIVE || status == NodeOperatorStatus.INACTIVE,
             "Invalid status"
         );
         if (no.status == NodeOperatorStatus.ACTIVE) {
@@ -593,8 +593,10 @@ contract NodeOperatorRegistry is
         // uint256 operatorId = getOperatorId(msg.sender);
         // NodeOperator storage no = operators[operatorId];
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
+        NodeOperatorStatus status = getOperatorStatus(no);
+
         checkCondition(
-            getOperatorStatus(no) <= NodeOperatorStatus.ACTIVE,
+            status == NodeOperatorStatus.ACTIVE || status == NodeOperatorStatus.INACTIVE,
             "Invalid status"
         );
         no.name = _name;
@@ -884,7 +886,6 @@ contract NodeOperatorRegistry is
             uint256 _totalStoppedNodeOperator,
             uint256 _totalUnstakedNodeOperator,
             uint256 _totalClaimedNodeOperator,
-            uint256 _totalWaitNodeOperator,
             uint256 _totalExitNodeOperator,
             uint256 _totalJailedNodeOperator,
             uint256 _totalEjectedNodeOperator
@@ -907,8 +908,6 @@ contract NodeOperatorRegistry is
                 _totalUnstakedNodeOperator++;
             } else if (status == NodeOperatorStatus.CLAIMED) {
                 _totalClaimedNodeOperator++;
-            } else if (status == NodeOperatorStatus.WAIT) {
-                _totalWaitNodeOperator++;
             } else if (status == NodeOperatorStatus.JAILED) {
                 _totalJailedNodeOperator++;
             } else if (status == NodeOperatorStatus.EJECTED) {
