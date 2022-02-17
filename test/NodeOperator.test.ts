@@ -1247,6 +1247,22 @@ describe("NodeOperator", function () {
         });
 
         describe("operator infos", async function () {
+            it("should ensure that no operator id is overridden", async function () {
+                await newOperator(1, user1Address);
+                await newOperator(2, user2Address);
+
+                await nodeOperatorRegistry.stopOperator(1);
+
+                await nodeOperatorRegistry.removeOperator(1);
+                await newOperator(3, user3Address);
+
+                const op2 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this, 2);
+                expect(op2.rewardAddress).to.equal(user2Address);
+                const op3 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this, 3);
+                expect(op3.rewardAddress).to.equal(user3Address);
+                await checkStats(2, 2, 0, 0, 0, 0, 0, 0, 0);
+            });
+
             it("success getOperatorInfos all cases", async function () {
                 await stakeOperator(1, user1, user1Address, "100", "20");
                 await stakeOperator(2, user2, user2Address, "100", "20");
