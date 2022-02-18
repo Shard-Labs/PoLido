@@ -1,6 +1,9 @@
 import { Contract, ethers } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { publicKeyCreate } from "secp256k1";
+import { DeployDetails } from "./types";
+import fs from "fs";
+import path from "path";
 
 export const getPublicKey = (privateKey: string): Uint8Array => {
     const privKeyBytes = ethers.utils.arrayify(privateKey);
@@ -38,3 +41,33 @@ export const predictContractAddress = (address: string, nonce: number) => {
 
     return ethers.utils.getAddress(contractAddress);
 };
+
+export const exportAddresses = (fullFilePath: string, addresses: object) => {
+    console.log("Export to file...");
+    const data = JSON.parse(fs.readFileSync(fullFilePath, "utf8"));
+    fs.writeFileSync(fullFilePath, JSON.stringify({
+        ...data,
+        ...addresses
+    }));
+};
+
+export const getUpgradeContext = (hre: HardhatRuntimeEnvironment) => {
+    const network = hre.network.name;
+    const filePath = `deploy-${network}.json`;
+    const deployDetails: DeployDetails = require(path.join("..", filePath));
+
+    return {
+        network,
+        filePath,
+        deployDetails
+    };
+};
+
+// import { defender, ethers } from "hardhat";
+
+// export const createUpgradeProposal = async (proxyAddress: string, contractFactory: string) => {
+//     console.log("Preparing proposal...");
+//     const factory = await ethers.getContractFactory(contractFactory);
+//     const proposal = await defender.proposeUpgrade(proxyAddress, factory);
+//     console.log("Upgrade proposal created at:", proposal.url);
+// };
