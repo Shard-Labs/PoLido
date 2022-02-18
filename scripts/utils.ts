@@ -1,7 +1,7 @@
 import { Contract, ethers } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { DeployDetails } from "./types";
 import { publicKeyCreate } from "secp256k1";
+import { DeployDetails } from "./types";
 import fs from "fs";
 import path from "path";
 

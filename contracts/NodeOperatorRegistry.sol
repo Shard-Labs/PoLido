@@ -129,6 +129,7 @@ contract NodeOperatorRegistry is
     /// @notice Mapping of all node operators. Mapping is used to be able to extend the struct.
     mapping(uint256 => NodeOperator) private operators;
 
+    uint256 public nodeOperatorCounter;
     /// --------------------------- Modifiers-----------------------------------
 
     /// @notice Check if the msg.sender has permission.
@@ -221,10 +222,10 @@ contract NodeOperatorRegistry is
         userHasRole(DAO_ROLE)
         checkIfRewardAddressIsUsed(_rewardAddress)
     {
-        uint256 operatorId = totalNodeOperator + 1;
+        nodeOperatorCounter++;
         address validatorProxy = IValidatorFactory(validatorFactory).create();
 
-        operators[operatorId] = NodeOperator({
+        operators[nodeOperatorCounter] = NodeOperator({
             status: NodeOperatorStatus.INACTIVE,
             name: _name,
             rewardAddress: _rewardAddress,
@@ -239,11 +240,11 @@ contract NodeOperatorRegistry is
             slashedTimestamp: 0,
             amountStaked: 0
         });
-        operatorIds.push(operatorId);
+        operatorIds.push(nodeOperatorCounter);
         totalNodeOperator++;
-        operatorOwners[_rewardAddress] = operatorId;
+        operatorOwners[_rewardAddress] = nodeOperatorCounter;
 
-        emit AddOperator(operatorId);
+        emit AddOperator(nodeOperatorCounter);
     }
 
     /// @notice Allows to stop an operator from the system.

@@ -1,8 +1,8 @@
 import hardhat, { ethers, upgrades } from "hardhat";
 import {
     ValidatorFactory__factory
-} from "../typechain";
-import { exportAddresses, getUpgradeContext } from "./utils";
+} from "../../typechain";
+import { exportAddresses, getUpgradeContext } from "../utils";
 
 const upgradeValidatorFactory = async () => {
     const { network, filePath, deployDetails } = getUpgradeContext(hardhat);

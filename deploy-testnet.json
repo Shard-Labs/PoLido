@@ -12,7 +12,7 @@
   "validator_factory_proxy": "0x392C87754B73CC3A68059803D37D0387f16c8D81",
   "validator_factory_implementation": "0x0117a088127a9Cd1f2629FD09cbB2842abA180F6",
   "node_operator_registry_proxy": "0xb1f3f45360Cf0A30793e38C18dfefCD0d5136f9a",
-  "node_operator_registry_implementation": "0x77E018f2A8FD6f57F856C95401233B304e4d8C3e",
+  "node_operator_registry_implementation": "0x2Ff777e6098Cbf5fd533D595C1FA21CC776d8687",
   "fx_state_root_tunnel": "0x5C0e4a60Cb0cC9271994d834510e196e3985b616",
   "fx_state_child_tunnel": "0x2071947Fa4f823b7F9B21C78B0afD5EfFc2D968e",
   "validator_implementation": "0xF8c3299Bd8a9A0fFA3218AABCc0E343B9d5F32Fa"

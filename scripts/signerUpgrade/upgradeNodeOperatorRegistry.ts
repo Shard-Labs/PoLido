@@ -1,8 +1,8 @@
 import hardhat, { ethers, upgrades } from "hardhat";
 import {
     NodeOperatorRegistry__factory
-} from "../typechain";
-import { exportAddresses, getUpgradeContext } from "./utils";
+} from "../../typechain";
+import { exportAddresses, getUpgradeContext } from "../utils";
 
 const upgradeNodeOperatorRegistry = async () => {
     const { network, filePath, deployDetails } = getUpgradeContext(hardhat);

@@ -7,6 +7,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import "hardhat-gas-reporter";
+import "@openzeppelin/hardhat-defender";
 // import "hardhat-contract-sizer";
 
 import {
@@ -26,7 +27,9 @@ import {
     ROOT_CHAIN_RPC,
     ROOT_GAS_LIMIT,
     ROOT_GAS_PRICE,
-    VALIDATOR_PRIVATE_KEY
+    VALIDATOR_PRIVATE_KEY,
+    DEFENDER_TEAM_API_KEY,
+    DEFENDER_TEAM_API_SECRET_KEY
 } from "./environment";
 
 task("verifyLido", "StMATIC contracts verification").setAction(
@@ -124,6 +127,10 @@ const config: HardhatUserConfig = {
     },
     etherscan: {
         apiKey: ETHERSCAN_API_KEY
+    },
+    defender: {
+        apiKey: DEFENDER_TEAM_API_KEY,
+        apiSecret: DEFENDER_TEAM_API_SECRET_KEY
     }
 };
 
