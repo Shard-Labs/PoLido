@@ -74,6 +74,9 @@ contract NodeOperatorRegistry is
     /// @notice stMATIC address.
     address private stMATIC;
 
+    /// @notice keeps track of total number of operators
+    uint256 nodeOperatorCounter;
+
     /// @notice min amount allowed to stake per validator.
     uint256 public minAmountStake;
 
@@ -193,10 +196,10 @@ contract NodeOperatorRegistry is
         userHasRole(DAO_ROLE)
         checkIfRewardAddressIsUsed(_rewardAddress)
     {
-        uint256 operatorId = totalNodeOperators + 1;
+        nodeOperatorCounter++;
         address validatorProxy = IValidatorFactory(validatorFactory).create();
 
-        operators[operatorId] = NodeOperator({
+        operators[nodeOperatorCounter] = NodeOperator({
             status: NodeOperatorStatus.INACTIVE,
             name: _name,
             rewardAddress: _rewardAddress,
@@ -207,11 +210,11 @@ contract NodeOperatorRegistry is
             commissionRate: commissionRate,
             maxDelegateLimit: defaultMaxDelegateLimit
         });
-        operatorIds.push(operatorId);
+        operatorIds.push(nodeOperatorCounter);
         totalNodeOperators++;
-        operatorOwners[_rewardAddress] = operatorId;
+        operatorOwners[_rewardAddress] = nodeOperatorCounter;
 
-        emit AddOperator(operatorId);
+        emit AddOperator(nodeOperatorCounter);
     }
 
     /// @notice Allows to stop an operator from the system.
