@@ -20,7 +20,8 @@ import {
     FX_ROOT,
     INSURANCE,
     MATIC_TOKEN,
-    STAKE_MANAGER
+    STAKE_MANAGER,
+    STMATIC_SUBMIT_THRESHOLD
 } from "../environment";
 import path from "path";
 
@@ -86,13 +87,13 @@ class BlockchainDeployer {
       contractName: keyof DeploymentData,
       ...args: any[]
   ) => {
-      // console.log(`Deploying ${contractName}: ${args}, ${args.length}`);
+      console.log(`Deploying ${contractName}: ${args}, ${args.length}`);
       const Contract = await ethers.getContractFactory(contractName, this.signer);
       const contract = args.length
           ? ((await Contract.deploy(...args)) as T)
           : ((await Contract.deploy()) as T);
       await contract.deployed();
-      // console.log(`Deployed at ${contract.address}`);
+      console.log(`Deployed at ${contract.address}`);
 
       return contract;
   };
@@ -101,13 +102,13 @@ class BlockchainDeployer {
       contractName: keyof DeploymentData,
       ...args: any[]
   ) => {
-      // console.log(`Deploying ${contractName}: ${args}, ${args.length}`);
+      console.log(`Deploying ${contractName}: ${args}, ${args.length}`);
       const Contract = await ethers.getContractFactory(contractName, this.signer);
       const contract = args.length
           ? ((await upgrades.deployProxy(Contract, args)) as T)
           : ((await upgrades.deployProxy(Contract)) as T);
       await contract.deployed();
-      // console.log(`Deployed at ${contract.address}`);
+      console.log(`Deployed at ${contract.address}`);
 
       return contract;
   };
@@ -242,7 +243,8 @@ export class PoLidoDeployer
           INSURANCE,
           STAKE_MANAGER,
           this.data.PoLidoNFT,
-          this.data.FxStateRootTunnel
+          this.data.FxStateRootTunnel,
+          ethers.utils.parseEther(STMATIC_SUBMIT_THRESHOLD)
       );
   };
 
