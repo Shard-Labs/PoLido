@@ -5,9 +5,15 @@ export type OperatorArgs = {
   privateKey?: string;
 };
 
+interface Multisig {
+  address: string,
+  owners: Array<string>
+}
+
 export interface DeployDetails {
   network: string;
   signer: string;
+  multisig_upgrader :Multisig;
   dao: string;
   treasury: string;
   matic_erc20_address: string;

@@ -1,5 +1,12 @@
 {
   "network": "goerli",
+  "multisig_upgrader": {
+    "address": "0xB62bF5Bb41152170574d12a4492A997dE99A2c9c",
+    "owners": [
+      "0xE77A6319FDC1456e5DEF674FBC7d77e72B9EFcC9",
+      "0x671b02F1853218906648850b8638512413D13dE7"
+    ]
+  },
   "signer": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
   "dao": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
   "treasury": "0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10",
