@@ -53,7 +53,7 @@ export const exportAddresses = (fullFilePath: string, addresses: object) => {
 
 export const getUpgradeContext = (hre: HardhatRuntimeEnvironment) => {
     const network = hre.network.name;
-    const filePath = `deploy-${network}.json`;
+    const filePath = `${network}-deployment-info.json`;
     const deployDetails: DeployDetails = require(path.join("..", filePath));
 
     return {
@@ -63,11 +63,3 @@ export const getUpgradeContext = (hre: HardhatRuntimeEnvironment) => {
     };
 };
 
-// import { defender, ethers } from "hardhat";
-
-// export const createUpgradeProposal = async (proxyAddress: string, contractFactory: string) => {
-//     console.log("Preparing proposal...");
-//     const factory = await ethers.getContractFactory(contractFactory);
-//     const proposal = await defender.proposeUpgrade(proxyAddress, factory);
-//     console.log("Upgrade proposal created at:", proposal.url);
-// };

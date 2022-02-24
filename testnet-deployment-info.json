@@ -1,0 +1,23 @@
+{
+    "network": 0,
+    "multisig_upgrader": { "address": "0x", "owners": [] },
+    "root_deployer": "",
+    "child_deployer": "",
+    "dao": "",
+    "treasury": "",
+    "matic_erc20_address": "",
+    "matic_stake_manager_proxy": "",
+    "proxy_admin": "",
+    "lido_nft_proxy": "",
+    "lido_nft_impl": "",
+    "stMATIC_proxy": "",
+    "stMATIC_impl": "",
+    "validator_factory_proxy": "",
+    "validator_factory_impl": "",
+    "node_operator_registry_proxy": "",
+    "node_operator_registry_impl": "",
+    "fx_state_root_tunnel": "",
+    "fx_state_child_tunnel": "",
+    "validator_implementation": ""
+  }
+  

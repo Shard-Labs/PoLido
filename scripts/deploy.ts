@@ -22,7 +22,7 @@ const main = async () => {
         childSigner
     );
     await poLidoDeployer.deploy();
-    poLidoDeployer.export();
+    await poLidoDeployer.export();
 };
 
 main()
