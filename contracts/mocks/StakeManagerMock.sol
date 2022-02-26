@@ -9,6 +9,7 @@ import "../mocks/ValidatorShareMock.sol";
 
 contract StakeManagerMock is IStakeManager {
     event UpdateSigner(uint256 validatorId, bytes signerPubkey);
+    event UpdateCommissionRate(uint256 validatorId, uint256 newCommissionRate);
 
     mapping(uint256 => IStakeManager.Validator) smValidators;
     struct State {
@@ -144,7 +145,9 @@ contract StakeManagerMock is IStakeManager {
     function updateCommissionRate(
         uint256 _validatorId,
         uint256 _newCommissionRate
-    ) external override {}
+    ) external override {
+        emit UpdateCommissionRate(_validatorId, _newCommissionRate);
+    }
 
     function unjail(uint256 _validatorId) external override {
         require(

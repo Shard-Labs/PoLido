@@ -1,7 +1,7 @@
 import hardhat, { ethers, upgrades } from "hardhat";
 import { Signer, Contract, BigNumber } from "ethers";
 import { expect } from "chai";
-import {} from "hardhat/types";
+import { } from "hardhat/types";
 import {
     ValidatorFactory,
     ValidatorFactory__factory,
@@ -916,7 +916,7 @@ describe("NodeOperator", function () {
             ).to.revertedWith("Invalid status");
         });
 
-        it.only("Success update signer publickey", async function () {
+        it("Success update signer publickey", async function () {
             await stakeOperator(1, user1, user1Address, "10", "20");
 
             const newSignPubkey = ethers.utils.hexZeroPad("0x02", 64);
@@ -1141,15 +1141,30 @@ describe("NodeOperator", function () {
             });
 
             it("Success updateOperatorCommissionRate", async function () {
-                await newOperator(1, user1Address);
                 const commission = BigNumber.from(10);
+
+                // update commission fo an active operator, should emit events
+                // from StakeManager and NodeOperatorRegistry contracts.
+                await stakeOperator(1, user1, user1Address, "10", "20");
                 expect(
                     await nodeOperatorRegistry.updateOperatorCommissionRate(1, commission)
                 )
                     .to.emit(nodeOperatorRegistry, "UpdateCommissionRate")
+                    .withArgs(1, commission)
+                    .to.emit(stakeManagerMock, "UpdateCommissionRate")
                     .withArgs(1, commission);
 
                 await checkOperator(1, { commissionRate: commission });
+
+                // update commission fo an inactive operator
+                await newOperator(2, user2Address);
+                expect(
+                    await nodeOperatorRegistry.updateOperatorCommissionRate(2, commission)
+                )
+                    .to.emit(nodeOperatorRegistry, "UpdateCommissionRate")
+                    .withArgs(2, commission);
+
+                await checkOperator(2, { commissionRate: commission });
             });
 
             it("Fail updateOperatorCommissionRate", async function () {
@@ -1589,7 +1604,7 @@ describe("NodeOperator", function () {
 
             expect(
                 (await nodeOperatorRegistry.address) ===
-          NodeOperatorRegistryV2Contract.address
+                NodeOperatorRegistryV2Contract.address
             );
         });
     });
@@ -1698,19 +1713,19 @@ async function checkOperator (
     this: any,
     id: number,
     no: {
-    status?: number;
-    name?: string;
-    rewardAddress?: string;
-    validatorId?: BigNumber;
-    signerPubkey?: string;
-    validatorShare?: string;
-    validatorProxy?: string;
-    commissionRate?: BigNumber;
-    slashed?: BigNumber;
-    slashedTimestamp?: BigNumber;
-    statusUpdatedTimestamp?: BigNumber;
-    maxDelegateLimit?: BigNumber;
-  }
+        status?: number;
+        name?: string;
+        rewardAddress?: string;
+        validatorId?: BigNumber;
+        signerPubkey?: string;
+        validatorShare?: string;
+        validatorProxy?: string;
+        commissionRate?: BigNumber;
+        slashed?: BigNumber;
+        slashedTimestamp?: BigNumber;
+        statusUpdatedTimestamp?: BigNumber;
+        maxDelegateLimit?: BigNumber;
+    }
 ) {
     const res = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(
         this,
