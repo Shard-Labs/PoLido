@@ -328,7 +328,7 @@ describe("NodeOperator", function () {
             await checkOperator(1, { status: 2 });
         });
 
-        it("should stop an operator authorized by the operator owner", async function (){
+        it("should stop an operator authorized by the operator owner", async function () {
             await newOperator(1, user1Address);
             expect(await nodeOperatorRegistry.connect(user1).stopOperator(1))
                 .to.emit(nodeOperatorRegistry, "StopOperator")
@@ -517,10 +517,10 @@ describe("NodeOperator", function () {
                 .withArgs(1);
 
             await checkOperator(1, { status: 3 });
-            await checkStats(2, 0, 1, 0, 1, 0,0, 0, 0);
+            await checkStats(2, 0, 1, 0, 1, 0, 0, 0, 0);
 
             await stakeManagerMock.unstake(2);
-            await checkStats(2, 0, 0, 0, 1, 0,0, 0, 1);
+            await checkStats(2, 0, 0, 0, 1, 0, 0, 0, 1);
 
             // DAO unstake a node operator 2
             expect(await nodeOperatorRegistry["unstake(uint256)"].call(this, 2))
@@ -916,7 +916,7 @@ describe("NodeOperator", function () {
             ).to.revertedWith("Invalid status");
         });
 
-        it("Success update signer publickey", async function () {
+        it.only("Success update signer publickey", async function () {
             await stakeOperator(1, user1, user1Address, "10", "20");
 
             const newSignPubkey = ethers.utils.hexZeroPad("0x02", 64);
@@ -924,7 +924,10 @@ describe("NodeOperator", function () {
                 await nodeOperatorRegistry.connect(user1).updateSigner(newSignPubkey)
             )
                 .to.emit(nodeOperatorRegistry, "UpdateSignerPubkey")
-                .withArgs(1);
+                .withArgs(1)
+                .to.emit(stakeManagerMock, "UpdateSigner")
+                .withArgs(1, newSignPubkey);
+
             await checkOperator(1, { signerPubkey: newSignPubkey });
 
             await newOperator(2, user2Address);

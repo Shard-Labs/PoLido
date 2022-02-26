@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../mocks/ValidatorShareMock.sol";
 
 contract StakeManagerMock is IStakeManager {
+    event UpdateSigner(uint256 validatorId, bytes signerPubkey);
+
     mapping(uint256 => IStakeManager.Validator) smValidators;
     struct State {
         address token;
@@ -129,7 +131,9 @@ contract StakeManagerMock is IStakeManager {
     function updateSigner(uint256 _validatorId, bytes memory _signerPubkey)
         external
         override
-    {}
+    {
+        emit UpdateSigner(_validatorId, _signerPubkey);
+    }
 
     function claimFee(
         uint256 _accumFeeAmount,

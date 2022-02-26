@@ -573,7 +573,7 @@ contract NodeOperatorRegistry is
             status == NodeOperatorStatus.ACTIVE || status == NodeOperatorStatus.INACTIVE,
             "Invalid status"
         );
-        if (no.status == NodeOperatorStatus.ACTIVE) {
+        if (status == NodeOperatorStatus.ACTIVE) {
             IValidator(no.validatorProxy).updateSigner(
                 no.validatorId,
                 _signerPubkey,
