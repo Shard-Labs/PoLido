@@ -24,5 +24,6 @@
     "node_operator_registry_impl": "0x647fA31bEc9114D4C1a37750C5e0e83FCA0AbFC0",
     "fx_state_root_tunnel": "0xc7dd5c30DcA04f487c9ede0c5AC580c91587fc66",
     "fx_state_child_tunnel": "0x0833f5bD45803E05ef54E119a77E463cE6b1a963",
-    "validator_implementation": "0x7DB7d8Be39B6bb07115445b5eBaa7B8345D6B2F6"
+    "validator_implementation": "0x7DB7d8Be39B6bb07115445b5eBaa7B8345D6B2F6",
+    "rate_provider_child": "0x797C1369e578172112526dfcD0D5f9182067c928"
   }
