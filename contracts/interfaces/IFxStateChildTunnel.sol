@@ -12,4 +12,6 @@ interface IFxStateChildTunnel {
     function sendMessageToRoot(bytes memory message) external;
 
     function setFxRootTunnel(address _fxRootTunnel) external;
+
+    function getReserves() external view returns (uint256, uint256);
 }
