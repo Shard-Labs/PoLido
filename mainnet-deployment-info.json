@@ -21,7 +21,7 @@
     "validator_factory_proxy": "0x0a6C933495a7BB768d95f4667B074Dd5b95b78eB",
     "validator_factory_impl": "0xb312f9EFF3a9643f818F75cc8B194b03E2a743eE",
     "node_operator_registry_proxy": "0x797C1369e578172112526dfcD0D5f9182067c928",
-    "node_operator_registry_impl": "0xc4A403f2D4AFCc341fb4d7a309A7530FD57Fff56",
+    "node_operator_registry_impl": "0x647fA31bEc9114D4C1a37750C5e0e83FCA0AbFC0",
     "fx_state_root_tunnel": "0xc7dd5c30DcA04f487c9ede0c5AC580c91587fc66",
     "fx_state_child_tunnel": "0x0833f5bD45803E05ef54E119a77E463cE6b1a963",
     "validator_implementation": "0x7DB7d8Be39B6bb07115445b5eBaa7B8345D6B2F6"
