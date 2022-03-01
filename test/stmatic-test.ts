@@ -16,7 +16,7 @@ import {
     SelfDestructor,
     ERC721Test
 } from "../typechain";
-import {describe} from "mocha";
+import { describe } from "mocha";
 
 describe("Starting to test StMATIC contract", () => {
     let deployer: SignerWithAddress;
@@ -33,38 +33,38 @@ describe("Starting to test StMATIC contract", () => {
     let erc721Contract: ERC721Test;
 
     let submit: (
-    signer: SignerWithAddress,
-    amount: BigNumberish
-  ) => Promise<void>;
+        signer: SignerWithAddress,
+        amount: BigNumberish
+    ) => Promise<void>;
 
     let requestWithdraw: (
-    signer: SignerWithAddress,
-    amount: BigNumberish
-  ) => Promise<void>;
+        signer: SignerWithAddress,
+        amount: BigNumberish
+    ) => Promise<void>;
 
     let claimTokens: (
-    signer: SignerWithAddress,
-    tokenId: BigNumberish
-  ) => Promise<void>;
+        signer: SignerWithAddress,
+        tokenId: BigNumberish
+    ) => Promise<void>;
 
     let addOperator: (
-    name: string,
-    rewardAddress: string,
-    signerPubKey: Uint8Array
-  ) => Promise<void>;
+        name: string,
+        rewardAddress: string,
+        signerPubKey: Uint8Array
+    ) => Promise<void>;
 
     let stakeOperator: (
-    id: BigNumberish,
-    owner: SignerWithAddress,
-    maxDelegation?: string
-  ) => Promise<void>;
+        id: BigNumberish,
+        owner: SignerWithAddress,
+        maxDelegation?: string
+    ) => Promise<void>;
 
     let mint: (signer: SignerWithAddress, amount: BigNumberish) => Promise<void>;
 
     let slash: (
-    validatorId: BigNumberish,
-    percentage: BigNumberish
-  ) => Promise<void>;
+        validatorId: BigNumberish,
+        percentage: BigNumberish
+    ) => Promise<void>;
 
     let getValidatorShareAddress: (validatorId: BigNumberish) => Promise<string>;
 
@@ -212,9 +212,9 @@ describe("Starting to test StMATIC contract", () => {
         await nodeOperatorRegistry.deployed();
 
         fxBaseRootMock = await (
-      (await ethers.getContractFactory(
-          "FxBaseRootMock"
-      )) as FxBaseRootMock__factory
+            (await ethers.getContractFactory(
+                "FxBaseRootMock"
+            )) as FxBaseRootMock__factory
         ).deploy();
         await fxBaseRootMock.deployed();
 
@@ -311,6 +311,39 @@ describe("Starting to test StMATIC contract", () => {
         expect(balance.eq(1)).to.be.true;
     });
 
+    it("Should submit revert after delegation SubmitThreshold reached", async function () {
+        // Set setSubmitThreshold to 190 ether
+        const amount = ethers.utils.parseEther("190");
+        await stMATIC.setSubmitThreshold(amount);
+        const amount2Submit = ethers.utils.parseEther("100");
+
+        // stake operator
+        await mint(testers[0], amount);
+        await addOperator(
+            "BananaOperator",
+            testers[0].address,
+            ethers.utils.randomBytes(64)
+        );
+        await stakeOperator(1, testers[0], "10");
+
+        // user1 submit 100 ether (totalMatic = 100)
+        await mint(testers[0], amount2Submit);
+        await submit(testers[0], amount2Submit);
+
+        // delegate 100 ether
+        await stMATIC.delegate();
+
+        // user1 submit 100 tokens: revert submit threshold = 190
+        await expect(stMATIC.submit(amount2Submit), "submit 100 ether").revertedWith("Submit threshold reached");
+
+        // user1 submit 90 tokens (totalMatic = 190)
+        await mint(testers[0], amount2Submit);
+        await submit(testers[0], amount.sub(amount2Submit));
+
+        // user1 submit 100 tokens : revert submit threshold = 190
+        await expect(stMATIC.submit(amount2Submit), "submit 100 ether").revertedWith("Submit threshold reached");
+    });
+
     it("Should withdraw from EJECTED operators", async function () {
         const amount = ethers.utils.parseEther("100");
         const amount2Submit = ethers.utils.parseEther("0.05");
@@ -381,7 +414,7 @@ describe("Starting to test StMATIC contract", () => {
             withdrawAmounts.push(
                 (
                     Math.random() * (Number(submitAmounts[i]) - minAmount) +
-          minAmount
+                    minAmount
                 ).toFixed(3)
             );
             const withdrawAmountWei = ethers.utils.parseEther(withdrawAmounts[i]);
@@ -433,7 +466,7 @@ describe("Starting to test StMATIC contract", () => {
     });
 
     it("Should delegate to validator if stake manager has approval > 0", async () => {
-        let initialSubmitAmount = ethers.utils.parseEther("99");
+        const initialSubmitAmount = ethers.utils.parseEther("99");
         for (let i = 0; i < 2; i++) {
             await mint(testers[i], ethers.utils.parseEther("100"));
 
@@ -541,7 +574,7 @@ describe("Starting to test StMATIC contract", () => {
             submitAmounts.push(
                 (
                     (Math.random() * (maxAmount - minAmount) + minAmount) *
-          delegatorsAmount
+                    delegatorsAmount
                 ).toFixed(3)
             );
             const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
@@ -610,7 +643,7 @@ describe("Starting to test StMATIC contract", () => {
             submitAmounts.push(
                 (
                     (Math.random() * (maxAmount - minAmount) + minAmount) *
-          delegatorsAmount
+                    delegatorsAmount
                 ).toFixed(3)
             );
             const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
@@ -625,7 +658,7 @@ describe("Starting to test StMATIC contract", () => {
             withdrawAmounts.push(
                 (
                     Math.random() * (Number(submitAmounts[i]) - minAmount) +
-          minAmount
+                    minAmount
                 ).toFixed(3)
             );
             const withdrawAmountWei = ethers.utils.parseEther(withdrawAmounts[i]);
@@ -683,7 +716,7 @@ describe("Starting to test StMATIC contract", () => {
             submitAmounts.push(
                 (
                     (Math.random() * (maxAmount - minAmount) + minAmount) *
-          delegatorsAmount
+                    delegatorsAmount
                 ).toFixed(3)
             );
             const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
@@ -772,7 +805,7 @@ describe("Starting to test StMATIC contract", () => {
             submitAmounts.push(
                 (
                     (Math.random() * (maxAmount - minAmount) + minAmount) *
-          delegatorsAmount
+                    delegatorsAmount
                 ).toFixed(3)
             );
             const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
@@ -791,7 +824,7 @@ describe("Starting to test StMATIC contract", () => {
             withdrawAmounts.push(
                 (
                     Math.random() * (Number(submitAmounts[i]) - minAmount) +
-          minAmount
+                    minAmount
                 ).toFixed(3)
             );
             const withdrawAmountWei = ethers.utils.parseEther(withdrawAmounts[i]);
@@ -838,7 +871,7 @@ describe("Starting to test StMATIC contract", () => {
             submitAmounts.push(
                 (
                     (Math.random() * (maxAmount - minAmount) + minAmount) *
-          delegatorsAmount
+                    delegatorsAmount
                 ).toFixed(3)
             );
             const submitAmountWei = ethers.utils.parseEther(submitAmounts[i]);
@@ -853,7 +886,7 @@ describe("Starting to test StMATIC contract", () => {
             withdrawAmounts.push(
                 (
                     Math.random() * (Number(submitAmounts[i]) - minAmount) +
-          minAmount
+                    minAmount
                 ).toFixed(3)
             );
             const withdrawAmountWei = ethers.utils.parseEther(withdrawAmounts[i]);
@@ -1042,7 +1075,7 @@ describe("Starting to test StMATIC contract", () => {
             }
         });
 
-        it("should not revert if a validator does not accumulate enough rewards", async () =>{
+        it("should not revert if a validator does not accumulate enough rewards", async () => {
             const numOperators = 2;
             for (let i = 1; i <= numOperators; i++) {
                 await mint(testers[i], ethers.utils.parseEther("100"));
@@ -1065,7 +1098,7 @@ describe("Starting to test StMATIC contract", () => {
                 await submit(testers[i], ethers.utils.parseEther(String(10)));
 
                 // transfer some tokens to the validatorShare contracts to mimic rewards.
-                const rewardAmount = validatorShareRewards[i-1];
+                const rewardAmount = validatorShareRewards[i - 1];
                 await mint(deployer, ethers.utils.parseEther(rewardAmount.toString()));
                 await mockERC20.transfer(
                     await getValidatorShareAddress(i),
@@ -1081,16 +1114,16 @@ describe("Starting to test StMATIC contract", () => {
                 .withArgs(ethers.utils.parseEther(String(rewards)));
 
             const rewardPerValidator = ethers.utils.parseEther("25.25");
-            const operator1 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this,   1);
+            const operator1 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this, 1);
             expect(
                 await mockERC20.balanceOf(operator1.rewardAddress)
             ).eq(rewardPerValidator);
 
-            const operator2 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this,   2);
+            const operator2 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this, 2);
             expect(
                 await mockERC20.balanceOf(operator2.rewardAddress)
             ).eq(rewardPerValidator);
-        })
+        });
     });
     describe("Fail cases", async () => {
         it("Amount to distribute lower than minimum", async () => {
@@ -1145,18 +1178,18 @@ describe("Starting to test StMATIC contract", () => {
             });
 
             class TestCase {
-        message: string;
-        delegate: boolean;
-        tokenIds: Array<number>;
-        constructor (
-            message: string,
-            delegate: boolean,
-            tokenIds: Array<number>
-        ) {
-            this.message = message;
-            this.delegate = delegate;
-            this.tokenIds = tokenIds;
-        }
+                message: string;
+                delegate: boolean;
+                tokenIds: Array<number>;
+                constructor (
+                    message: string,
+                    delegate: boolean,
+                    tokenIds: Array<number>
+                ) {
+                    this.message = message;
+                    this.delegate = delegate;
+                    this.tokenIds = tokenIds;
+                }
             }
 
             const testCases: Array<TestCase> = [
@@ -1239,12 +1272,12 @@ describe("Starting to test StMATIC contract", () => {
             });
 
             class TestCase {
-        message: string;
-        fn: Function;
-        constructor (message: string, fn: Function) {
-            this.message = message;
-            this.fn = fn;
-        }
+                message: string;
+                fn: Function;
+                constructor (message: string, fn: Function) {
+                    this.message = message;
+                    this.fn = fn;
+                }
             }
 
             const testCases: Array<TestCase> = [
