@@ -1,10 +1,16 @@
 {
     "network": 1,
-    "multisig_upgrader": { "address": "0x", "owners": [] },
+    "multisig_upgrader": { "address": "0xd65Fa54F8DF43064dfd8dDF223A446fc638800A9", "owners": [
+      "0x59d07dc34B135B17b87840a86BFF7302039E7EDf",
+      "0x6E83d6f57012D74e0F131753f8B5Ab557824507D",
+      "0x9A3f38AF97b791C85c043D46a64f56f87E0283D4",
+      "0xF20825cab04cc430Fe941eaa9C2Ae6b9DA9bc3B5",
+      "0xc156C57231a9302D9f5C7b5eF22871cC25F40736"
+    ] },
     "root_deployer": "0x59d07dc34B135B17b87840a86BFF7302039E7EDf",
     "child_deployer": "0x59d07dc34B135B17b87840a86BFF7302039E7EDf",
-    "dao": "",
-    "treasury": "",
+    "dao": "0xd65Fa54F8DF43064dfd8dDF223A446fc638800A9",
+    "treasury": "0xd65Fa54F8DF43064dfd8dDF223A446fc638800A9",
     "matic_erc20_address": "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
     "matic_stake_manager_proxy": "0x5e3Ef299fDDf15eAa0432E6e66473ace8c13D908",
     "proxy_admin": "0x0833f5bD45803E05ef54E119a77E463cE6b1a963",

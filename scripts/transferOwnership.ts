@@ -44,7 +44,7 @@ async function checkMultisig (multisig: string, multisigOwners: Array<string>) {
     const multisigContract = await ethers.getContractAt(abi, multisig);
 
     if ((await ethers.provider.getCode(multisig)) === "0x") {
-        throw new Error("Multisig address is not a contrat");
+        throw new Error("Multisig address is not a contract");
     }
 
     const network = await ethers.provider.getNetwork();

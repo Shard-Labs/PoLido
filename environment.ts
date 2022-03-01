@@ -3,9 +3,7 @@ import * as path from "path";
 
 import { ethers } from "ethers";
 
-const envSuffix = process.env.NODE_ENV === "main" ? "" : ".test";
-
-dotenv.config({ path: path.join(__dirname, ".env" + envSuffix) });
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const DEPLOYER_PRIVATE_KEY =
   process.env.DEPLOYER_PRIVATE_KEY || ethers.Wallet.createRandom().privateKey;
