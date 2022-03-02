@@ -15,7 +15,7 @@ contract RateProvider is IRateProvider {
     }
 
     function getRate() external override view returns (uint256) {
-        (uint256 matic, uint256 stMatic) = fxChild.getReserves();
+        (uint256 stMatic, uint256 matic) = fxChild.getReserves();
         return matic * 1 ether / stMatic;
     }
 }
