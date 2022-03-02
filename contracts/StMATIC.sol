@@ -119,7 +119,7 @@ contract StMATIC is
 
         if (submitHandler) {
             require(
-                _amount + totalBuffered <= submitThreshold,
+                _amount + getTotalPooledMatic() <= submitThreshold,
                 "Submit threshold reached"
             );
         }
