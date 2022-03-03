@@ -7,9 +7,8 @@
     "doc": "docs"
   },
   "scripts": {
-    "deploy:main": "cross-env NODE_ENV=main npx hardhat run ./scripts/deploy.ts --network mainnet",
-    "deploy:test": "cross-env NODE_ENV=test npx hardhat run ./scripts/deploy.ts --network testnet",
-    "test": "cross-env NODE_ENV=test npx hardhat test --network testnet"
+    "deploy:main": "npx hardhat run ./scripts/deploy.ts --network mainnet",
+    "deploy:test": "npx hardhat run ./scripts/deploy.ts --network testnet"
   },
   "repository": {
     "type": "git",
