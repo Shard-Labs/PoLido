@@ -162,14 +162,20 @@ contract StMATIC is
         uint256 operatorInfosLength = operatorInfos.length;
 
         uint256 tokenId;
-        (
-            uint256 totalAmount2WithdrawInMatic,
-            uint256 totalShares,
-            uint256 totalPooledMATIC
-        ) = convertStMaticToMatic(_amount);
-        uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
+
+        uint256 totalActivePooledMatic = _getActivePooledMatic(totalDelegated);
+
+        uint256 totalAmount2WithdrawInMatic = _convertStMaticToMatic(
+            totalActivePooledMatic,
+            _getTotalSupply(),
+            _amount
+        );
+
+        uint256 currentAmount2WithdrawInMatic = totalAmount2WithdrawInMatic;
+
+        uint256 totalPooledMatic = _getTotalPooledMatic(totalDelegated);
 
         uint256 minValidatorBalance = _getMinValidatorBalance(operatorInfos);
 
@@ -177,7 +183,7 @@ contract StMATIC is
 
         if (totalDelegated != 0) {
             require(
-                (totalDelegated + totalBuffered) >=
+                totalPooledMatic >=
                     currentAmount2WithdrawInMatic +
                         minValidatorBalance *
                         operatorInfosLength,
@@ -189,7 +195,8 @@ contract StMATIC is
                 operatorInfosLength;
         } else {
             require(
-                totalBuffered >= currentAmount2WithdrawInMatic,
+                totalBuffered + calculatePendingBufferedTokens() >=
+                    currentAmount2WithdrawInMatic,
                 "Too much to withdraw"
             );
         }
@@ -237,14 +244,20 @@ contract StMATIC is
                 currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
                 lastWithdrawnValidatorId++;
             } else {
+                uint256 amount2WithdrawInStMatic = _convertStMaticToMatic(
+                    totalActivePooledMatic,
+                    _getTotalSupply(),
+                    currentAmount2WithdrawInMatic
+                );
+
                 token2WithdrawRequest[tokenId] = RequestWithdraw(
-                    currentAmount2WithdrawInMatic,
+                    amount2WithdrawInStMatic,
                     0,
                     stakeManager.epoch() + stakeManager.withdrawalDelay(),
                     address(0)
                 );
 
-                reservedFunds += currentAmount2WithdrawInMatic;
+                reservedFunds += amount2WithdrawInStMatic;
                 currentAmount2WithdrawInMatic = 0;
             }
         }
@@ -253,8 +266,8 @@ contract StMATIC is
 
         fxStateRootTunnel.sendMessageToChild(
             abi.encode(
-                totalShares - _amount,
-                totalPooledMATIC - totalAmount2WithdrawInMatic
+                totalSupply(),
+                getTotalPooledMatic()
             )
         );
 
