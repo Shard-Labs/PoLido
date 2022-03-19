@@ -130,18 +130,19 @@ contract StMATIC is
             _amount
         );
 
-        (
-            uint256 amountToMint,
-            uint256 totalShares,
-            uint256 totalPooledMatic
-        ) = convertMaticToStMatic(_amount);
+        uint256 totalDelegated = getTotalStakeAcrossAllValidators();
+        uint256 amountToMint = _convertMaticToStMatic(
+            _getActivePooledMatic(totalDelegated),
+            _getTotalSupply(),
+            _amount
+        );
 
         _mint(msg.sender, amountToMint);
 
         totalBuffered += _amount;
 
         fxStateRootTunnel.sendMessageToChild(
-            abi.encode(totalShares + amountToMint, totalPooledMatic + _amount)
+            abi.encode(totalSupply(), _getTotalPooledMatic(totalDelegated))
         );
 
         emit SubmitEvent(msg.sender, _amount);
