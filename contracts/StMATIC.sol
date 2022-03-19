@@ -246,7 +246,7 @@ contract StMATIC is
                 currentAmount2WithdrawInMatic -= amount2WithdrawFromValidator;
                 lastWithdrawnValidatorId++;
             } else {
-                uint256 amount2WithdrawInStMatic = _convertStMaticToMatic(
+                uint256 amount2WithdrawInStMatic = _convertMaticToStMatic(
                     totalActivePooledMatic,
                     _getTotalSupply(),
                     currentAmount2WithdrawInMatic
