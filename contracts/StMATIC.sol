@@ -155,7 +155,7 @@ contract StMATIC is
      * @param _amount - Amount of StMATIC that is requested to withdraw
      */
     function requestWithdraw(uint256 _amount) external override whenNotPaused {
-        require(_amount > 0, "Invalid amount");
+        require(_amount > 0 && balanceOf(msg.sender) >= _amount, "Invalid amount");
 
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
             .getOperatorInfos(false, true);
