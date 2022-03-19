@@ -116,11 +116,22 @@ contract ValidatorShareMock is IValidatorShare {
     }
 
     function withdrawExchangeRate() external view override returns (uint256) {
-        return 0;
+        uint256 precision = validatorId < 8 ? 100 : 10**29;
+        uint256 _withdrawShares = totalWithdrawPoolShares;
+        uint256 rate = _withdrawShares == 0
+            ? precision
+            : (withdrawPool * precision) / _withdrawShares;
+        return rate;
     }
 
-    function unbonds_new(address _address, uint256 _unbondNonce) external view override returns (DelegatorUnbond memory) {
-        DelegatorUnbond memory unbond = DelegatorUnbond(1,2);
+    function unbonds_new(address _user, uint256 _unbondNonce)
+        external
+        view
+        override
+        returns (DelegatorUnbond memory)
+    {
+        uint256 claimAmount = user2WithdrawPoolShare[_user][_unbondNonce];
+        DelegatorUnbond memory unbond = DelegatorUnbond(claimAmount, 0);
         return unbond;
     }
 
