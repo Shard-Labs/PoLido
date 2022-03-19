@@ -365,9 +365,17 @@ contract StMATIC is
                 IERC20Upgradeable(token).balanceOf(address(this)) -
                 balanceBeforeClaim;
         } else {
-            amountToClaim = usersRequest.amount2WithdrawFromStMATIC;
-
-            reservedFunds -= amountToClaim;
+            uint256 totalStaked = getTotalStakeAcrossAllValidators();
+            amountToClaim = _convertStMaticToMatic(
+                _getActivePooledMatic(totalStaked),
+                _getTotalSupply(),
+                usersRequest.amount2WithdrawFromStMATIC
+            );
+            require(
+                amountToClaim <= totalBuffered,
+                "Not able to claim yet, wait until stMatic NFTs are claimed"
+            );
+            reservedFunds -= usersRequest.amount2WithdrawFromStMATIC;
             totalBuffered -= amountToClaim;
         }
 
