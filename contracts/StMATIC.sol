@@ -279,8 +279,11 @@ contract StMATIC is
      * @dev Delegates tokens to validator share contract
      */
     function delegate() external override whenNotPaused {
+        uint256 reservedFundsInMatic = _getReservedFundsInMatic(
+            getTotalStakeAcrossAllValidators()
+        );
         require(
-            totalBuffered > delegationLowerBound + reservedFunds,
+            totalBuffered > delegationLowerBound + reservedFundsInMatic,
             "Amount to delegate lower than minimum"
         );
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
@@ -289,7 +292,7 @@ contract StMATIC is
 
         require(operatorInfosLength > 0, "No operator shares, cannot delegate");
 
-        uint256 availableAmountToDelegate = totalBuffered - reservedFunds;
+        uint256 availableAmountToDelegate = totalBuffered - reservedFundsInMatic;
         uint256 maxDelegateLimitsSum;
         uint256 remainder;
 
@@ -328,7 +331,7 @@ contract StMATIC is
         }
 
         remainder = availableAmountToDelegate - amountDelegated;
-        totalBuffered = remainder + reservedFunds;
+        totalBuffered = remainder;
 
         emit DelegateEvent(amountDelegated, remainder);
     }
