@@ -182,6 +182,7 @@ contract PoLidoNFT is
      */
     function getOwnedTokens(address _address)
         external
+        override
         view
         returns (uint256[] memory)
     {
