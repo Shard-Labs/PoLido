@@ -195,7 +195,8 @@ contract StMATIC is
                 operatorInfosLength;
         } else {
             require(
-                totalBuffered + calculatePendingBufferedTokens() >=
+                totalBuffered +
+                    calculatePendingBufferedTokens(totalDelegated) >=
                     currentAmount2WithdrawInMatic,
                 "Too much to withdraw"
             );
@@ -685,7 +686,10 @@ contract StMATIC is
         view
         returns (uint256)
     {
-        return _totalStaked + totalBuffered + calculatePendingBufferedTokens();
+        return
+            _totalStaked +
+            totalBuffered +
+            calculatePendingBufferedTokens(_totalStaked);
     }
 
     /**
@@ -959,12 +963,29 @@ contract StMATIC is
      * @param _tokenId - Id of the PolidoNFT
      */
     function getMaticFromTokenId(uint256 _tokenId)
-        public
+        external
         view
         override
         returns (uint256)
     {
+        return
+            _getMaticFromTokenId(getTotalStakeAcrossAllValidators(), _tokenId);
+    }
+
+    function _getMaticFromTokenId(uint256 _totalStaked, uint256 _tokenId)
+        private
+        view
+        returns (uint256)
+    {
         RequestWithdraw memory requestData = token2WithdrawRequest[_tokenId];
+        if (requestData.validatorAddress == address(0)) {
+            uint256 amountInMatic = _convertStMaticToMatic(
+                _getActivePooledMatic(_totalStaked),
+                _getTotalSupply(),
+                requestData.amount2WithdrawFromStMATIC
+            );
+            return amountInMatic;
+        }
         IValidatorShare validatorShare = IValidatorShare(
             requestData.validatorAddress
         );
@@ -980,7 +1001,7 @@ contract StMATIC is
     /**
      * @dev Function that calculates the total pending buffered tokens in LidoNFT contract.
      */
-    function calculatePendingBufferedTokens()
+    function calculatePendingBufferedTokens(uint256 _totalStaked)
         public
         view
         returns (uint256 pendingBufferedTokens)
@@ -991,7 +1012,8 @@ contract StMATIC is
         uint256 pendingWithdrawalIdsLength = pendingWithdrawalIds.length;
         for (uint256 i = 0; i < pendingWithdrawalIdsLength; i++) {
             if (pendingWithdrawalIds[i] == 0) continue;
-            pendingBufferedTokens += getMaticFromTokenId(
+            pendingBufferedTokens += _getMaticFromTokenId(
+                _totalStaked,
                 pendingWithdrawalIds[i]
             );
         }
