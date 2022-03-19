@@ -370,9 +370,9 @@ contract StMATIC is
                 IERC20Upgradeable(token).balanceOf(address(this)) -
                 balanceBeforeClaim;
         } else {
-            uint256 totalStaked = getTotalStakeAcrossAllValidators();
+            uint256 totalDelegated = getTotalStakeAcrossAllValidators();
             amountToClaim = _convertStMaticToMatic(
-                _getActivePooledMatic(totalStaked),
+                _getActivePooledMatic(totalDelegated),
                 _getTotalSupply(),
                 usersRequest.amount2WithdrawFromStMATIC
             );
@@ -668,29 +668,29 @@ contract StMATIC is
      * @return Total pooled Matic
      */
     function getTotalPooledMatic() public view override returns (uint256) {
-        uint256 totalStaked = getTotalStakeAcrossAllValidators();
-        return _getTotalPooledMatic(totalStaked);
+        uint256 totalDelegated = getTotalStakeAcrossAllValidators();
+        return _getTotalPooledMatic(totalDelegated);
     }
 
-    function _getTotalPooledMatic(uint256 _totalStaked)
+    function _getTotalPooledMatic(uint256 _totalDelegated)
         public
         view
         returns (uint256)
     {
         return
-            _getActivePooledMatic(_totalStaked) -
-            _getReservedFundsInMatic(_totalStaked);
+            _getActivePooledMatic(_totalDelegated) -
+            _getReservedFundsInMatic(_totalDelegated);
     }
 
-    function _getActivePooledMatic(uint256 _totalStaked)
+    function _getActivePooledMatic(uint256 _totalDelegated)
         private
         view
         returns (uint256)
     {
         return
-            _totalStaked +
+            _totalDelegated +
             totalBuffered +
-            calculatePendingBufferedTokens(_totalStaked);
+            calculatePendingBufferedTokens(_totalDelegated);
     }
 
     /**
@@ -710,9 +710,9 @@ contract StMATIC is
             uint256 totalActiveMatic
         )
     {
-        uint256 totalStaked = getTotalStakeAcrossAllValidators();
+        uint256 totalDelegated = getTotalStakeAcrossAllValidators();
         fullSupply = _getTotalSupply();
-        totalActiveMatic = _getActivePooledMatic(totalStaked);
+        totalActiveMatic = _getActivePooledMatic(totalDelegated);
         amountInMatic = _convertStMaticToMatic(
             totalActiveMatic,
             fullSupply,
@@ -747,9 +747,9 @@ contract StMATIC is
             uint256 totalActiveMatic
         )
     {
-        uint256 totalStaked = getTotalStakeAcrossAllValidators();
+        uint256 totalDelegated = getTotalStakeAcrossAllValidators();
         fullSupply = _getTotalSupply();
-        totalActiveMatic = _getActivePooledMatic(totalStaked);
+        totalActiveMatic = _getActivePooledMatic(totalDelegated);
         amountInStMatic = _convertMaticToStMatic(
             totalActiveMatic,
             fullSupply,
@@ -778,7 +778,7 @@ contract StMATIC is
         return _getMinValidatorBalance(operatorInfos);
     }
 
-    function _getReservedFundsInMatic(uint256 _totalStaked)
+    function _getReservedFundsInMatic(uint256 _totalDelegated)
         private
         view
         returns (uint256)
@@ -786,7 +786,7 @@ contract StMATIC is
         if (reservedFunds == 0) return reservedFunds;
         return
             _convertStMaticToMatic(
-                _getActivePooledMatic(_totalStaked),
+                _getActivePooledMatic(_totalDelegated),
                 _getTotalSupply(),
                 reservedFunds
             );
@@ -973,7 +973,7 @@ contract StMATIC is
             _getMaticFromTokenId(getTotalStakeAcrossAllValidators(), _tokenId);
     }
 
-    function _getMaticFromTokenId(uint256 _totalStaked, uint256 _tokenId)
+    function _getMaticFromTokenId(uint256 _totalDelegated, uint256 _tokenId)
         private
         view
         returns (uint256)
@@ -981,7 +981,7 @@ contract StMATIC is
         RequestWithdraw memory requestData = token2WithdrawRequest[_tokenId];
         if (requestData.validatorAddress == address(0)) {
             uint256 amountInMatic = _convertStMaticToMatic(
-                _getActivePooledMatic(_totalStaked),
+                _getActivePooledMatic(_totalDelegated),
                 _getTotalSupply(),
                 requestData.amount2WithdrawFromStMATIC
             );
@@ -1002,7 +1002,7 @@ contract StMATIC is
     /**
      * @dev Function that calculates the total pending buffered tokens in LidoNFT contract.
      */
-    function calculatePendingBufferedTokens(uint256 _totalStaked)
+    function calculatePendingBufferedTokens(uint256 _totalDelegated)
         public
         view
         returns (uint256 pendingBufferedTokens)
@@ -1014,7 +1014,7 @@ contract StMATIC is
         for (uint256 i = 0; i < pendingWithdrawalIdsLength; i++) {
             if (pendingWithdrawalIds[i] == 0) continue;
             pendingBufferedTokens += _getMaticFromTokenId(
-                _totalStaked,
+                _totalDelegated,
                 pendingWithdrawalIds[i]
             );
         }
