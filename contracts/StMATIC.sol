@@ -651,7 +651,9 @@ contract StMATIC is
         view
         returns (uint256)
     {
-        return _getActivePooledMatic(_totalStaked) - reservedFunds;
+        return
+            _getActivePooledMatic(_totalStaked) -
+            _getReservedFundsInMatic(_totalStaked);
     }
 
     function _getActivePooledMatic(uint256 _totalStaked)
@@ -680,7 +682,7 @@ contract StMATIC is
         )
     {
         uint256 totalStaked = getTotalStakeAcrossAllValidators();
-        fullSupply = totalSupply();
+        fullSupply = _getTotalSupply();
         totalActiveMatic = _getActivePooledMatic(totalStaked);
         amountInMatic = _convertStMaticToMatic(
             totalActiveMatic,
@@ -717,7 +719,7 @@ contract StMATIC is
         )
     {
         uint256 totalStaked = getTotalStakeAcrossAllValidators();
-        fullSupply = totalSupply();
+        fullSupply = _getTotalSupply();
         totalActiveMatic = _getActivePooledMatic(totalStaked);
         amountInStMatic = _convertMaticToStMatic(
             totalActiveMatic,
@@ -742,13 +744,32 @@ contract StMATIC is
      */
     function getMinValidatorBalance() external view override returns (uint256) {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
-        .getOperatorInfos(false, true);
+            .getOperatorInfos(false, true);
 
         return _getMinValidatorBalance(operatorInfos);
     }
 
+    function _getReservedFundsInMatic(uint256 _totalStaked)
+        private
+        view
+        returns (uint256)
+    {
+        if (reservedFunds == 0) return reservedFunds;
+        return
+            _convertStMaticToMatic(
+                _getActivePooledMatic(_totalStaked),
+                _getTotalSupply(),
+                reservedFunds
+            );
+    }
 
-    function _getMinValidatorBalance(Operator.OperatorInfo[] memory operatorInfos) private view returns (uint256) {
+    function _getTotalSupply() private view returns (uint256) {
+        return totalSupply() + reservedFunds;
+    }
+
+    function _getMinValidatorBalance(
+        Operator.OperatorInfo[] memory operatorInfos
+    ) private view returns (uint256) {
         uint256 operatorInfosLength = operatorInfos.length;
         uint256 minValidatorBalance = type(uint256).max;
 
