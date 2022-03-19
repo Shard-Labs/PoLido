@@ -665,53 +665,75 @@ contract StMATIC is
     /**
      * @dev Function that converts arbitrary stMATIC to Matic
      * @param _balance - Balance in stMATIC
-     * @return Balance in Matic, totalShares and totalPooledMATIC
+     * @return amountInMatic - Amount of Matic after conversion.
+     * @return fullSupply - Total StMatic in the contract + reserved funds.
+     * @return totalActiveMatic - Total Matic in the staking pool.
      */
     function convertStMaticToMatic(uint256 _balance)
         public
         view
         override
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 amountInMatic,
+            uint256 fullSupply,
+            uint256 totalActiveMatic
         )
     {
-        uint256 totalShares = totalSupply();
-        totalShares = totalShares == 0 ? 1 : totalShares;
+        uint256 totalStaked = getTotalStakeAcrossAllValidators();
+        fullSupply = totalSupply();
+        totalActiveMatic = _getActivePooledMatic(totalStaked);
+        amountInMatic = _convertStMaticToMatic(
+            totalActiveMatic,
+            fullSupply,
+            _balance
+        );
+    }
 
-        uint256 totalPooledMATIC = getTotalPooledMatic();
-        totalPooledMATIC = totalPooledMATIC == 0 ? 1 : totalPooledMATIC;
-
-        uint256 balanceInMATIC = (_balance * totalPooledMATIC) / totalShares;
-
-        return (balanceInMATIC, totalShares, totalPooledMATIC);
+    function _convertStMaticToMatic(
+        uint256 _totalActiveMatic,
+        uint256 _totalSupply,
+        uint256 _balance
+    ) private pure returns (uint256) {
+        _totalSupply = _totalSupply == 0 ? 1 : _totalSupply;
+        _totalActiveMatic = _totalActiveMatic == 0 ? 1 : _totalActiveMatic;
+        return (_balance * _totalActiveMatic) / _totalSupply;
     }
 
     /**
      * @dev Function that converts arbitrary Matic to stMATIC
      * @param _balance - Balance in Matic
-     * @return Balance in stMATIC, totalShares and totalPooledMATIC
+     * @return amountInStMatic - Amount of StMatic after conversion.
+     * @return fullSupply - Total amount of StMatic in the contract + reserved funds.
+     * @return totalActiveMatic - Total amount of Matic in the staking pool.
      */
     function convertMaticToStMatic(uint256 _balance)
         public
         view
         override
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 amountInStMatic,
+            uint256 fullSupply,
+            uint256 totalActiveMatic
         )
     {
-        uint256 totalShares = totalSupply();
-        totalShares = totalShares == 0 ? 1 : totalShares;
+        uint256 totalStaked = getTotalStakeAcrossAllValidators();
+        fullSupply = totalSupply();
+        totalActiveMatic = _getActivePooledMatic(totalStaked);
+        amountInStMatic = _convertMaticToStMatic(
+            totalActiveMatic,
+            fullSupply,
+            _balance
+        );
+    }
 
-        uint256 totalPooledMatic = getTotalPooledMatic();
-        totalPooledMatic = totalPooledMatic == 0 ? 1 : totalPooledMatic;
-
-        uint256 balanceInStMatic = (_balance * totalShares) / totalPooledMatic;
-
-        return (balanceInStMatic, totalShares, totalPooledMatic);
+    function _convertMaticToStMatic(
+        uint256 _totalActiveMatic,
+        uint256 _totalSupply,
+        uint256 _balance
+    ) private pure returns (uint256) {
+        _totalSupply = _totalSupply == 0 ? 1 : _totalSupply;
+        _totalActiveMatic = _totalActiveMatic == 0 ? 1 : _totalActiveMatic;
+        return (_balance * _totalSupply) / _totalActiveMatic;
     }
 
     /**
