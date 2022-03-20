@@ -886,6 +886,10 @@ contract StMATIC is
         returns (uint256)
     {
         RequestWithdraw memory requestData = token2WithdrawRequest[_tokenId];
+        if (requestData.validatorAddress == address(0)) {
+            return requestData.amount2WithdrawFromStMATIC;
+        }
+
         IValidatorShare validatorShare = IValidatorShare(
             requestData.validatorAddress
         );
@@ -902,7 +906,7 @@ contract StMATIC is
      * @dev Function that calculates the total pending buffered tokens in LidoNFT contract.
      */
     function calculatePendingBufferedTokens()
-        private
+        public
         view
         returns (uint256 pendingBufferedTokens)
     {
