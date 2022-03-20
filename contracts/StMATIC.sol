@@ -643,7 +643,11 @@ contract StMATIC is
      */
     function getTotalPooledMatic() public view override returns (uint256) {
         uint256 totalStaked = getTotalStakeAcrossAllValidators();
-        return totalStaked + totalBuffered - reservedFunds;
+        return 
+            totalStaked +
+            totalBuffered +
+            calculatePendingBufferedTokens() -
+            reservedFunds;
     }
 
     /**
