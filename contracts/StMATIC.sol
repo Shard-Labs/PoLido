@@ -876,7 +876,7 @@ contract StMATIC is
      * @param _tokenId - Id of the PolidoNFT
      */
     function getMaticFromTokenId(uint256 _tokenId)
-        external
+        public
         view
         override
         returns (uint256)
@@ -892,5 +892,25 @@ contract StMATIC is
             .unbonds_new(address(this), requestData.validatorNonce);
 
         return (withdrawExchangeRate * unbond.shares) / exchangeRatePrecision;
+    }
+
+    /**
+     * @dev Function that calculates the total pending buffered tokens in LidoNFT contract.
+     */
+    function calculatePendingBufferedTokens()
+        private
+        view
+        returns (uint256 pendingBufferedTokens)
+    {
+        uint256[] memory pendingWithdrawalIds = poLidoNFT.getOwnedTokens(
+            address(this)
+        );
+        uint256 pendingWithdrawalIdsLength = pendingWithdrawalIds.length;
+        for (uint256 i = 0; i < pendingWithdrawalIdsLength; i++) {
+            if (pendingWithdrawalIds[i] == 0) continue;
+            pendingBufferedTokens += getMaticFromTokenId(
+                pendingWithdrawalIds[i]
+            );
+        }
     }
 }
