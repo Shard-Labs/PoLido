@@ -284,6 +284,31 @@ describe("Starting to test StMATIC contract", () => {
         expect(testerBalance.eq(sumbitThreshold.add(1))).to.be.true;
     });
 
+    it("Should submit successfully when validator was removed", async () => {
+        const amount = ethers.utils.parseEther("100");
+        await mint(testers[0], amount);
+        await submit(testers[0], amount);
+
+        await mint(testers[0], amount);
+        await addOperator(
+            "BananaOperator",
+            testers[0].address,
+            ethers.utils.randomBytes(64)
+        );
+        await stakeOperator(1, testers[0], "10");
+
+        let testerBalance = await stMATIC.balanceOf(testers[0].address);
+        expect(testerBalance.eq(amount)).to.be.true;
+
+        await stMATIC.delegate();
+        await stopOperator(1);
+
+        await mint(testers[1], amount);
+        await submit(testers[1], amount);
+        testerBalance = await stMATIC.balanceOf(testers[1].address);
+        expect(testerBalance.eq(amount)).to.be.true;
+    });
+
     it("Should request withdraw from the contract successfully", async () => {
         const amount = ethers.utils.parseEther("1");
         await mint(testers[0], amount);
@@ -1382,4 +1407,520 @@ describe("Starting to test StMATIC contract", () => {
             });
         });
     });
+
+    describe("Get Matic From Token Id", function () {
+        it("Should getMaticFromTokenId", async () => {
+            const numOperators = 1;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+            const submitAmount = toEth("300");
+            await mint(testers[0], submitAmount);
+            await submit(testers[0], submitAmount);
+            await stMATIC.delegate();
+            await requestWithdraw(testers[0], toEth("30"));
+            expect(await stMATIC.getMaticFromTokenId(1)).eq(toEth("30"));
+        });
+
+        it("Should getMaticFromTokenId", async () => {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const submitAmount = toEth("300");
+            const requestAmount = toEth("50");
+
+            await mint(testers[0], submitAmount);
+            await submit(testers[0], submitAmount);
+            await stMATIC.delegate();
+            await requestWithdraw(testers[0], requestAmount);
+            expect(await stMATIC.getMaticFromTokenId(1)).eq(requestAmount);
+        });
+
+        it("Should getMaticFromTokenId when no delegation", async () => {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const submitAmount = toEth("300");
+
+            await mint(testers[0], submitAmount);
+            await submit(testers[0], submitAmount);
+            await requestWithdraw(testers[0], submitAmount);
+
+            expect(await stMATIC.getTotalPooledMatic(), "getTotalPooledMatic").eq(0);
+            expect(await stMATIC.getMaticFromTokenId(1), "getMaticFromTokenId").eq(submitAmount);
+        });
+    });
+
+    describe("Claim Tokens From Validator To Contract", async () => {
+        it("should successfully claim tokens from validator to StMatic contract", async function () {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const amountToDelegate = toEth("300");
+            await mint(testers[0], amountToDelegate);
+            await submit(testers[0], amountToDelegate);
+            await stMATIC.delegate();
+
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+            await stopOperator(1);
+            await stopOperator(2);
+            await stopOperator(3);
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+
+            const withdrawalDelay = await mockStakeManager.withdrawalDelay();
+            const currentEpoch = await mockStakeManager.epoch();
+            await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
+
+            expect(await stMATIC.claimTokens2StMatic(1))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+
+            expect(await stMATIC.claimTokens2StMatic(2))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+
+            expect(await stMATIC.claimTokens2StMatic(3))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+
+            expect(await stMATIC.totalBuffered()).eq(amountToDelegate);
+            const tokens = await poLidoNFT.getOwnedTokens(stMATIC.address);
+            expect((tokens).length).eq(3);
+        });
+
+        it("should successfully claim tokens from validator to StMatic contract before slashing", async function () {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const amountToDelegate = toEth("300");
+            await mint(testers[0], amountToDelegate);
+            await submit(testers[0], amountToDelegate);
+            await stMATIC.delegate();
+
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+            let validatorShareAddress = (
+                await nodeOperatorRegistry["getNodeOperator(uint256)"](1)
+            ).validatorShare;
+
+            const ValidatorShareMock = await ethers.getContractFactory(
+                "ValidatorShareMock"
+            );
+            const validatorShareContract1 = ValidatorShareMock.attach(
+                validatorShareAddress
+            ) as ValidatorShareMock;
+
+            const validatorShareBalance1 = await mockERC20.balanceOf(
+                validatorShareContract1.address
+            );
+
+            validatorShareAddress = (
+                await nodeOperatorRegistry["getNodeOperator(uint256)"](2)
+            ).validatorShare;
+
+            const validatorShareContract2 = ValidatorShareMock.attach(
+                validatorShareAddress
+            ) as ValidatorShareMock;
+
+            const validatorShareBalance2 = await mockERC20.balanceOf(
+                validatorShareContract2.address
+            );
+
+            validatorShareAddress = (
+                await nodeOperatorRegistry["getNodeOperator(uint256)"](3)
+            ).validatorShare;
+
+            const validatorShareContract3 = ValidatorShareMock.attach(
+                validatorShareAddress
+            ) as ValidatorShareMock;
+
+            const validatorShareBalance3 = await mockERC20.balanceOf(
+                validatorShareContract3.address
+            );
+
+            const slashPecentage = 50;
+
+            await validatorShareContract1.slash(
+                validatorShareBalance1.mul(slashPecentage).div(100)
+            );
+
+            await validatorShareContract2.slash(
+                validatorShareBalance2.mul(slashPecentage).div(100)
+            );
+
+            await validatorShareContract3.slash(
+                validatorShareBalance3.mul(slashPecentage).div(100)
+            );
+
+            await stopOperator(1);
+            await stopOperator(2);
+            await stopOperator(3);
+
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
+
+            const withdrawalDelay = await mockStakeManager.withdrawalDelay();
+            const currentEpoch = await mockStakeManager.epoch();
+            await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
+
+            expect(await stMATIC.claimTokens2StMatic(1))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
+
+            expect(await stMATIC.claimTokens2StMatic(2))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
+
+            expect(await stMATIC.claimTokens2StMatic(3))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
+
+            expect(await stMATIC.totalBuffered()).eq(amountToDelegate.mul(slashPecentage).div(100));
+            const tokens = await poLidoNFT.getOwnedTokens(stMATIC.address);
+            expect((tokens).length).eq(3);
+        });
+
+        it("should successfully claim tokens from validator to StMatic contract After Slashing", async function () {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const amountToDelegate = toEth("300");
+            await mint(testers[0], amountToDelegate);
+            await submit(testers[0], amountToDelegate);
+            await stMATIC.delegate();
+
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+            let validatorShareAddress = (
+                await nodeOperatorRegistry["getNodeOperator(uint256)"](1)
+            ).validatorShare;
+
+            const ValidatorShareMock = await ethers.getContractFactory(
+                "ValidatorShareMock"
+            );
+            const validatorShareContract1 = ValidatorShareMock.attach(
+                validatorShareAddress
+            ) as ValidatorShareMock;
+
+            const validatorShareBalance1 = await mockERC20.balanceOf(
+                validatorShareContract1.address
+            );
+
+            validatorShareAddress = (
+                await nodeOperatorRegistry["getNodeOperator(uint256)"](2)
+            ).validatorShare;
+
+            const validatorShareContract2 = ValidatorShareMock.attach(
+                validatorShareAddress
+            ) as ValidatorShareMock;
+
+            const validatorShareBalance2 = await mockERC20.balanceOf(
+                validatorShareContract2.address
+            );
+
+            validatorShareAddress = (
+                await nodeOperatorRegistry["getNodeOperator(uint256)"](3)
+            ).validatorShare;
+
+            const validatorShareContract3 = ValidatorShareMock.attach(
+                validatorShareAddress
+            ) as ValidatorShareMock;
+
+            const validatorShareBalance3 = await mockERC20.balanceOf(
+                validatorShareContract3.address
+            );
+
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+            await stopOperator(1);
+            await stopOperator(2);
+            await stopOperator(3);
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+
+            const slashPecentage = 50;
+
+            await validatorShareContract1.slash(
+                validatorShareBalance1.mul(slashPecentage).div(100)
+            );
+
+            await validatorShareContract2.slash(
+                validatorShareBalance2.mul(slashPecentage).div(100)
+            );
+
+            await validatorShareContract3.slash(
+                validatorShareBalance3.mul(slashPecentage).div(100)
+            );
+
+            const withdrawalDelay = await mockStakeManager.withdrawalDelay();
+            const currentEpoch = await mockStakeManager.epoch();
+            await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
+
+            expect(await stMATIC.claimTokens2StMatic(1))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
+
+            expect(await stMATIC.claimTokens2StMatic(2))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
+
+            expect(await stMATIC.claimTokens2StMatic(3))
+                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
+
+            expect(await stMATIC.totalBuffered()).eq(amountToDelegate.mul(slashPecentage).div(100));
+            const tokens = await poLidoNFT.getOwnedTokens(stMATIC.address);
+            expect((tokens).length).eq(3);
+        });
+    });
+
+    describe("withdraw Total Delegated", async () => {
+        it("Should withdraw total delegated when delegated", async () => {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            for (let i = 1; i <= 10; i++) {
+                await mint(testers[i], toEth("10"));
+                await submit(testers[i], toEth("10"));
+            }
+
+            await stMATIC.delegate();
+
+            await stopOperator(1);
+            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(1);
+
+            await stopOperator(2);
+            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(2);
+
+            await stopOperator(3);
+            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(3);
+        });
+
+        it("Should withdraw total delegated when not delegated", async () => {
+            const numOperators = 3;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            for (let i = 1; i <= 10; i++) {
+                await mint(testers[i], toEth("10"));
+                await submit(testers[i], toEth("10"));
+            }
+
+            await stopOperator(1);
+            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(0);
+
+            await stopOperator(2);
+            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(0);
+
+            await stopOperator(3);
+            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(0);
+        });
+
+        it("Should fail to withdrawTotalDelegated caller not node operator", async () => {
+            await expect(
+                stMATIC.withdrawTotalDelegated(ethers.constants.AddressZero)
+            ).revertedWith("Not a node operator");
+        });
+    });
+
+    describe("withdraw Total Delegated", async () => {
+        it("Should request withdraw when withdraw total delegated", async () => {
+            const numOperators = 1;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const amountSubmit = toEth("100");
+            await mint(testers[0], amountSubmit);
+            await submit(testers[0], amountSubmit);
+            await stMATIC.delegate();
+            await stopOperator(1);
+
+            const withdrawalDelay = await mockStakeManager.withdrawalDelay();
+            const currentEpoch = await mockStakeManager.epoch();
+            await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
+
+            await stMATIC.claimTokens2StMatic(1);
+            expect(await stMATIC.connect(testers[0]).requestWithdraw(amountSubmit))
+                .emit(stMATIC, "RequestWithdrawEvent")
+                .withArgs(testers[0].address, amountSubmit);
+
+            const req = await stMATIC.token2WithdrawRequest(2);
+            expect(req.validatorAddress).eq(ethers.constants.AddressZero);
+            expect(req.amount2WithdrawFromStMATIC).eq(amountSubmit);
+        });
+
+        it("Should fail to request withdraw when withdraw total delegated is not yet claimed", async () => {
+            const numOperators = 1;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const amountSubmit = toEth("100");
+            await mint(testers[0], amountSubmit);
+            await submit(testers[0], amountSubmit);
+            await stMATIC.delegate();
+            await stopOperator(1);
+
+            await expect(stMATIC.connect(testers[0]).requestWithdraw(amountSubmit))
+                .revertedWith("Too much to withdraw");
+        });
+    });
+
+    describe("Get Total Pooled Matic", async () => {
+        it("Should get total pooled matic after submit", async () => {
+            const amountSubmit = toEth("100");
+            await mint(testers[0], amountSubmit);
+            await submit(testers[0], amountSubmit);
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountSubmit);
+        });
+
+        it("Should get total pooled matic after delegated", async () => {
+            const numOperators = 1;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+            const amountSubmit = toEth("100");
+            await mint(testers[0], amountSubmit);
+            await submit(testers[0], amountSubmit);
+            await stMATIC.delegate();
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountSubmit);
+        });
+
+        it("Should get total pooled matic after request total delegated", async () => {
+            const numOperators = 1;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const amountSubmit = toEth("100");
+            await mint(testers[0], amountSubmit);
+            await submit(testers[0], amountSubmit);
+            await stMATIC.delegate();
+            await stopOperator(1);
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountSubmit);
+        });
+
+        it("Should get total pooled matic after claim stMatic NFT", async () => {
+            const numOperators = 2;
+            for (let i = 1; i <= numOperators; i++) {
+                await mint(testers[i], toEth("100"));
+                await addOperator(
+                    `BananaOperator${i}`,
+                    testers[i].address,
+                    ethers.utils.randomBytes(64)
+                );
+                await stakeOperator(i, testers[i], "100");
+            }
+
+            const amountSubmit = toEth("100");
+            await mint(testers[0], amountSubmit);
+            await submit(testers[0], amountSubmit);
+            await stMATIC.delegate();
+            await stopOperator(1);
+
+            let withdrawalDelay = await mockStakeManager.withdrawalDelay();
+            let currentEpoch = await mockStakeManager.epoch();
+            await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
+
+            await stMATIC.claimTokens2StMatic(1);
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountSubmit);
+            expect(await stMATIC.calculatePendingBufferedTokens()).eq(0);
+            await stopOperator(2);
+
+            withdrawalDelay = await mockStakeManager.withdrawalDelay();
+            currentEpoch = await mockStakeManager.epoch();
+            await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
+            await stMATIC.claimTokens2StMatic(2);
+
+            expect(await stMATIC.getTotalPooledMatic()).eq(amountSubmit);
+            expect(await stMATIC.calculatePendingBufferedTokens()).eq(0);
+        });
+    });
 });
+
+// convert a string to ether
+// @ts-ignore
+function toEth (amount: string): BigNumber {
+    return ethers.utils.parseEther(amount);
+}
