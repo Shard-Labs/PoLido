@@ -2,7 +2,7 @@
 
 ## Overview
 
-This bug bounty document verifies that Lido hosts a bug bounty on Immunefi at the address [https://immunefi.com/bounty/lido/](https://immunefi.com/bounty/lido/).
+This bug bounty document verifies that Lido hosts a bug bounty on Immunefi at the address [https://immunefi.com/bounty/lidoonpolygon/](https://immunefi.com/bounty/lidoonpolygon/).
 
 If you have found a vulnerability in our project, it must be submitted through [Immunefi's platform](https://immunefi.com/). Immunefi will handle bug bounty communications.
 
