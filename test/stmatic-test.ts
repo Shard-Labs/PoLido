@@ -1254,14 +1254,8 @@ describe("Starting to test StMATIC contract", () => {
                     await stopOperator(3);
 
                     for (let i = 0; i < tokenIds.length; i++) {
-                        // check if the stMATIC has a token
-                        const nftTokenId = await poLidoNFT.owner2Tokens(stMATIC.address, i);
-                        expect(nftTokenId, i + "-tokenId").eq(tokenIds[i]);
-
                         // check if the withdrawRequest has correct data
-                        const withdrawRequest = await stMATIC.token2WithdrawRequest(
-                            nftTokenId
-                        );
+                        const withdrawRequest = await stMATIC.stMaticWithdrawRequest(i);
                         expect(withdrawRequest.validatorNonce).not.eq(0);
                         expect(withdrawRequest.requestEpoch).not.eq(epoch);
                         expect(withdrawRequest.validatorAddress).eq(
@@ -1280,7 +1274,7 @@ describe("Starting to test StMATIC contract", () => {
         });
     });
 
-    describe("claimTokens2StMatic", async () => {
+    describe("claimTotalDelegated2StMatic", async () => {
         describe("Success cases", async () => {
             // stake node operator
             const numOperators = 1;
@@ -1353,20 +1347,20 @@ describe("Starting to test StMATIC contract", () => {
 
                     // transfer to validatorShare Eth to test with.
                     const claimesAmount = ethers.utils.parseEther("100");
-                    const token = await poLidoNFT.owner2Tokens(stMATIC.address, 0);
                     const buffered = await stMATIC.totalBuffered();
-                    const req = await stMATIC.token2WithdrawRequest(token);
+                    const req = await stMATIC.stMaticWithdrawRequest(0);
                     await mint(deployer, claimesAmount);
                     await mockERC20.transfer(req.validatorAddress, claimesAmount);
 
-                    // claimTokens2StMatic
-                    expect(await stMATIC.claimTokens2StMatic(token))
-                        .emit(stMATIC, "ClaimTokensEvent")
-                        .withArgs(stMATIC.address, token, claimesAmount, 0);
+                    // claimTotalDelegated2StMatic
+                    expect(await stMATIC.claimTotalDelegated2StMatic(0))
+                        .emit(stMATIC, "ClaimTotalDelegatedEvent")
+                        .withArgs(stMATIC.address, claimesAmount);
 
                     expect(await stMATIC.totalBuffered(), "totalBuffered").eq(
                         buffered.add(claimesAmount)
                     );
+                    expect((await stMATIC.getTotalWithdrawRequest()).length).eq(0);
                 });
             }
         });
@@ -1399,9 +1393,13 @@ describe("Starting to test StMATIC contract", () => {
                 await mockStakeManager.setEpoch(1);
                 await stopOperator(1);
 
-                // claimTokens2StMatic before withdraw delay is reached.
-                const token = await poLidoNFT.owner2Tokens(stMATIC.address, 0);
-                await expect(stMATIC.claimTokens2StMatic(token)).revertedWith(
+                // claimTotalDelegated2StMatic before withdraw delay is reached.
+                await expect(stMATIC.claimTotalDelegated2StMatic(1)).revertedWith(
+                    "invalid index"
+                );
+
+                // claimTotalDelegated2StMatic before withdraw delay is reached.
+                await expect(stMATIC.claimTotalDelegated2StMatic(0)).revertedWith(
                     "Not able to claim yet"
                 );
             });
@@ -1501,21 +1499,27 @@ describe("Starting to test StMATIC contract", () => {
             const currentEpoch = await mockStakeManager.epoch();
             await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
 
-            expect(await stMATIC.claimTokens2StMatic(1))
-                .emit(stMATIC, "ClaimTokensEvent");
-            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+            expect((await stMATIC.getTotalWithdrawRequest()).length).eq(3);
 
-            expect(await stMATIC.claimTokens2StMatic(2))
-                .emit(stMATIC, "ClaimTokensEvent");
-            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+            expect(await stMATIC.claimTotalDelegated2StMatic(2))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
+            expect(await stMATIC.getTotalPooledMatic())
+                .eq(amountToDelegate);
 
-            expect(await stMATIC.claimTokens2StMatic(3))
-                .emit(stMATIC, "ClaimTokensEvent");
-            expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate);
+            expect((await stMATIC.getTotalWithdrawRequest()).length).eq(2);
+            expect(await stMATIC.claimTotalDelegated2StMatic(1))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
+            expect(await stMATIC.getTotalPooledMatic())
+                .eq(amountToDelegate);
 
-            expect(await stMATIC.totalBuffered()).eq(amountToDelegate);
-            const tokens = await poLidoNFT.getOwnedTokens(stMATIC.address);
-            expect((tokens).length).eq(3);
+            expect((await stMATIC.getTotalWithdrawRequest()).length).eq(1);
+            expect(await stMATIC.claimTotalDelegated2StMatic(0))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
+            expect(await stMATIC.getTotalPooledMatic())
+                .eq(amountToDelegate);
+
+            expect(await stMATIC.totalBuffered(), "totalBuffered").eq(amountToDelegate);
+            expect((await stMATIC.getTotalWithdrawRequest()).length).eq(0);
         });
 
         it("should successfully claim tokens from validator to StMatic contract before slashing", async function () {
@@ -1599,21 +1603,19 @@ describe("Starting to test StMATIC contract", () => {
             const currentEpoch = await mockStakeManager.epoch();
             await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
 
-            expect(await stMATIC.claimTokens2StMatic(1))
-                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.claimTotalDelegated2StMatic(0))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
             expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
 
-            expect(await stMATIC.claimTokens2StMatic(2))
-                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.claimTotalDelegated2StMatic(0))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
             expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
 
-            expect(await stMATIC.claimTokens2StMatic(3))
-                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.claimTotalDelegated2StMatic(0))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
             expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
 
             expect(await stMATIC.totalBuffered()).eq(amountToDelegate.mul(slashPecentage).div(100));
-            const tokens = await poLidoNFT.getOwnedTokens(stMATIC.address);
-            expect((tokens).length).eq(3);
         });
 
         it("should successfully claim tokens from validator to StMatic contract After Slashing", async function () {
@@ -1697,21 +1699,19 @@ describe("Starting to test StMATIC contract", () => {
             const currentEpoch = await mockStakeManager.epoch();
             await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
 
-            expect(await stMATIC.claimTokens2StMatic(1))
-                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.claimTotalDelegated2StMatic(1))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
             expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
 
-            expect(await stMATIC.claimTokens2StMatic(2))
-                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.claimTotalDelegated2StMatic(0))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
             expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
 
-            expect(await stMATIC.claimTokens2StMatic(3))
-                .emit(stMATIC, "ClaimTokensEvent");
+            expect(await stMATIC.claimTotalDelegated2StMatic(0))
+                .emit(stMATIC, "ClaimTotalDelegatedEvent");
             expect(await stMATIC.getTotalPooledMatic()).eq(amountToDelegate.mul(slashPecentage).div(100));
 
             expect(await stMATIC.totalBuffered()).eq(amountToDelegate.mul(slashPecentage).div(100));
-            const tokens = await poLidoNFT.getOwnedTokens(stMATIC.address);
-            expect((tokens).length).eq(3);
         });
     });
 
@@ -1736,13 +1736,13 @@ describe("Starting to test StMATIC contract", () => {
             await stMATIC.delegate();
 
             await stopOperator(1);
-            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(1);
+            expect((await stMATIC.getTotalWithdrawRequest()).length).eq(1);
 
             await stopOperator(2);
-            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(2);
+            expect((await stMATIC.getTotalWithdrawRequest()).length).eq(2);
 
             await stopOperator(3);
-            expect((await poLidoNFT.getOwnedTokens(stMATIC.address)).length).eq(3);
+            expect((await stMATIC.getTotalWithdrawRequest()).length).eq(3);
         });
 
         it("Should withdraw total delegated when not delegated", async () => {
@@ -1802,12 +1802,12 @@ describe("Starting to test StMATIC contract", () => {
             const currentEpoch = await mockStakeManager.epoch();
             await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
 
-            await stMATIC.claimTokens2StMatic(1);
+            await stMATIC.claimTotalDelegated2StMatic(0);
             expect(await stMATIC.connect(testers[0]).requestWithdraw(amountSubmit))
                 .emit(stMATIC, "RequestWithdrawEvent")
                 .withArgs(testers[0].address, amountSubmit);
 
-            const req = await stMATIC.token2WithdrawRequest(2);
+            const req = await stMATIC.token2WithdrawRequest(1);
             expect(req.validatorAddress).eq(ethers.constants.AddressZero);
             expect(req.amount2WithdrawFromStMATIC).eq(amountSubmit);
         });
@@ -1897,22 +1897,24 @@ describe("Starting to test StMATIC contract", () => {
             await mint(testers[0], amountSubmit);
             await submit(testers[0], amountSubmit);
             await stMATIC.delegate();
+
             await stopOperator(1);
 
             let withdrawalDelay = await mockStakeManager.withdrawalDelay();
             let currentEpoch = await mockStakeManager.epoch();
             await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
 
-            await stMATIC.claimTokens2StMatic(1);
+            await stMATIC.claimTotalDelegated2StMatic(0);
             expect(await stMATIC.getTotalPooledMatic()).eq(amountSubmit);
             expect(await stMATIC.calculatePendingBufferedTokens()).eq(0);
+
             await stopOperator(2);
 
             withdrawalDelay = await mockStakeManager.withdrawalDelay();
             currentEpoch = await mockStakeManager.epoch();
             await mockStakeManager.setEpoch(withdrawalDelay.add(currentEpoch));
-            await stMATIC.claimTokens2StMatic(2);
 
+            await stMATIC.claimTotalDelegated2StMatic(0);
             expect(await stMATIC.getTotalPooledMatic()).eq(amountSubmit);
             expect(await stMATIC.calculatePendingBufferedTokens()).eq(0);
         });
