@@ -921,6 +921,9 @@ contract StMATIC is
             requestData.validatorAddress
         );
         uint256 validatorId = validatorShare.validatorId();
+        
+        // see here for more details about how to exchangeRatePrecision is calculated:
+        // https://github.com/maticnetwork/contracts/blob/v0.3.0-backport/contracts/staking/validatorShare/ValidatorShare.sol#L313
         uint256 exchangeRatePrecision = validatorId < 8 ? 100 : 10**29;
         uint256 withdrawExchangeRate = validatorShare.withdrawExchangeRate();
         IValidatorShare.DelegatorUnbond memory unbond = validatorShare
