@@ -131,8 +131,6 @@ contract PoLidoNFT is
             }
             ownerTokens.pop();
 
-            token2Index[tokenId] = 0;
-
             if (getApproved(tokenId) != address(0)) {
                 _removeApproval(tokenId);
             }
