@@ -75,7 +75,9 @@ contract PoLidoNFT is
      * @param _to - Address that the token will be approved to
      * @param _tokenId - Id of the token that will be approved to _to
      */
-    function approve(address _to, uint256 _tokenId) public override {
+    function approve(address _to, uint256 _tokenId)
+        public override
+    {
         // If this token was approved before, remove it from the mapping of approvals
         if (getApproved(_tokenId) != address(0)) {
             _removeApproval(_tokenId);
@@ -116,7 +118,14 @@ contract PoLidoNFT is
             uint256[] storage ownerTokens = owner2Tokens[from];
 
             uint256 tokenIndex = token2Index[tokenId];
-            delete ownerTokens[tokenIndex];
+            uint256 length = ownerTokens.length;
+
+            if (tokenIndex != length - 1 && length != 1) {
+                uint256 t = ownerTokens[ownerTokens.length - 1];
+                token2Index[t] = tokenIndex;
+                ownerTokens[tokenIndex] = ownerTokens[ownerTokens.length - 1];
+            }
+            ownerTokens.pop();
 
             token2Index[tokenId] = 0;
 
@@ -204,7 +213,14 @@ contract PoLidoNFT is
         ];
         uint256 approvedIndex = tokenId2ApprovedIndex[_tokenId];
 
-        delete approvedTokens[approvedIndex];
+        uint256 length = approvedTokens.length;
+        if (approvedIndex != length - 1 && length != 1) {
+            uint256 t = approvedTokens[length - 1];
+            tokenId2ApprovedIndex[t] = approvedIndex;
+            approvedTokens[approvedIndex] = approvedTokens[approvedTokens.length - 1];
+        }
+        approvedTokens.pop();
+
         tokenId2ApprovedIndex[_tokenId] = 0;
     }
 }

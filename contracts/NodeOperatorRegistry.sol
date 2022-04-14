@@ -234,9 +234,9 @@ contract NodeOperatorRegistry is
             validatorShare: address(0),
             validatorProxy: validatorProxy,
             commissionRate: commissionRate,
-            statusUpdatedTimestamp: block.timestamp,
             maxDelegateLimit: defaultMaxDelegateLimit,
             slashed: 0,
+            statusUpdatedTimestamp: 0,
             slashedTimestamp: 0,
             amountStaked: 0
         });
@@ -603,7 +603,7 @@ contract NodeOperatorRegistry is
             status == NodeOperatorStatus.ACTIVE || status == NodeOperatorStatus.INACTIVE,
             "Invalid status"
         );
-        if (no.status == NodeOperatorStatus.ACTIVE) {
+        if (status == NodeOperatorStatus.ACTIVE) {
             IValidator(no.validatorProxy).updateSigner(
                 no.validatorId,
                 _signerPubkey,
@@ -697,13 +697,14 @@ contract NodeOperatorRegistry is
         uint256 _newCommissionRate
     ) external override userHasRole(DAO_ROLE) {
         (, NodeOperator storage no) = getOperator(_operatorId);
+        NodeOperatorStatus status = getOperatorStatus(no);
         checkCondition(
             no.rewardAddress != address(0) ||
-                no.status == NodeOperatorStatus.ACTIVE,
+                status == NodeOperatorStatus.ACTIVE,
             "Invalid status"
         );
 
-        if (no.status == NodeOperatorStatus.ACTIVE) {
+        if (status == NodeOperatorStatus.ACTIVE) {
             IValidator(no.validatorProxy).updateCommissionRate(
                 no.validatorId,
                 _newCommissionRate,

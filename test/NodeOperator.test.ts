@@ -1,7 +1,7 @@
 import hardhat, { ethers, upgrades } from "hardhat";
 import { Signer, Contract, BigNumber } from "ethers";
 import { expect } from "chai";
-import {} from "hardhat/types";
+import { } from "hardhat/types";
 import {
     ValidatorFactory,
     ValidatorFactory__factory,
@@ -303,7 +303,7 @@ describe("NodeOperator", function () {
                 .to.emit(nodeOperatorRegistry, "StopOperator")
                 .withArgs(1);
 
-            await checkOperator(1, { status: 6 });
+            await checkOperator(1, { status: 5 });
 
             // check global state
             await checkStats(1, 0, 0, 0, 0, 0, 1, 0, 0);
@@ -414,7 +414,7 @@ describe("NodeOperator", function () {
             await stakeOperator(1, user1, user1Address, "10", "20");
 
             await stakeManagerMock.unstake(1);
-            await checkOperator(1, { status: 8 });
+            await checkOperator(1, { status: 7 });
 
             await expect(
                 nodeOperatorRegistry.connect(user1).joinOperator()
@@ -607,7 +607,7 @@ describe("NodeOperator", function () {
                 .to.emit(nodeOperatorRegistry, "MigrateOperator")
                 .withArgs(1);
 
-            await checkOperator(1, { status: 6 });
+            await checkOperator(1, { status: 5 });
             await checkStats(2, 0, 1, 0, 0, 0, 1, 0, 0);
         });
 
@@ -837,8 +837,8 @@ describe("NodeOperator", function () {
                 .connect(user2)
                 .claimFee(1, 1, ethers.utils.randomBytes(64));
 
-            await checkOperator(1, { status: 6 });
-            await checkOperator(2, { status: 6 });
+            await checkOperator(1, { status: 5 });
+            await checkOperator(2, { status: 5 });
 
             await checkStats(2, 0, 0, 0, 0, 0, 2, 0, 0);
         });
@@ -924,7 +924,10 @@ describe("NodeOperator", function () {
                 await nodeOperatorRegistry.connect(user1).updateSigner(newSignPubkey)
             )
                 .to.emit(nodeOperatorRegistry, "UpdateSignerPubkey")
-                .withArgs(1);
+                .withArgs(1)
+                .to.emit(stakeManagerMock, "UpdateSigner")
+                .withArgs(1, newSignPubkey);
+
             await checkOperator(1, { signerPubkey: newSignPubkey });
 
             await newOperator(2, user2Address);
@@ -1138,15 +1141,30 @@ describe("NodeOperator", function () {
             });
 
             it("Success updateOperatorCommissionRate", async function () {
-                await newOperator(1, user1Address);
                 const commission = BigNumber.from(10);
+
+                // update commission fo an active operator, should emit events
+                // from StakeManager and NodeOperatorRegistry contracts.
+                await stakeOperator(1, user1, user1Address, "10", "20");
                 expect(
                     await nodeOperatorRegistry.updateOperatorCommissionRate(1, commission)
                 )
                     .to.emit(nodeOperatorRegistry, "UpdateCommissionRate")
+                    .withArgs(1, commission)
+                    .to.emit(stakeManagerMock, "UpdateCommissionRate")
                     .withArgs(1, commission);
 
                 await checkOperator(1, { commissionRate: commission });
+
+                // update commission fo an inactive operator
+                await newOperator(2, user2Address);
+                expect(
+                    await nodeOperatorRegistry.updateOperatorCommissionRate(2, commission)
+                )
+                    .to.emit(nodeOperatorRegistry, "UpdateCommissionRate")
+                    .withArgs(2, commission);
+
+                await checkOperator(2, { commissionRate: commission });
             });
 
             it("Fail updateOperatorCommissionRate", async function () {
@@ -1247,6 +1265,22 @@ describe("NodeOperator", function () {
         });
 
         describe("operator infos", async function () {
+            it("should ensure that no operator id is overridden", async function () {
+                await newOperator(1, user1Address);
+                await newOperator(2, user2Address);
+
+                await nodeOperatorRegistry.stopOperator(1);
+
+                await nodeOperatorRegistry.removeOperator(1);
+                await newOperator(3, user3Address);
+
+                const op2 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this, 2);
+                expect(op2.rewardAddress).to.equal(user2Address);
+                const op3 = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(this, 3);
+                expect(op3.rewardAddress).to.equal(user3Address);
+                await checkStats(2, 2, 0, 0, 0, 0, 0, 0, 0);
+            });
+
             it("success getOperatorInfos all cases", async function () {
                 await stakeOperator(1, user1, user1Address, "100", "20");
                 await stakeOperator(2, user2, user2Address, "100", "20");
@@ -1319,7 +1353,7 @@ describe("NodeOperator", function () {
                 await stakeManagerMock.unstake(3);
                 await checkOperator(1, { status: 1 }); // ACTIVE
                 await checkOperator(2, { status: 1 }); // ACTIVE
-                await checkOperator(3, { status: 8 }); // EJECTED
+                await checkOperator(3, { status: 7 }); // EJECTED
                 let operators = await nodeOperatorRegistry.getOperatorInfos(false, false);
 
                 expect(operators.length).eq(2);
@@ -1440,7 +1474,7 @@ describe("NodeOperator", function () {
                 await stakeOperator(1, user1, user1Address, "100", "20");
                 await stakeManagerMock.slash(1);
                 await stakeManagerMock.unstake(1);
-                await checkOperator(1, { status: 8 });
+                await checkOperator(1, { status: 7 });
             });
         });
     });
@@ -1570,7 +1604,7 @@ describe("NodeOperator", function () {
 
             expect(
                 (await nodeOperatorRegistry.address) ===
-          NodeOperatorRegistryV2Contract.address
+                NodeOperatorRegistryV2Contract.address
             );
         });
     });
@@ -1679,19 +1713,19 @@ async function checkOperator (
     this: any,
     id: number,
     no: {
-    status?: number;
-    name?: string;
-    rewardAddress?: string;
-    validatorId?: BigNumber;
-    signerPubkey?: string;
-    validatorShare?: string;
-    validatorProxy?: string;
-    commissionRate?: BigNumber;
-    slashed?: BigNumber;
-    slashedTimestamp?: BigNumber;
-    statusUpdatedTimestamp?: BigNumber;
-    maxDelegateLimit?: BigNumber;
-  }
+        status?: number;
+        name?: string;
+        rewardAddress?: string;
+        validatorId?: BigNumber;
+        signerPubkey?: string;
+        validatorShare?: string;
+        validatorProxy?: string;
+        commissionRate?: BigNumber;
+        slashed?: BigNumber;
+        slashedTimestamp?: BigNumber;
+        statusUpdatedTimestamp?: BigNumber;
+        maxDelegateLimit?: BigNumber;
+    }
 ) {
     const res = await nodeOperatorRegistry["getNodeOperator(uint256)"].call(
         this,

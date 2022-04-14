@@ -3,9 +3,7 @@ import * as path from "path";
 
 import { ethers } from "ethers";
 
-const envSuffix = process.env.NODE_ENV === "main" ? "" : ".test";
-
-dotenv.config({ path: path.join(__dirname, ".env" + envSuffix) });
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const DEPLOYER_PRIVATE_KEY =
   process.env.DEPLOYER_PRIVATE_KEY || ethers.Wallet.createRandom().privateKey;
@@ -27,6 +25,10 @@ const ROOT_GAS_LIMIT = process.env.ROOT_GAS_LIMIT || 0;
 const DEFENDER_TEAM_API_KEY = process.env.DEFENDER_TEAM_API_KEY || "";
 const DEFENDER_TEAM_API_SECRET_KEY = process.env.DEFENDER_TEAM_API_SECRET_KEY || "";
 
+console.log("--------------------");
+console.log(DEFENDER_TEAM_API_KEY);
+console.log(DEFENDER_TEAM_API_SECRET_KEY);
+console.log("--------------------");
 export {
     DEPLOYER_PRIVATE_KEY,
     ETHERSCAN_API_KEY,

@@ -39,6 +39,10 @@ contract StMATIC is
         uint256 _amountBurned
     );
 
+    event ClaimTotalDelegatedEvent(
+        address indexed _from,
+        uint256 indexed _amountClaimed
+    );
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     INodeOperatorRegistry public nodeOperator;
@@ -63,6 +67,7 @@ contract StMATIC is
     IFxStateRootTunnel public fxStateRootTunnel;
     bool public submitHandler;
     uint256 public submitThreshold;
+    RequestWithdraw[] public stMaticWithdrawRequest;
 
     /**
      * @param _nodeOperatorRegistry - Address of the node operator registry
@@ -119,7 +124,7 @@ contract StMATIC is
 
         if (submitHandler) {
             require(
-                _amount + totalBuffered <= submitThreshold,
+                _amount + getTotalPooledMatic() <= submitThreshold,
                 "Submit threshold reached"
             );
         }
@@ -171,7 +176,7 @@ contract StMATIC is
 
         uint256 totalDelegated = getTotalStakeAcrossAllValidators();
 
-        uint256 minValidatorBalance = _getMinValidatorBalance(operatorInfos);
+        uint256 _minValidatorBalance = _getMinValidatorBalance(operatorInfos);
 
         uint256 allowedAmount2RequestFromValidators = 0;
 
@@ -179,7 +184,7 @@ contract StMATIC is
             require(
                 (totalDelegated + totalBuffered) >=
                     currentAmount2WithdrawInMatic +
-                        minValidatorBalance *
+                        _minValidatorBalance *
                         operatorInfosLength,
                 "Too much to withdraw"
             );
@@ -444,14 +449,15 @@ contract StMATIC is
             return;
         }
 
-        uint256 tokenId = poLidoNFT.mint(address(this));
         sellVoucher_new(_validatorShare, stakedAmount, type(uint256).max);
 
-        token2WithdrawRequest[tokenId] = RequestWithdraw(
-            uint256(0),
-            IValidatorShare(_validatorShare).unbondNonces(address(this)),
-            stakeManager.epoch() + stakeManager.withdrawalDelay(),
-            _validatorShare
+        stMaticWithdrawRequest.push(
+            RequestWithdraw(
+                uint256(0),
+                IValidatorShare(_validatorShare).unbondNonces(address(this)),
+                stakeManager.epoch() + stakeManager.withdrawalDelay(),
+                _validatorShare
+            )
         );
 
         fxStateRootTunnel.sendMessageToChild(
@@ -464,21 +470,17 @@ contract StMATIC is
     /**
      * @dev Claims tokens from validator share and sends them to the
      * StMATIC contract
-     * @param _tokenId - Id of the token that is supposed to be claimed
+     * @param _index - index the request.
      */
-    function claimTokens2StMatic(uint256 _tokenId)
+    function claimTotalDelegated2StMatic(uint256 _index)
         external
         override
         whenNotPaused
     {
-        RequestWithdraw storage lidoRequests = token2WithdrawRequest[_tokenId];
+        uint256 length = stMaticWithdrawRequest.length;
+        require(_index < length, "invalid index");
 
-        require(
-            poLidoNFT.ownerOf(_tokenId) == address(this),
-            "Not owner of the NFT"
-        );
-
-        poLidoNFT.burn(_tokenId);
+        RequestWithdraw memory lidoRequests = stMaticWithdrawRequest[_index];
 
         require(
             stakeManager.epoch() >= lidoRequests.requestTime,
@@ -499,12 +501,17 @@ contract StMATIC is
         ) - balanceBeforeClaim;
 
         totalBuffered += claimedAmount;
+        
+        if (_index != length - 1 && length != 1) {
+            stMaticWithdrawRequest[_index] = stMaticWithdrawRequest[length - 1];
+        }
+        stMaticWithdrawRequest.pop();
 
         fxStateRootTunnel.sendMessageToChild(
             abi.encode(totalSupply(), getTotalPooledMatic())
         );
 
-        emit ClaimTokensEvent(address(this), _tokenId, claimedAmount, 0);
+        emit ClaimTotalDelegatedEvent(address(this), claimedAmount);
     }
 
     /**
@@ -610,6 +617,16 @@ contract StMATIC is
     /////            ***Helpers & Utilities***               ///
     /////                                                    ///
     ////////////////////////////////////////////////////////////
+    /**
+     * @dev Returns the stMaticWithdrawRequest list
+     */
+    function getTotalWithdrawRequest()
+        public
+        view
+        returns (RequestWithdraw[] memory)
+    {
+        return stMaticWithdrawRequest;
+    }
 
     /**
      * @dev Helper function for that returns total pooled MATIC
@@ -643,7 +660,11 @@ contract StMATIC is
      */
     function getTotalPooledMatic() public view override returns (uint256) {
         uint256 totalStaked = getTotalStakeAcrossAllValidators();
-        return totalStaked + totalBuffered - reservedFunds;
+        return
+            totalStaked +
+            totalBuffered +
+            calculatePendingBufferedTokens() -
+            reservedFunds;
     }
 
     /**
@@ -704,13 +725,14 @@ contract StMATIC is
      */
     function getMinValidatorBalance() external view override returns (uint256) {
         Operator.OperatorInfo[] memory operatorInfos = nodeOperator
-        .getOperatorInfos(false, true);
+            .getOperatorInfos(false, true);
 
         return _getMinValidatorBalance(operatorInfos);
     }
 
-
-    function _getMinValidatorBalance(Operator.OperatorInfo[] memory operatorInfos) private view returns (uint256) {
+    function _getMinValidatorBalance(
+        Operator.OperatorInfo[] memory operatorInfos
+    ) private view returns (uint256) {
         uint256 operatorInfosLength = operatorInfos.length;
         uint256 minValidatorBalance = type(uint256).max;
 
@@ -721,7 +743,7 @@ contract StMATIC is
             // 10% of current validatorShare
             uint256 minValidatorBalanceCurrent = validatorShare / 10;
 
-            if (
+            if (    
                 minValidatorBalanceCurrent != 0 &&
                 minValidatorBalanceCurrent < minValidatorBalance
             ) {
@@ -876,21 +898,50 @@ contract StMATIC is
      * @param _tokenId - Id of the PolidoNFT
      */
     function getMaticFromTokenId(uint256 _tokenId)
-        external
+        public
         view
         override
         returns (uint256)
     {
-        RequestWithdraw memory requestData = token2WithdrawRequest[_tokenId];
+        return _getMaticFromRequestWithdraw(token2WithdrawRequest[_tokenId]);
+    }
+
+    function _getMaticFromRequestWithdraw(RequestWithdraw memory requestData)
+        public
+        view
+        returns (uint256)
+    {
+        if (requestData.validatorAddress == address(0)) {
+            return requestData.amount2WithdrawFromStMATIC;
+        }
+
         IValidatorShare validatorShare = IValidatorShare(
             requestData.validatorAddress
         );
         uint256 validatorId = validatorShare.validatorId();
+        
+        // see here for more details about how to exchangeRatePrecision is calculated:
+        // https://github.com/maticnetwork/contracts/blob/v0.3.0-backport/contracts/staking/validatorShare/ValidatorShare.sol#L313
         uint256 exchangeRatePrecision = validatorId < 8 ? 100 : 10**29;
         uint256 withdrawExchangeRate = validatorShare.withdrawExchangeRate();
         IValidatorShare.DelegatorUnbond memory unbond = validatorShare
             .unbonds_new(address(this), requestData.validatorNonce);
 
         return (withdrawExchangeRate * unbond.shares) / exchangeRatePrecision;
+    }
+
+    /**
+     * @dev Function that calculates the total pending buffered tokens in LidoNFT contract.
+     */
+    function calculatePendingBufferedTokens()
+        public
+        view
+        returns (uint256 pendingBufferedTokens)
+    {
+        RequestWithdraw[] memory requestData = stMaticWithdrawRequest;
+        uint256 length = requestData.length;
+        for (uint256 i = 0; i < length; i++) {
+            pendingBufferedTokens += _getMaticFromRequestWithdraw(requestData[i]);
+        }
     }
 }
