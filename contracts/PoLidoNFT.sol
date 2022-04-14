@@ -55,8 +55,7 @@ contract PoLidoNFT is
      * @return Index of the minted token
      */
     function mint(address _to) external override isLido returns (uint256) {
-        uint256 currentIndex = tokenIdIndex;
-        currentIndex++;
+        uint256 currentIndex = tokenIdIndex + 1;
 
         _mint(_to, currentIndex);
 
