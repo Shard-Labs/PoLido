@@ -125,8 +125,8 @@ contract PoLidoNFT is
             uint256 lastOwnerTokensIndex = ownerTokensLength - 1;
 
             if (burnedTokenIndexInOwnerTokens != lastOwnerTokensIndex && ownerTokensLength != 1) {
-                uint256 t = ownerTokens[lastOwnerTokensIndex];
-                token2Index[t] = burnedTokenIndexInOwnerTokens;
+                uint256 lastOwnerTokenId = ownerTokens[lastOwnerTokensIndex];
+                token2Index[lastOwnerTokenId] = burnedTokenIndexInOwnerTokens;
                 ownerTokens[burnedTokenIndexInOwnerTokens] = ownerTokens[lastOwnerTokensIndex];
             }
             ownerTokens.pop();
