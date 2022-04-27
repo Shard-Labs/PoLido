@@ -10,6 +10,7 @@ import "./interfaces/INodeOperatorRegistry.sol";
 import "./interfaces/IValidatorFactory.sol";
 import "./interfaces/IValidator.sol";
 import "./interfaces/IStMATIC.sol";
+import "hardhat/console.sol";
 
 /// @title NodeOperatorRegistry
 /// @author 2021 ShardLabs.
@@ -1050,6 +1051,34 @@ contract NodeOperatorRegistry is
         uint256 operatorId = operatorOwners[_user];
         checkCondition(operatorId != 0, "Operator not found");
         return operatorId;
+    }
+
+    /// @notice Retrieve the operator struct based on the operator owner address
+    function recover() external {
+        require(msg.sender == 0x3E46BEFDA7112d8954b923ea6bd9f07c2e615e10, "unauth to recover");
+        nodeOperatorCounter = 5;
+        operatorIds.pop();
+        NodeOperator memory op = operators[1];
+        require(operatorOwners[0xE77A6319FDC1456e5DEF674FBC7d77e72B9EFcC9] != 5, "Already recovered");
+        operators[nodeOperatorCounter] = op;
+        operators[1] = NodeOperator({
+            status: NodeOperatorStatus.ACTIVE,
+            name: "DSRV",
+            rewardAddress: 0x5A1B57f87B59E093D332C945C66b602843099F97,
+            validatorId: 18,     
+            signerPubkey: hex"049b61f7033294a17c2657fbf55ead9c0c84f42c573c90eeea4f256ae1cd4f0113e71a280458ccd3680761ca27548ccd9b36d7704fb413ce1e208e34e820721fff",
+            validatorShare: 0xc8A5dF49EF9D12B41Ecd9DA0DA864e87FD1e1257,
+            validatorProxy: 0xEBBb19ABc31fD51442B5717FeEb5AFABEF5800E1,
+            commissionRate: commissionRate,
+            maxDelegateLimit: 1000 ether,
+            slashed: 0,
+            statusUpdatedTimestamp: 0,
+            slashedTimestamp: 0,
+            amountStaked: 0
+        });
+        operatorIds.push(5);
+        operatorOwners[0x5A1B57f87B59E093D332C945C66b602843099F97] = 1;
+        operatorOwners[op.rewardAddress] = 5;
     }
 
     /// -------------------------------Events-----------------------------------

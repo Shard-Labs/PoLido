@@ -190,7 +190,7 @@ contract StMATIC is
             );
             allowedAmount2RequestFromValidators =
                 totalDelegated -
-                minValidatorBalance *
+                _minValidatorBalance *
                 operatorInfosLength;
         } else {
             require(
@@ -212,13 +212,13 @@ contract StMATIC is
                 (uint256 validatorBalance, ) = IValidatorShare(validatorShare)
                     .getTotalStake(address(this));
 
-                if (validatorBalance <= minValidatorBalance) {
+                if (validatorBalance <= _minValidatorBalance) {
                     lastWithdrawnValidatorId++;
                     continue;
                 }
 
                 uint256 allowedAmount2Withdraw = validatorBalance -
-                    minValidatorBalance;
+                    _minValidatorBalance;
 
                 uint256 amount2WithdrawFromValidator = (allowedAmount2Withdraw <=
                         currentAmount2WithdrawInMatic)
@@ -734,7 +734,7 @@ contract StMATIC is
         Operator.OperatorInfo[] memory operatorInfos
     ) private view returns (uint256) {
         uint256 operatorInfosLength = operatorInfos.length;
-        uint256 minValidatorBalance = type(uint256).max;
+        uint256 _minValidatorBalance = type(uint256).max;
 
         for (uint256 i = 0; i < operatorInfosLength; i++) {
             (uint256 validatorShare, ) = getTotalStake(
@@ -745,13 +745,13 @@ contract StMATIC is
 
             if (    
                 minValidatorBalanceCurrent != 0 &&
-                minValidatorBalanceCurrent < minValidatorBalance
+                minValidatorBalanceCurrent < _minValidatorBalance
             ) {
-                minValidatorBalance = minValidatorBalanceCurrent;
+                _minValidatorBalance = minValidatorBalanceCurrent;
             }
         }
 
-        return minValidatorBalance;
+        return _minValidatorBalance;
     }
 
     ////////////////////////////////////////////////////////////

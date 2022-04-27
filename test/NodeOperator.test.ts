@@ -303,7 +303,7 @@ describe("NodeOperator", function () {
                 .to.emit(nodeOperatorRegistry, "StopOperator")
                 .withArgs(1);
 
-            await checkOperator(1, { status: 5 });
+            await checkOperator(1, { status: 6 });
 
             // check global state
             await checkStats(1, 0, 0, 0, 0, 0, 1, 0, 0);
@@ -414,7 +414,7 @@ describe("NodeOperator", function () {
             await stakeOperator(1, user1, user1Address, "10", "20");
 
             await stakeManagerMock.unstake(1);
-            await checkOperator(1, { status: 7 });
+            await checkOperator(1, { status: 8 });
 
             await expect(
                 nodeOperatorRegistry.connect(user1).joinOperator()
@@ -607,7 +607,7 @@ describe("NodeOperator", function () {
                 .to.emit(nodeOperatorRegistry, "MigrateOperator")
                 .withArgs(1);
 
-            await checkOperator(1, { status: 5 });
+            await checkOperator(1, { status: 6 });
             await checkStats(2, 0, 1, 0, 0, 0, 1, 0, 0);
         });
 
@@ -837,8 +837,8 @@ describe("NodeOperator", function () {
                 .connect(user2)
                 .claimFee(1, 1, ethers.utils.randomBytes(64));
 
-            await checkOperator(1, { status: 5 });
-            await checkOperator(2, { status: 5 });
+            await checkOperator(1, { status: 6 });
+            await checkOperator(2, { status: 6 });
 
             await checkStats(2, 0, 0, 0, 0, 0, 2, 0, 0);
         });
@@ -1353,7 +1353,7 @@ describe("NodeOperator", function () {
                 await stakeManagerMock.unstake(3);
                 await checkOperator(1, { status: 1 }); // ACTIVE
                 await checkOperator(2, { status: 1 }); // ACTIVE
-                await checkOperator(3, { status: 7 }); // EJECTED
+                await checkOperator(3, { status: 8 }); // EJECTED
                 let operators = await nodeOperatorRegistry.getOperatorInfos(false, false);
 
                 expect(operators.length).eq(2);
@@ -1474,7 +1474,7 @@ describe("NodeOperator", function () {
                 await stakeOperator(1, user1, user1Address, "100", "20");
                 await stakeManagerMock.slash(1);
                 await stakeManagerMock.unstake(1);
-                await checkOperator(1, { status: 7 });
+                await checkOperator(1, { status: 8 });
             });
         });
     });
