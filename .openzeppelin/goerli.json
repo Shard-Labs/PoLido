@@ -13454,25 +13454,25 @@
           {
             "contract": "StMATIC",
             "label": "nodeOperator",
-            "type": "t_contract(INodeOperatorRegistry)11302",
+            "type": "t_contract(INodeOperatorRegistry)4461",
             "src": "contracts/StMATIC.sol:48"
           },
           {
             "contract": "StMATIC",
             "label": "entityFees",
-            "type": "t_struct(FeeDistribution)11363_storage",
+            "type": "t_struct(FeeDistribution)4522_storage",
             "src": "contracts/StMATIC.sol:49"
           },
           {
             "contract": "StMATIC",
             "label": "stakeManager",
-            "type": "t_contract(IStakeManager)11726",
+            "type": "t_contract(IStakeManager)4885",
             "src": "contracts/StMATIC.sol:50"
           },
           {
             "contract": "StMATIC",
             "label": "poLidoNFT",
-            "type": "t_contract(IPoLidoNFT)11335",
+            "type": "t_contract(IPoLidoNFT)4494",
             "src": "contracts/StMATIC.sol:51"
           },
           {
@@ -13538,13 +13538,13 @@
           {
             "contract": "StMATIC",
             "label": "token2WithdrawRequest",
-            "type": "t_mapping(t_uint256,t_struct(RequestWithdraw)11356_storage)",
+            "type": "t_mapping(t_uint256,t_struct(RequestWithdraw)4515_storage)",
             "src": "contracts/StMATIC.sol:63"
           },
           {
             "contract": "StMATIC",
             "label": "fxStateRootTunnel",
-            "type": "t_contract(IFxStateRootTunnel)11078",
+            "type": "t_contract(IFxStateRootTunnel)4237",
             "src": "contracts/StMATIC.sol:67"
           },
           {
@@ -13562,15 +13562,15 @@
           {
             "contract": "StMATIC",
             "label": "stMaticWithdrawRequest",
-            "type": "t_array(t_struct(RequestWithdraw)11356_storage)dyn_storage",
+            "type": "t_array(t_struct(RequestWithdraw)4515_storage)dyn_storage",
             "src": "contracts/StMATIC.sol:70"
           }
         ],
         "types": {
-          "t_contract(INodeOperatorRegistry)11302": {
+          "t_contract(INodeOperatorRegistry)4461": {
             "label": "contract INodeOperatorRegistry"
           },
-          "t_struct(FeeDistribution)11363_storage": {
+          "t_struct(FeeDistribution)4522_storage": {
             "label": "struct IStMATIC.FeeDistribution",
             "members": [
               {
@@ -13590,10 +13590,10 @@
           "t_uint8": {
             "label": "uint8"
           },
-          "t_contract(IStakeManager)11726": {
+          "t_contract(IStakeManager)4885": {
             "label": "contract IStakeManager"
           },
-          "t_contract(IPoLidoNFT)11335": {
+          "t_contract(IPoLidoNFT)4494": {
             "label": "contract IPoLidoNFT"
           },
           "t_string_storage": {
@@ -13605,10 +13605,10 @@
           "t_uint256": {
             "label": "uint256"
           },
-          "t_mapping(t_uint256,t_struct(RequestWithdraw)11356_storage)": {
+          "t_mapping(t_uint256,t_struct(RequestWithdraw)4515_storage)": {
             "label": "mapping(uint256 => struct IStMATIC.RequestWithdraw)"
           },
-          "t_struct(RequestWithdraw)11356_storage": {
+          "t_struct(RequestWithdraw)4515_storage": {
             "label": "struct IStMATIC.RequestWithdraw",
             "members": [
               {
@@ -13629,13 +13629,660 @@
               }
             ]
           },
-          "t_contract(IFxStateRootTunnel)11078": {
+          "t_contract(IFxStateRootTunnel)4237": {
             "label": "contract IFxStateRootTunnel"
           },
           "t_bool": {
             "label": "bool"
           },
-          "t_array(t_struct(RequestWithdraw)11356_storage)dyn_storage": {
+          "t_array(t_struct(RequestWithdraw)4515_storage)dyn_storage": {
+            "label": "struct IStMATIC.RequestWithdraw[]"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)43_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_struct(RoleData)43_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_uint256))": {
+            "label": "mapping(address => mapping(address => uint256))"
+          },
+          "t_array(t_uint256)45_storage": {
+            "label": "uint256[45]"
+          }
+        }
+      }
+    },
+    "cd34c01d8e67b1013f1ff236d46198422b8d560972ec3b3736212c332750a176": {
+      "address": "0x1FfAD1c2992b2a31ba5C1BE9cCC0E3aF3b3f4a7a",
+      "txHash": "0x84632d3bbcfb21607f788f098746d265cf50393b70c3b3a8c0fbf00fccfaa257",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ERC165Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol:36"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "_roles",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)43_storage)",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:64"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:232"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "version",
+            "type": "t_string_storage",
+            "src": "contracts/NodeOperatorRegistry.sol:72"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalNodeOperator",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:74"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalInactiveNodeOperator",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:76"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalActiveNodeOperator",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:78"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalStoppedNodeOperator",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:80"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalUnstakedNodeOperator",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:82"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalClaimedNodeOperator",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:84"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalWaitNodeOperator",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:86"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalExitNodeOperator",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:88"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "validatorFactory",
+            "type": "t_address",
+            "src": "contracts/NodeOperatorRegistry.sol:91"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "stakeManager",
+            "type": "t_address",
+            "src": "contracts/NodeOperatorRegistry.sol:93"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "polygonERC20",
+            "type": "t_address",
+            "src": "contracts/NodeOperatorRegistry.sol:95"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "stMATIC",
+            "type": "t_address",
+            "src": "contracts/NodeOperatorRegistry.sol:97"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "minAmountStake",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:100"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "minHeimdallFees",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:103"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "commissionRate",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:106"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "allowsRestake",
+            "type": "t_bool",
+            "src": "contracts/NodeOperatorRegistry.sol:109"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "allowsUnjail",
+            "type": "t_bool",
+            "src": "contracts/NodeOperatorRegistry.sol:112"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "slashingDelay",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:115"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "defaultMaxDelegateLimit",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:118"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "operatorIds",
+            "type": "t_array(t_uint256)dyn_storage",
+            "src": "contracts/NodeOperatorRegistry.sol:121"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "operatorOwners",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/NodeOperatorRegistry.sol:125"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "validatorShare2OperatorId",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/NodeOperatorRegistry.sol:128"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "operators",
+            "type": "t_mapping(t_uint256,t_struct(NodeOperator)4870_storage)",
+            "src": "contracts/NodeOperatorRegistry.sol:131"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "nodeOperatorCounter",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:133"
+          }
+        ],
+        "types": {
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_uint256,t_struct(NodeOperator)4870_storage)": {
+            "label": "mapping(uint256 => struct NodeOperatorRegistry.NodeOperator)"
+          },
+          "t_struct(NodeOperator)4870_storage": {
+            "label": "struct NodeOperatorRegistry.NodeOperator",
+            "members": [
+              {
+                "label": "status",
+                "type": "t_enum(NodeOperatorStatus)4842"
+              },
+              {
+                "label": "name",
+                "type": "t_string_storage"
+              },
+              {
+                "label": "rewardAddress",
+                "type": "t_address"
+              },
+              {
+                "label": "signerPubkey",
+                "type": "t_bytes_storage"
+              },
+              {
+                "label": "validatorShare",
+                "type": "t_address"
+              },
+              {
+                "label": "validatorProxy",
+                "type": "t_address"
+              },
+              {
+                "label": "validatorId",
+                "type": "t_uint256"
+              },
+              {
+                "label": "commissionRate",
+                "type": "t_uint256"
+              },
+              {
+                "label": "slashed",
+                "type": "t_uint256"
+              },
+              {
+                "label": "slashedTimestamp",
+                "type": "t_uint256"
+              },
+              {
+                "label": "statusUpdatedTimestamp",
+                "type": "t_uint256"
+              },
+              {
+                "label": "maxDelegateLimit",
+                "type": "t_uint256"
+              },
+              {
+                "label": "amountStaked",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_enum(NodeOperatorStatus)4842": {
+            "label": "enum NodeOperatorRegistry.NodeOperatorStatus",
+            "members": [
+              "INACTIVE",
+              "ACTIVE",
+              "STOPPED",
+              "UNSTAKED",
+              "CLAIMED",
+              "WAIT",
+              "EXIT",
+              "JAILED",
+              "EJECTED"
+            ]
+          },
+          "t_bytes_storage": {
+            "label": "bytes"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)43_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_struct(RoleData)43_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
+    },
+    "f846c26779b1235dd6216d4d79f1d5b0541a3ff2d7a0521907b6962f208e3db3": {
+      "address": "0x869381633D9Ba45A362B4acb72D94217790abAF1",
+      "txHash": "0x32dbd296fda2f44533ffe7924ed138ef702d31613651ac0b19d9d0485de85ab2",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_balances",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:37"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_allowances",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_uint256))",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:39"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_totalSupply",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:41"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_name",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:43"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "_symbol",
+            "type": "t_string_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:44"
+          },
+          {
+            "contract": "ERC20Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)45_storage",
+            "src": "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol:362"
+          },
+          {
+            "contract": "ERC165Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol:36"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "_roles",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)43_storage)",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:64"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:232"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "nodeOperator",
+            "type": "t_contract(INodeOperatorRegistry)11387",
+            "src": "contracts/StMATIC.sol:48"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "entityFees",
+            "type": "t_struct(FeeDistribution)11448_storage",
+            "src": "contracts/StMATIC.sol:49"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "stakeManager",
+            "type": "t_contract(IStakeManager)11811",
+            "src": "contracts/StMATIC.sol:50"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "poLidoNFT",
+            "type": "t_contract(IPoLidoNFT)11420",
+            "src": "contracts/StMATIC.sol:51"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "version",
+            "type": "t_string_storage",
+            "src": "contracts/StMATIC.sol:53"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "dao",
+            "type": "t_address",
+            "src": "contracts/StMATIC.sol:54"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "insurance",
+            "type": "t_address",
+            "src": "contracts/StMATIC.sol:55"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "token",
+            "type": "t_address",
+            "src": "contracts/StMATIC.sol:56"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "lastWithdrawnValidatorId",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:57"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "totalBuffered",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:58"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "delegationLowerBound",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:59"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "rewardDistributionLowerBound",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:60"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "reservedFunds",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:61"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "minValidatorBalance",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:62"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "token2WithdrawRequest",
+            "type": "t_mapping(t_uint256,t_struct(RequestWithdraw)11441_storage)",
+            "src": "contracts/StMATIC.sol:63"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "fxStateRootTunnel",
+            "type": "t_contract(IFxStateRootTunnel)11163",
+            "src": "contracts/StMATIC.sol:67"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "submitHandler",
+            "type": "t_bool",
+            "src": "contracts/StMATIC.sol:68"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "submitThreshold",
+            "type": "t_uint256",
+            "src": "contracts/StMATIC.sol:69"
+          },
+          {
+            "contract": "StMATIC",
+            "label": "stMaticWithdrawRequest",
+            "type": "t_array(t_struct(RequestWithdraw)11441_storage)dyn_storage",
+            "src": "contracts/StMATIC.sol:70"
+          }
+        ],
+        "types": {
+          "t_contract(INodeOperatorRegistry)11387": {
+            "label": "contract INodeOperatorRegistry"
+          },
+          "t_struct(FeeDistribution)11448_storage": {
+            "label": "struct IStMATIC.FeeDistribution",
+            "members": [
+              {
+                "label": "dao",
+                "type": "t_uint8"
+              },
+              {
+                "label": "operators",
+                "type": "t_uint8"
+              },
+              {
+                "label": "insurance",
+                "type": "t_uint8"
+              }
+            ]
+          },
+          "t_uint8": {
+            "label": "uint8"
+          },
+          "t_contract(IStakeManager)11811": {
+            "label": "contract IStakeManager"
+          },
+          "t_contract(IPoLidoNFT)11420": {
+            "label": "contract IPoLidoNFT"
+          },
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_mapping(t_uint256,t_struct(RequestWithdraw)11441_storage)": {
+            "label": "mapping(uint256 => struct IStMATIC.RequestWithdraw)"
+          },
+          "t_struct(RequestWithdraw)11441_storage": {
+            "label": "struct IStMATIC.RequestWithdraw",
+            "members": [
+              {
+                "label": "amount2WithdrawFromStMATIC",
+                "type": "t_uint256"
+              },
+              {
+                "label": "validatorNonce",
+                "type": "t_uint256"
+              },
+              {
+                "label": "requestTime",
+                "type": "t_uint256"
+              },
+              {
+                "label": "validatorAddress",
+                "type": "t_address"
+              }
+            ]
+          },
+          "t_contract(IFxStateRootTunnel)11163": {
+            "label": "contract IFxStateRootTunnel"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_struct(RequestWithdraw)11441_storage)dyn_storage": {
             "label": "struct IStMATIC.RequestWithdraw[]"
           },
           "t_array(t_uint256)49_storage": {
