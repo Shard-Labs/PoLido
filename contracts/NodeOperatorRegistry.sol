@@ -237,7 +237,7 @@ contract NodeOperatorRegistry is
         if (status == NodeOperatorStatus.INACTIVE) {
             no.status = NodeOperatorStatus.EXIT;
         } else {
-            IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
+            // IStMATIC(stMATIC).withdrawTotalDelegated(no.validatorShare);
             no.status = NodeOperatorStatus.STOPPED;
         }
         emit StopOperator(_operatorId);
