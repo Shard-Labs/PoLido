@@ -160,7 +160,7 @@ contract StMATIC is
      * @dev Stores users request to withdraw into a RequestWithdraw struct
      * @param _amount - Amount of StMATIC that is requested to withdraw
      */
-    function requestWithdraw(uint256 _amount) external override whenNotPaused {
+    function requestWithdraw(uint256 _amount) external override whenNotPaused returns(uint256 tokenId) {
         require(_amount > 0, "Invalid amount");
 
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry

@@ -99,7 +99,7 @@ interface IStMATIC is IERC20Upgradeable {
 
     function submit(uint256 _amount) external returns (uint256);
 
-    function requestWithdraw(uint256 _amount) external;
+    function requestWithdraw(uint256 _amount) external returns(uint256);
 
     function delegate() external;
 
