@@ -57,7 +57,7 @@ describe("PoLidoNFT Tests", () => {
             await poLidoNFT.mint(user2.address);
             const tokenIndex = await poLidoNFT.tokenIdIndex();
             await expect(poLidoNFT.connect(user1).approve(user1.address, tokenIndex))
-                .revertedWith("ERC721: approve caller is not owner nor approved for all");
+                .revertedWith("ERC721: approve caller is not token owner nor approved for all");
         });
     });
 
