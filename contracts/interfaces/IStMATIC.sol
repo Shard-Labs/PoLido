@@ -97,7 +97,7 @@ interface IStMATIC is IERC20Upgradeable {
         uint256 _submitThreshold
     ) external;
 
-    function submit(uint256 _amount) external returns (uint256);
+    function submit(uint256 _amount, address _referral) external returns (uint256);
 
     function requestWithdraw(uint256 _amount) external;
 
