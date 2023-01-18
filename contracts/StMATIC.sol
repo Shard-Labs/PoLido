@@ -21,8 +21,8 @@ contract StMATIC is
     AccessControlUpgradeable,
     PausableUpgradeable
 {
-    event SubmitEvent(address indexed _from, uint256 indexed _amount);
-    event RequestWithdrawEvent(address indexed _from, uint256 indexed _amount);
+    event SubmitEvent(address indexed _from, uint256 indexed _amount, address indexed _referral);
+    event RequestWithdrawEvent(address indexed _from, uint256 indexed _amount, address indexed _partner);
     event DistributeRewardsEvent(uint256 indexed _amount);
     event WithdrawTotalDelegatedEvent(
         address indexed _from,
@@ -114,9 +114,10 @@ contract StMATIC is
      * @dev Send funds to StMATIC contract and mints StMATIC to msg.sender
      * @notice Requires that msg.sender has approved _amount of MATIC to this contract
      * @param _amount - Amount of MATIC sent from msg.sender to this contract
+     * @param _referral - Referral address.
      * @return Amount of StMATIC shares generated
      */
-    function submit(uint256 _amount)
+    function submit(uint256 _amount, address _referral)
         external
         override
         whenNotPaused
@@ -151,7 +152,7 @@ contract StMATIC is
             abi.encode(totalShares + amountToMint, totalPooledMatic + _amount)
         );
 
-        emit SubmitEvent(msg.sender, _amount);
+        emit SubmitEvent(msg.sender, _amount, _referral);
 
         return amountToMint;
     }
@@ -159,8 +160,9 @@ contract StMATIC is
     /**
      * @dev Stores users request to withdraw into a RequestWithdraw struct
      * @param _amount - Amount of StMATIC that is requested to withdraw
+     * @param _referral - referral address.
      */
-    function requestWithdraw(uint256 _amount) external override whenNotPaused {
+    function requestWithdraw(uint256 _amount, address _referral) external override whenNotPaused {
         require(_amount > 0, "Invalid amount");
 
         Operator.OperatorInfo[] memory operatorInfos = nodeOperatorRegistry
@@ -265,7 +267,7 @@ contract StMATIC is
             )
         );
 
-        emit RequestWithdrawEvent(msg.sender, _amount);
+        emit RequestWithdrawEvent(msg.sender, _amount, _referral);
     }
 
     /**
