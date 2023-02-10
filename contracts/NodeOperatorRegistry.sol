@@ -545,10 +545,7 @@ contract NodeOperatorRegistry is
     /// @notice Allows the operator's owner to withdraw rewards.
     function withdrawRewards() external override whenNotPaused {
         (uint256 operatorId, NodeOperator storage no) = getOperator(0);
-        checkCondition(
-            getOperatorStatus(no) == NodeOperatorStatus.ACTIVE,
-            "Invalid status"
-        );
+
         address rewardAddress = no.rewardAddress;
         uint256 rewards = IValidator(no.validatorProxy).withdrawRewards(
             no.validatorId,
