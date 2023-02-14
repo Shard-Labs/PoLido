@@ -1965,6 +1965,272 @@
           }
         }
       }
+    },
+    "c7ce217379d789a21342b3fe7e9cd73345386e9c578f8e0f997c8db20f2ef513": {
+      "address": "0xbb555f081BC76dB844018173fb0830c724407415",
+      "txHash": "0x3f71fe8f32a109cc9737f8e5cf61542f5e4b605c0be4dca54396d103ba4e996d",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:39"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:44"
+          },
+          {
+            "contract": "ContextUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:31"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "_paused",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:29"
+          },
+          {
+            "contract": "PausableUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol:97"
+          },
+          {
+            "contract": "ERC165Upgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)50_storage",
+            "src": "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol:36"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "_roles",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)43_storage)",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:64"
+          },
+          {
+            "contract": "AccessControlUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol:232"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "_status",
+            "type": "t_uint256",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "contract": "ReentrancyGuardUpgradeable",
+            "label": "__gap",
+            "type": "t_array(t_uint256)49_storage",
+            "src": "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol:68"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "version",
+            "type": "t_string_storage",
+            "src": "contracts/NodeOperatorRegistry.sol:64"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "totalNodeOperators",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:66"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "validatorFactory",
+            "type": "t_address",
+            "src": "contracts/NodeOperatorRegistry.sol:69"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "stakeManager",
+            "type": "t_address",
+            "src": "contracts/NodeOperatorRegistry.sol:71"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "polygonERC20",
+            "type": "t_address",
+            "src": "contracts/NodeOperatorRegistry.sol:73"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "stMATIC",
+            "type": "t_address",
+            "src": "contracts/NodeOperatorRegistry.sol:75"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "nodeOperatorCounter",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:78"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "minAmountStake",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:81"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "minHeimdallFees",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:84"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "commissionRate",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:87"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "allowsRestake",
+            "type": "t_bool",
+            "src": "contracts/NodeOperatorRegistry.sol:90"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "defaultMaxDelegateLimit",
+            "type": "t_uint256",
+            "src": "contracts/NodeOperatorRegistry.sol:93"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "operatorIds",
+            "type": "t_array(t_uint256)dyn_storage",
+            "src": "contracts/NodeOperatorRegistry.sol:96"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "operatorOwners",
+            "type": "t_mapping(t_address,t_uint256)",
+            "src": "contracts/NodeOperatorRegistry.sol:100"
+          },
+          {
+            "contract": "NodeOperatorRegistry",
+            "label": "operators",
+            "type": "t_mapping(t_uint256,t_struct(NodeOperator)4862_storage)",
+            "src": "contracts/NodeOperatorRegistry.sol:104"
+          }
+        ],
+        "types": {
+          "t_string_storage": {
+            "label": "string"
+          },
+          "t_uint256": {
+            "label": "uint256"
+          },
+          "t_address": {
+            "label": "address"
+          },
+          "t_bool": {
+            "label": "bool"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)"
+          },
+          "t_mapping(t_uint256,t_struct(NodeOperator)4862_storage)": {
+            "label": "mapping(uint256 => struct NodeOperatorRegistry.NodeOperator)"
+          },
+          "t_struct(NodeOperator)4862_storage": {
+            "label": "struct NodeOperatorRegistry.NodeOperator",
+            "members": [
+              {
+                "label": "status",
+                "type": "t_enum(NodeOperatorStatus)4842"
+              },
+              {
+                "label": "name",
+                "type": "t_string_storage"
+              },
+              {
+                "label": "rewardAddress",
+                "type": "t_address"
+              },
+              {
+                "label": "signerPubkey",
+                "type": "t_bytes_storage"
+              },
+              {
+                "label": "validatorShare",
+                "type": "t_address"
+              },
+              {
+                "label": "validatorProxy",
+                "type": "t_address"
+              },
+              {
+                "label": "validatorId",
+                "type": "t_uint256"
+              },
+              {
+                "label": "commissionRate",
+                "type": "t_uint256"
+              },
+              {
+                "label": "maxDelegateLimit",
+                "type": "t_uint256"
+              }
+            ]
+          },
+          "t_enum(NodeOperatorStatus)4842": {
+            "label": "enum NodeOperatorRegistry.NodeOperatorStatus",
+            "members": [
+              "INACTIVE",
+              "ACTIVE",
+              "STOPPED",
+              "UNSTAKED",
+              "CLAIMED",
+              "EXIT",
+              "JAILED",
+              "EJECTED"
+            ]
+          },
+          "t_bytes_storage": {
+            "label": "bytes"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)43_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)"
+          },
+          "t_bytes32": {
+            "label": "bytes32"
+          },
+          "t_struct(RoleData)43_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32"
+              }
+            ]
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]"
+          }
+        }
+      }
     }
   }
 }
